@@ -9,13 +9,20 @@ local CollectionService = game:GetService("CollectionService")
 local MarketplaceService = game:GetService("MarketplaceService")
 local TweenService = game:GetService("TweenService")
 
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+
 local Shared = game.ReplicatedStorage.Shared
 local Config = require(Shared.Config)
+local Layout = require(Shared.Layout)
+local Build = require(Shared.Build)
+local Rides = require(Shared.Rides)
 local UI = require(script.Parent.UI)
 local Fx = require(script.Parent.Fx)
 local State = require(script.Parent.State)
 local Shop = require(script.Parent.Shop)
 local Index = require(script.Parent.Index)
+local Guide = require(script.Parent.Guide)
 
 local Hub = {}
 local C = UI.C
@@ -25,7 +32,7 @@ local player = Players.LocalPlayer
 local welcomeShown = false
 local function welcome(amount: number)
 	welcomeShown = true
-	local win, body = Shop.window("⏰ Welcome Back!", C.blue, Vector2.new(560, 360))
+	local win, body = Shop.window("Welcome Back!", C.blue, Vector2.new(560, 360), "Clock")
 	UI.outlined(body, "Your tank earned while you were away:", { Size = UDim2.new(1, -20, 0, 32), Position = UDim2.fromOffset(10, 6) })
 	-- sunburst behind the number
 	local burst = UI.frame(body, { Size = UDim2.fromOffset(150, 150), Position = UDim2.new(0.5, 0, 0, 112), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundTransparency = 1 })
@@ -39,7 +46,7 @@ local function welcome(amount: number)
 			task.wait()
 		end
 	end)
-	UI.text(body, "💰", { Size = UDim2.fromOffset(80, 80), Position = UDim2.new(0.5, 0, 0, 112), AnchorPoint = Vector2.new(0.5, 0.5) })
+	UI.icon(body, "MoneyBag", { Size = UDim2.fromOffset(104, 104), Position = UDim2.new(0.5, 0, 0, 112), AnchorPoint = Vector2.new(0.5, 0.5) })
 	UI.outlined(body, "+" .. UI.commas(amount), { Size = UDim2.new(1, -40, 0, 56), Position = UDim2.new(0.5, 0, 0, 196), AnchorPoint = Vector2.new(0.5, 0.5), Font = UI.NUMFONT, TextColor3 = C.money })
 	local prod = Config.Products.DoubleOffline
 	local claimX = 0.5
@@ -73,6 +80,31 @@ local function welcome(amount: number)
 	end)
 end
 
+----------------------------------------------------------------- rebirth confirm
+-- rebirth wipes progress, so it always asks first and says exactly what happens
+function Hub.confirmRebirth()
+	local d = State.data
+	if not d or d.speed < Config.Rebirth.speed then
+		return
+	end
+	local now = Config.Rebirth.mult ^ d.rebirths
+	local nextMult = Config.Rebirth.mult ^ (d.rebirths + 1)
+	local _, body = Shop.window("Rebirth?", C.green, Vector2.new(580, 360), "Rebirth")
+	UI.outlined(body, ("Speed gain  x%s  →  x%s  forever!"):format(string.format("%g", math.floor(now * 100) / 100), string.format("%g", math.floor(nextMult * 100) / 100)),
+		{ Size = UDim2.new(1, -20, 0, 44), Position = UDim2.fromOffset(10, 6), TextColor3 = C.money })
+	local lines = UI.inset(body, { Size = UDim2.new(1, -20, 0, 130), Position = UDim2.fromOffset(10, 60) })
+	UI.outlined(lines, "❌ Resets: speed, coins and rides", { Size = UDim2.new(1, -24, 0, 34), Position = UDim2.fromOffset(12, 14), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = Color3.fromRGB(255, 140, 140) })
+	UI.outlined(lines, "✅ Keeps: your tank, Index, shields and Robux items", { Size = UDim2.new(1, -24, 0, 34), Position = UDim2.fromOffset(12, 64), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = C.money })
+	UI.button(body, "Not yet", C.panel, function()
+		Shop.close()
+	end, { Size = UDim2.fromOffset(190, 62), Position = UDim2.new(0.27, 0, 1, -4), AnchorPoint = Vector2.new(0.5, 1) })
+	local go = UI.button(body, "REBIRTH!", C.green, function()
+		State.action("rebirth")
+		Shop.close()
+	end, { Size = UDim2.fromOffset(230, 62), Position = UDim2.new(0.72, 0, 1, -4), AnchorPoint = Vector2.new(0.5, 1) })
+	UI.pulse(go)
+end
+
 ----------------------------------------------------------------- pads + outlines
 local inside: { [Instance]: boolean } = {}
 local highlights: { [Instance]: Highlight } = {}
@@ -103,6 +135,9 @@ local function padTick()
 		end
 		local dist = Vector2.new(pos.X - px, pos.Z - pz).Magnitude
 		local on = dist < 7 and pos.Y < Config.BEACH_TOP + 8
+		if on and hut:GetAttribute("Kind") == "Rides" then
+			Guide.set("shop", nil) -- arrived
+		end
 		if on and not inside[hut] then
 			local fn = opens[hut:GetAttribute("Kind")]
 			if fn and State.data then
@@ -128,6 +163,69 @@ local function padTick()
 			highlights[hut] = nil
 			h:Destroy()
 		end
+	end
+end
+
+----------------------------------------------------------------- ride shop showcase
+-- your next ride spins on the pedestal with its price and perk
+local showcase: Model? = nil
+local showcaseId: string? = nil
+local showcaseLabel: TextLabel? = nil
+local showcaseSub: TextLabel? = nil
+
+local function nextRide(d: any): Config.Ride?
+	for _, ride in Config.Rides do
+		if not ride.robux and not d.rides[ride.id] then
+			return ride
+		end
+	end
+	return nil
+end
+
+local function updateShowcase()
+	local d = State.data
+	local map = Workspace:FindFirstChild("Map")
+	local shop = map and map:FindFirstChild("RideShop")
+	local pedestal = shop and shop:FindFirstChild("Pedestal") :: BasePart?
+	if not (d and pedestal) then
+		return
+	end
+	local nxt = nextRide(d)
+	local id = nxt and nxt.id or nil
+	if id ~= showcaseId then
+		showcaseId = id
+		if showcase then
+			showcase:Destroy()
+			showcase = nil
+		end
+		if nxt then
+			local m = Rides.build(nxt.id)
+			Build.ghost(m)
+			m:ScaleTo(1.7)
+			m.Parent = Workspace
+			showcase = m
+		end
+	end
+	if not showcaseLabel then
+		local bb = Instance.new("BillboardGui")
+		bb.Size = UDim2.fromScale(14, 4.4)
+		bb.StudsOffsetWorldSpace = Vector3.new(0, 9.5, 0)
+		bb.MaxDistance = 120
+		bb.LightInfluence = 0
+		bb.Parent = pedestal
+		showcaseLabel = UI.outlined(bb, "", { Size = UDim2.fromScale(1, 0.55) })
+		showcaseSub = UI.outlined(bb, "", { Size = UDim2.fromScale(1, 0.42), Position = UDim2.fromScale(0, 0.58), TextColor3 = C.gold })
+	end
+	local label, sub = showcaseLabel :: TextLabel, showcaseSub :: TextLabel
+	if nxt then
+		label.Text = ("%s %s"):format(nxt.icon, nxt.name)
+		local can = d.coins >= nxt.price
+		sub.Text = can and ("💰 %s  ·  +%d/s  ·  STEP ON THE PAD!"):format(UI.short(nxt.price), nxt.gain or 0)
+			or ("💰 %s  ·  +%d speed/sec"):format(UI.short(nxt.price), nxt.gain or 0)
+		sub.TextColor3 = can and C.money or C.gold
+	else
+		label.Text = "🏆 Every ride owned!"
+		sub.Text = "Rebirth for a permanent boost"
 	end
 end
 
@@ -158,6 +256,14 @@ local function gateTick()
 end
 
 function Hub.start()
+	RunService.RenderStepped:Connect(function()
+		local m = showcase
+		if m and m.Parent then
+			local base = Layout.RideShop + Vector3.new(0, 5.4, 0)
+			m:PivotTo(CFrame.new(base + Vector3.new(0, math.sin(os.clock() * 2) * 0.3, 0)) * CFrame.Angles(0, os.clock() * 0.9, 0))
+		end
+	end)
+	State.Changed:Connect(updateShowcase)
 	State.Changed:Connect(function(d)
 		if not welcomeShown and d.offline and d.offline > 0 then
 			task.delay(1.5, function()

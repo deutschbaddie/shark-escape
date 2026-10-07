@@ -3,15 +3,26 @@
 Rojo project. Untested in Studio so far.
 
 ## Run in Studio
-Pick one:
-- **Sync into your place (recommended):** run `rojo serve` in this folder, open your place in Studio,
-  then click Connect in the Rojo plugin. Your imported sharks in `ReplicatedStorage/Assets` stay put.
-  Rojo replaces the `Shared`, `Server` and `Client` folders with this repo's version.
-- **Fresh place:** `rojo build -o SharkEscape.rbxlx` and open the file. It starts from an empty
-  baseplate; the server builds the whole map when you press Play.
+1. In this folder: `git pull`, then `rojo serve`. In Studio, open your place and click **Connect**
+   in the Rojo plugin. Rojo manages the `Shared`, `Server` and `Client` script folders. Your imported
+   sharks in `ReplicatedStorage/Assets` are left alone.
+2. **See the map in edit mode:** View → Command Bar, paste and press Enter:
+   ```lua
+   require(game.ServerScriptService.Server.World).build()
+   ```
+   It builds the whole map (walls, plaza, shops, gates, islands, lighting, water) into Workspace so you
+   can look around. Running it again rebuilds it. On Play, the server rebuilds the map fresh anyway.
+   If you've changed code since opening Studio, close and reopen the place first (Studio caches modules).
+3. Game Settings: **Avatar = R15**, **Max Players = 8** (there are 8 docks), and turn on
+   **Studio access to API services** so saving works while testing.
 
-Then: Game Settings > Avatar = R15 (the surf pose needs R15), and turn on Studio access to API
-services if you want saves to work in Studio.
+## Uploads (one time)
+- Icons: Asset Manager → Import → `assets/icons/IconsA.png` and `IconsB.png`. Right-click each →
+  Copy ID, then paste them into `Config.Icons.SheetA` / `SheetB` as `"rbxassetid://<id>"`. Until then
+  the game shows emoji.
+- Store art: `assets/store/GameIcon.png` (512×512) and `Thumbnail.png` (1920×1080) go in
+  Creator Hub → your experience → Places / Thumbnails.
+- Regenerate any art with `tools/icons/render.sh` (needs Python + Chromium).
 
 ## Sharks (rigged, hand-built)
 - `python3 tools/shark_gen.py` writes `assets/sharks/Shark*.glb` (6 variants, 9 bones each).

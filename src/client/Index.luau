@@ -48,7 +48,7 @@ function Index.open()
 	if not d then
 		return
 	end
-	local win, body = Shop.window("📖 Creature Index", C.orange, Vector2.new(820, 480))
+	local win, body = Shop.window("Creature Index", C.orange, Vector2.new(820, 480), "Index")
 
 	local tabs = UI.inset(body, { Size = UDim2.new(0, 150, 1, -68), BackgroundColor3 = C.panel2 })
 	local tabList = Instance.new("UIListLayout")
@@ -162,11 +162,11 @@ function Index.open()
 		UI.stroke(rewards, C.green, 2)
 		UI.outlined(rewards, "Rewards:", { Size = UDim2.new(1, -16, 0, 20), Position = UDim2.fromOffset(8, 4), TextXAlignment = Enum.TextXAlignment.Left })
 		local coins, speed = Config.indexReward(zoneId, selected)
-		for i, spec in { { "💰", UI.short(coins), C.money }, { "⚡", "+" .. UI.short(speed), C.gold } } do
+		for i, spec in { { "Coins", UI.short(coins), C.money }, { "Speed", "+" .. UI.short(speed), C.gold } } do
 			local chip = UI.frame(rewards, { Size = UDim2.fromOffset(100, 46), Position = UDim2.new(0.5, (i == 1) and -104 or 4, 0, 28), BackgroundColor3 = Color3.fromRGB(40, 44, 54) })
 			UI.corner(chip, 6)
 			UI.stroke(chip, C.ink, 2)
-			UI.text(chip, spec[1], { Size = UDim2.fromOffset(30, 30), Position = UDim2.fromOffset(4, 8) })
+			UI.icon(chip, spec[1], { Size = UDim2.fromOffset(36, 36), Position = UDim2.fromOffset(2, 5) })
 			UI.outlined(chip, spec[2], { Size = UDim2.new(1, -40, 0, 26), Position = UDim2.fromOffset(36, 10), TextColor3 = spec[3] })
 		end
 		local btnText = claimed and "CLAIMED ✅" or (found and "CLAIM!" or "🔒 FIND IT")

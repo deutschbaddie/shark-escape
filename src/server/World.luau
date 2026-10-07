@@ -46,12 +46,7 @@ local WALL_X = W / 2 + WALL_T / 2 -- wall center line
 
 ----------------------------------------------------------------- helpers
 local function studAll(p: BasePart): BasePart
-	p.Material = Enum.Material.Plastic
-	for _, face in { "TopSurface", "FrontSurface", "BackSurface", "LeftSurface", "RightSurface" } do
-		(p :: any)[face] = Enum.SurfaceType.Studs
-	end
-	p.BottomSurface = Enum.SurfaceType.Inlet
-	return p
+	return Build.studs(p, Build.ALL_FACES)
 end
 
 local function label(parent: Instance, studs: Vector2, offset: Vector3, text: string, color: Color3?, maxDist: number?): TextLabel
@@ -101,35 +96,41 @@ local function surfaceText(part: BasePart, face: Enum.NormalId, text: string, co
 	return t
 end
 
--- checkered stud wall with a grass topper, from a to b (axis aligned)
-local function checkerWall(parent: Instance, a: Vector3, b: Vector3, bottom: number, top: number, block: number?)
+-- Checkered stud wall with a grass topper, from a to b (axis aligned).
+-- `inner` is the face players see (gets studs); trims shorten the topper
+-- at either end so corner toppers never overlap (no z-fighting).
+local function checkerWall(parent: Instance, a: Vector3, b: Vector3, bottom: number, top: number, inner: { Enum.NormalId }, trimA: number?, trimB: number?)
 	local len = (b - a).Magnitude
 	local dir = (b - a).Unit
 	local alongX = math.abs(dir.X) > 0.5
-	local blockLen = block or 12
 	local rows = math.max(1, math.floor((top - bottom) / 8 + 0.5))
 	local rowH = (top - bottom) / rows
-	local n = math.max(1, math.floor(len / blockLen + 0.5))
+	local n = math.max(1, math.floor(len / 12 + 0.5))
 	local step = len / n
 	for i = 0, n - 1 do
 		local mid = a + dir * (step * (i + 0.5))
 		for r = 0, rows - 1 do
 			local size = alongX and Vector3.new(step, rowH, WALL_T) or Vector3.new(WALL_T, rowH, step)
 			local p = Build.part(parent, size, CFrame.new(mid.X, bottom + rowH * (r + 0.5), mid.Z), ((i + r) % 2 == 0) and WALL_A or WALL_B)
-			studAll(p)
+			Build.studs(p, inner)
 		end
 	end
-	-- grass topper: slightly wider than the wall, in long runs
-	local runs = math.max(1, math.ceil(len / 400))
-	local runLen = len / runs
+	-- grass topper in long runs that meet exactly end to end
+	local a2 = a + dir * (trimA or 0)
+	local len2 = len - (trimA or 0) - (trimB or 0)
+	local runs = math.max(1, math.ceil(len2 / 400))
+	local runLen = len2 / runs
 	for i = 0, runs - 1 do
-		local mid = a + dir * (runLen * (i + 0.5))
-		local size = alongX and Vector3.new(runLen + 0.02, 2, WALL_T + 1.6) or Vector3.new(WALL_T + 1.6, 2, runLen + 0.02)
-		Build.studs(Build.part(parent, size, CFrame.new(mid.X, top + 1, mid.Z), GRASS, { Name = "Topper" }))
-		local lip = alongX and Vector3.new(runLen + 0.02, 0.8, WALL_T + 2.2) or Vector3.new(WALL_T + 2.2, 0.8, runLen + 0.02)
-		Build.part(parent, lip, CFrame.new(mid.X, top + 0.2, mid.Z), GRASS2, { Name = "Drip" })
+		local mid = a2 + dir * (runLen * (i + 0.5))
+		local size = alongX and Vector3.new(runLen, 2, WALL_T + 1.6) or Vector3.new(WALL_T + 1.6, 2, runLen)
+		local topper = Build.part(parent, size, CFrame.new(mid.X, top + 1, mid.Z), GRASS, { Name = "Topper" })
+		Build.studs(topper, { Enum.NormalId.Top })
+		local lip = alongX and Vector3.new(runLen, 0.8, WALL_T + 2.2) or Vector3.new(WALL_T + 2.2, 0.8, runLen)
+		Build.part(parent, lip, CFrame.new(mid.X, top + 0.25, mid.Z), GRASS2, { Name = "Drip" })
 	end
 end
+
+local WALL_BOTTOM, WALL_TOP = -6, 14
 
 ----------------------------------------------------------------- terrain
 local function fill(minV: Vector3, maxV: Vector3, mat: Enum.Material)
@@ -259,22 +260,28 @@ local function buildPlaza()
 	local rampLen = 8
 	local drop = top - Config.FLOOR_TOP
 	Build.wedge(plaza, Vector3.new(W, drop, rampLen), CFrame.new(0, Config.FLOOR_TOP + drop / 2, rampLen / 2) * CFrame.Angles(0, math.pi, 0), SAND,
-		{ Name = "Ramp", Material = Enum.Material.Plastic })
-	-- walls: back and both sides of the plaza
-	checkerWall(plaza, Vector3.new(-WALL_X - WALL_T / 2, 0, PLAZA_BACK - WALL_T / 2), Vector3.new(WALL_X + WALL_T / 2, 0, PLAZA_BACK - WALL_T / 2), top - 2, top + 14)
-	for _, side in { -1, 1 } do
-		checkerWall(plaza, Vector3.new(side * WALL_X, 0, PLAZA_BACK), Vector3.new(side * WALL_X, 0, 0), top - 2, top + 14)
-	end
-	-- a few palms and bushes against the back wall (kept small)
+		{ Name = "Ramp" })
+	-- back wall (side walls run the whole corridor, see buildLane)
+	local bz = PLAZA_BACK - WALL_T / 2
+	checkerWall(plaza, Vector3.new(-WALL_X - WALL_T / 2, 0, bz), Vector3.new(WALL_X + WALL_T / 2, 0, bz), WALL_BOTTOM, WALL_TOP, { Enum.NormalId.Back })
+	Build.part(plaza, Vector3.new(W + 2 * WALL_T, 200, WALL_T), CFrame.new(0, WALL_TOP + 100, bz), C(255, 255, 255),
+		{ Name = "Guard", Transparency = 1, CastShadow = false })
+	-- a few palms against the back wall, clear of the buildings
 	for i = 0, 6 do
 		local x = -W / 2 + 14 + i * (W - 28) / 6
-		Props.palm(plaza, CFrame.new(x, top, PLAZA_BACK + 8), 13 + (i % 3) * 2)
+		local clear = math.abs(x) > 22 and math.abs(x - Layout.Board.X) > 22
+		for _, h in Layout.Huts do
+			clear = clear and math.abs(x - h.pos.X) > 14
+		end
+		if clear then
+			Props.palm(plaza, CFrame.new(x, top, PLAZA_BACK + 7), 13 + (i % 3) * 2)
+		end
 	end
 	-- invisible spawn fallback
 	local spawn = Instance.new("SpawnLocation")
 	spawn.Anchored = true
 	spawn.Size = Vector3.new(12, 1, 12)
-	spawn.CFrame = CFrame.new(0, top + 0.5, -70)
+	spawn.CFrame = CFrame.new(0, top + 0.5, -56)
 	spawn.Transparency = 1
 	spawn.CanCollide = false
 	spawn.Neutral = true
@@ -283,43 +290,92 @@ local function buildPlaza()
 end
 
 ----------------------------------------------------------------- shop huts
--- small studded stalls; stepping on the glowing pad opens the menu (client)
+-- glowing step-on pad (no z-fighting: both discs sit above the ground)
+local function stepPad(parent: Instance, at: Vector3, color: Color3, d: number): BasePart
+	Build.cyl(parent, 0.2, d, CFrame.new(at + Vector3.new(0, 0.12, 0)), color, { Name = "PadRim", Material = Enum.Material.Neon, CanCollide = false, CastShadow = false })
+	return Build.cyl(parent, 0.3, d - 2.4, CFrame.new(at + Vector3.new(0, 0.17, 0)), C(255, 255, 255),
+		{ Name = "Pad", Transparency = 0.25, CanCollide = false, CastShadow = false })
+end
+
+local function awning(parent: Instance, base: CFrame, width: number, color: Color3, y: number)
+	local n = math.floor(width / 2)
+	local w = width / n
+	for i = 0, n - 1 do
+		local stripe = (i % 2 == 0) and color or C(255, 255, 255)
+		Build.studs(Build.part(parent, Vector3.new(w, 0.8, 7), base * CFrame.new(-width / 2 + w * (i + 0.5), y, -0.7) * CFrame.Angles(math.rad(-12), 0, 0), stripe))
+	end
+end
+
+-- small studded stall; stepping on the glowing pad opens the menu (client)
 local function hut(kind: string, title: string, color: Color3, pos: Vector3)
 	local m = Build.model(kind .. "Hut", map)
 	local base = CFrame.new(pos)
-	local pad = Build.cyl(m, 0.3, 14, base * CFrame.new(0, 0.15, 6), color, { Name = "Pad", Material = Enum.Material.Neon, Transparency = 0.35, CanCollide = false })
-	pad.CastShadow = false
-	Build.cyl(m, 0.25, 11, base * CFrame.new(0, 0.2, 6), C(255, 255, 255), { Material = Enum.Material.SmoothPlastic, Transparency = 0.6, CanCollide = false })
-	-- counter, posts, striped awning
-	studAll(Build.part(m, Vector3.new(12, 3.5, 3), base * CFrame.new(0, 1.75, -1), C(150, 100, 60)))
+	stepPad(m, pos + Vector3.new(0, 0, 9), color, 13)
+	studAll(Build.part(m, Vector3.new(12, 3.5, 3), base * CFrame.new(0, 1.75, -1), C(150, 100, 60), { Name = "Counter" }))
 	studAll(Build.part(m, Vector3.new(12.6, 0.6, 3.6), base * CFrame.new(0, 3.8, -1), color))
-	for _, x in { -6, 6 } do
-		studAll(Build.part(m, Vector3.new(1.2, 10, 1.2), base * CFrame.new(x, 5, -3), C(120, 80, 50)))
-		studAll(Build.part(m, Vector3.new(1.2, 10, 1.2), base * CFrame.new(x, 5, 1.5), C(120, 80, 50)))
+	for _, x in { -7, 7 } do
+		for _, z in { -3, 1.5 } do
+			studAll(Build.part(m, Vector3.new(1.2, 10, 1.2), base * CFrame.new(x, 5, z), C(120, 80, 50)))
+		end
 	end
-	for i = 0, 6 do
-		local stripe = (i % 2 == 0) and color or C(255, 255, 255)
-		Build.studs(Build.part(m, Vector3.new(14 / 7, 0.8, 7), base * CFrame.new(-7 + 1 + i * 2, 10.4, -0.7) * CFrame.Angles(math.rad(-12), 0, 0), stripe))
-	end
-	local sign = Build.part(m, Vector3.new(12, 3, 0.6), base * CFrame.new(0, 12.8, -1.5), C(30, 32, 44), { Name = "Sign" })
-	Build.part(m, Vector3.new(12.6, 3.6, 0.4), base * CFrame.new(0, 12.8, -1.75), color)
+	awning(m, base, 15.4, color, 11.2)
+	local sign = Build.part(m, Vector3.new(12, 3, 0.6), base * CFrame.new(0, 13.4, -1.5), C(30, 32, 44), { Name = "Sign" })
+	Build.part(m, Vector3.new(12.6, 3.6, 0.3), base * CFrame.new(0, 13.4, -1.95), color)
 	surfaceText(sign, Enum.NormalId.Back, title, C(255, 255, 255))
 	m:SetAttribute("Kind", kind)
 	m:SetAttribute("PadX", pos.X)
-	m:SetAttribute("PadZ", pos.Z + 6)
+	m:SetAttribute("PadZ", pos.Z + 9)
+	CollectionService:AddTag(m, "ShopPad")
+end
+
+-- The Ride Shop: where rides are bought. The client shows your next ride
+-- spinning on the pedestal; step on the pad to shop.
+local function buildRideShop()
+	local m = Build.model("RideShop", map)
+	local c = Layout.RideShop
+	local blue, white = C(40, 170, 255), C(255, 255, 255)
+	-- floor
+	studAll(Build.part(m, Vector3.new(34, 0.6, 24), CFrame.new(c.X, c.Y + 0.3, c.Z - 2), C(214, 160, 100), { Name = "Floor" }))
+	-- back wall + side walls (checker, studs facing in)
+	for i = 0, 5 do
+		for r = 0, 1 do
+			local p = Build.part(m, Vector3.new(34 / 6, 7, 2), CFrame.new(c.X - 17 + 34 / 12 * (2 * i + 1), c.Y + 0.6 + 3.5 + r * 7, c.Z - 13), ((i + r) % 2 == 0) and WALL_A or WALL_B)
+			Build.studs(p, { Enum.NormalId.Back, Enum.NormalId.Top })
+		end
+	end
+	for _, sx in { -1, 1 } do
+		for i = 0, 1 do
+			local p = Build.part(m, Vector3.new(2, 14, 10), CFrame.new(c.X + sx * 16, c.Y + 7.6, c.Z - 7 + i * 10), (i % 2 == 0) and WALL_B or WALL_A)
+			Build.studs(p, { sx < 0 and Enum.NormalId.Right or Enum.NormalId.Left })
+		end
+	end
+	-- roof with a striped front awning
+	studAll(Build.part(m, Vector3.new(36, 1.2, 26), CFrame.new(c.X, c.Y + 15.2, c.Z - 2), blue, { Name = "Roof" }))
+	awning(m, CFrame.new(c.X, c.Y, c.Z + 14.5), 36, blue, 15.2)
+	-- big sign on the roof
+	local sign = Build.part(m, Vector3.new(28, 6, 1), CFrame.new(c.X, c.Y + 18.8, c.Z + 8), C(30, 32, 44), { Name = "Sign" })
+	Build.part(m, Vector3.new(29.4, 7.4, 0.6), CFrame.new(c.X, c.Y + 18.8, c.Z + 7.2), C(255, 196, 30))
+	surfaceText(sign, Enum.NormalId.Back, "RIDE SHOP", white, Vector2.new(600, 130))
+	-- pedestal (the next ride spins on top, placed by the client)
+	studAll(Build.part(m, Vector3.new(8, 3, 8), CFrame.new(c.X, c.Y + 2.1, c.Z), C(255, 196, 30), { Name = "Pedestal" }))
+	Build.cyl(m, 0.3, 9, CFrame.new(c.X, c.Y + 3.75, c.Z), C(255, 255, 255), { Material = Enum.Material.Neon, CanCollide = false, CastShadow = false })
+	stepPad(m, Layout.RideShopPad, C(70, 230, 80), 15)
+	m:SetAttribute("Kind", "Rides")
+	m:SetAttribute("PadX", Layout.RideShopPad.X)
+	m:SetAttribute("PadZ", Layout.RideShopPad.Z)
 	CollectionService:AddTag(m, "ShopPad")
 end
 
 ----------------------------------------------------------------- leaderboard board
 local function buildBoard()
 	local m = Build.model("Leaderboard", map)
-	local cf = CFrame.new(0, Config.BEACH_TOP, PLAZA_BACK + 10)
+	local cf = CFrame.new(Layout.Board)
 	for _, x in { -11, 11 } do
 		studAll(Build.part(m, Vector3.new(2, 8, 2), cf * CFrame.new(x, 4, 0), C(40, 140, 230)))
 	end
 	studAll(Build.part(m, Vector3.new(28, 26, 2.4), cf * CFrame.new(0, 21, 0), C(40, 160, 255)))
 	local screen = Build.part(m, Vector3.new(24, 20, 0.4), cf * CFrame.new(0, 20, 1.3), C(24, 26, 38), { Name = "Screen" })
-	local head = Build.part(m, Vector3.new(30, 5, 3), cf * CFrame.new(0, 35.5, 0), C(255, 196, 30))
+	local head = Build.part(m, Vector3.new(30, 5, 3), cf * CFrame.new(0, 36.5, 0), C(255, 196, 30))
 	studAll(head)
 	surfaceText(head, Enum.NormalId.Back, "⚡ FASTEST ⚡", C(255, 255, 255), Vector2.new(600, 100))
 	local sg = Instance.new("SurfaceGui")
@@ -375,19 +431,21 @@ local function buildLane()
 			CFrame.new(0, Config.FLOOR_TOP - 1, zone.zStart + zone.length / 2), C(255, 255, 255),
 			{ Name = "WaterFloor", Transparency = 1, CastShadow = false })
 	end
-	-- the corridor walls (visible) + tall invisible guards above them
+	-- the corridor walls run from the back of the plaza to the end of the ocean
 	local walls = Build.model("LaneWalls", map)
+	local endZ = Config.OCEAN_END + WALL_T / 2
 	for _, side in { -1, 1 } do
-		checkerWall(walls, Vector3.new(side * WALL_X, 0, 0), Vector3.new(side * WALL_X, 0, Config.OCEAN_END), -6, 10)
-		local z = 0
+		checkerWall(walls, Vector3.new(side * WALL_X, 0, PLAZA_BACK), Vector3.new(side * WALL_X, 0, Config.OCEAN_END), WALL_BOTTOM, WALL_TOP,
+			{ side < 0 and Enum.NormalId.Right or Enum.NormalId.Left }, 0.8, 0.8)
+		local z = PLAZA_BACK
 		while z < Config.OCEAN_END do
 			local len = math.min(2000, Config.OCEAN_END - z)
-			Build.part(lane, Vector3.new(WALL_T, 200, len), CFrame.new(side * WALL_X, 110, z + len / 2), C(255, 255, 255),
+			Build.part(lane, Vector3.new(WALL_T, 200, len), CFrame.new(side * WALL_X, WALL_TOP + 100, z + len / 2), C(255, 255, 255),
 				{ Name = "Guard", Transparency = 1, CastShadow = false })
 			z += len
 		end
 	end
-	checkerWall(walls, Vector3.new(-WALL_X - WALL_T / 2, 0, Config.OCEAN_END + WALL_T / 2), Vector3.new(WALL_X + WALL_T / 2, 0, Config.OCEAN_END + WALL_T / 2), -6, 10)
+	checkerWall(walls, Vector3.new(-WALL_X - WALL_T / 2, 0, endZ), Vector3.new(WALL_X + WALL_T / 2, 0, endZ), WALL_BOTTOM, WALL_TOP, { Enum.NormalId.Front })
 	-- foam line at the shore (client pulses it)
 	local foam = Build.part(lane, Vector3.new(W, 0.2, 3), CFrame.new(0, 0.12, 9), C(255, 255, 255),
 		{ Name = "ShoreFoam", Transparency = 0.25, CanCollide = false, CanQuery = false })
@@ -405,22 +463,25 @@ local function buildGates()
 		if zone.gate > 0 then
 			local g = Build.model("Gate_" .. zone.id, folder)
 			local z = zone.zStart
-			local wall = Build.part(g, Vector3.new(W, 40, 0.6), CFrame.new(0, 18, z), C(255, 214, 64), {
+			-- glowing wall (visual only) up to the crossbeam
+			local wall = Build.part(g, Vector3.new(W - 12, 23, 0.6), CFrame.new(0, 9.5, z), C(255, 214, 64), {
 				Name = "Wall", Material = Enum.Material.ForceField, Transparency = 0.2, CastShadow = false, CanCollide = false, CanQuery = false,
 			})
 			g.PrimaryPart = wall
 			g:SetAttribute("Gate", zone.gate)
 			g:SetAttribute("ZoneName", zone.name)
+			-- checker pillars + crossbeam with a grass topper
 			for _, side in { -1, 1 } do
 				for r = 0, 3 do
 					studAll(Build.part(g, Vector3.new(6, 6, 6), CFrame.new(side * (W / 2 - 3), -3 + r * 6 + 3, z), (r % 2 == 0) and WALL_A or WALL_B))
 				end
-				Build.studs(Build.part(g, Vector3.new(7, 1.5, 7), CFrame.new(side * (W / 2 - 3), 21.75, z), GRASS))
 			end
-			local board = Build.part(g, Vector3.new(60, 10, 1.2), CFrame.new(0, 26, z), C(30, 32, 44), { Name = "Banner", CanCollide = false })
-			for _, y in { 20.6, 31.4 } do
-				Build.studs(Build.part(g, Vector3.new(62, 1.2, 1.6), CFrame.new(0, y, z), C(255, 196, 30), { CanCollide = false }))
-			end
+			local beam = Build.part(g, Vector3.new(W, 4, 6), CFrame.new(0, 23, z), WALL_B, { Name = "Beam" })
+			Build.studs(beam, { Enum.NormalId.Front, Enum.NormalId.Back })
+			Build.studs(Build.part(g, Vector3.new(W, 1.5, 7), CFrame.new(0, 25.75, z), GRASS), { Enum.NormalId.Top })
+			-- lock sign standing on the beam
+			local board = Build.part(g, Vector3.new(60, 10, 1.2), CFrame.new(0, 31.6, z), C(30, 32, 44), { Name = "Banner", CanCollide = false })
+			Build.studs(Build.part(g, Vector3.new(62, 1.2, 1.6), CFrame.new(0, 37.2, z), C(255, 196, 30), { CanCollide = false }))
 			for _, face in { Enum.NormalId.Front, Enum.NormalId.Back } do
 				surfaceText(board, face, ("🔒 %s  ⚡%s"):format(zone.name, tostring(zone.gate)), C(255, 255, 255), Vector2.new(600, 100))
 			end
@@ -514,7 +575,7 @@ local function buildPlot(i: number, cf: CFrame): Plot
 	-- studded deck with a darker trim
 	studAll(Build.part(m, Vector3.new(30, 1, 30), cf * CFrame.new(0, 0, -1), wood, { Name = "Deck" }))
 	for _, s in { { Vector3.new(30.4, 1.2, 1), Vector3.new(0, 0.1, -16) }, { Vector3.new(30.4, 1.2, 1), Vector3.new(0, 0.1, 14) },
-		{ Vector3.new(1, 1.2, 30.4), Vector3.new(-15, 0.1, -1) }, { Vector3.new(1, 1.2, 30.4), Vector3.new(15, 0.1, -1) } } do
+		{ Vector3.new(1, 1.2, 28.4), Vector3.new(-15, 0.1, -1) }, { Vector3.new(1, 1.2, 28.4), Vector3.new(15, 0.1, -1) } } do
 		Build.studs(Build.part(m, s[1], cf * CFrame.new(s[2]), dark))
 	end
 	-- tank
@@ -523,7 +584,7 @@ local function buildPlot(i: number, cf: CFrame): Plot
 	studAll(Build.part(m, Vector3.new(17, 0.8, 6), tcf * CFrame.new(0, 0.4, 0), frame))
 	studAll(Build.part(m, Vector3.new(17, 0.8, 6), tcf * CFrame.new(0, 8.8, 0), frame))
 	for _, x in { -8.2, 8.2 } do
-		studAll(Build.part(m, Vector3.new(0.8, 8, 6), tcf * CFrame.new(x, 4.6, 0), frame))
+		studAll(Build.part(m, Vector3.new(0.8, 7.6, 6.2), tcf * CFrame.new(x, 4.6, 0), frame))
 	end
 	local glass = C(200, 240, 255)
 	Build.part(m, Vector3.new(15.8, 7.6, 0.2), tcf * CFrame.new(0, 4.6, -2.9), glass, { Material = Enum.Material.Glass, Transparency = 0.75 })
@@ -537,21 +598,28 @@ local function buildPlot(i: number, cf: CFrame): Plot
 	local sign = label(deck, Vector2.new(14, 3), (tcf * CFrame.new(0, 12, 0)).Position - deck.Position, "Empty Dock", nil, 140)
 	-- collect pad
 	local pcf = CFrame.new(Layout.padPos(cf)) * CFrame.new(0, 0.55, 0)
-	Build.cyl(m, 0.3, 7.4, pcf, C(90, 240, 90), { Material = Enum.Material.Neon, Name = "PadRim", CastShadow = false })
-	local pad = Build.cyl(m, 0.5, 6.2, pcf * CFrame.new(0, 0.15, 0), C(50, 190, 70), { Name = "Pad" })
+	Build.cyl(m, 0.2, 7.4, pcf * CFrame.new(0, -0.03, 0), C(90, 240, 90), { Material = Enum.Material.Neon, Name = "PadRim", CastShadow = false })
+	local pad = Build.cyl(m, 0.4, 6.2, pcf * CFrame.new(0, 0.1, 0), C(50, 190, 70), { Name = "Pad" })
 	local padLabel = label(pad, Vector2.new(8, 2.4), Vector3.new(0, 3.2, 0), "💰 0", C(140, 255, 90), 90)
 	return { index = i, cf = cf, model = m, padLabel = padLabel, signLabel = sign, slots = slots, owner = nil }
 end
 
+-- Builds everything. Safe to run again (and from the Studio command bar to
+-- preview the map in edit mode): the old map is removed first.
 function World.build()
+	local old = Workspace:FindFirstChild("Map")
+	if old then
+		old:Destroy()
+	end
+	table.clear(World.Plots)
 	map = Instance.new("Folder")
 	map.Name = "Map"
 	map.Parent = Workspace
 	-- clear the template baseplate so it doesn't fight the plaza
 	for _, name in { "Baseplate", "SpawnLocation" } do
-		local old = Workspace:FindFirstChild(name)
-		if old and old:IsA("BasePart") then
-			old:Destroy()
+		local part = Workspace:FindFirstChild(name)
+		if part and part:IsA("BasePart") then
+			part:Destroy()
 		end
 	end
 	buildLighting()
@@ -559,9 +627,10 @@ function World.build()
 	for i, cf in Layout.Plots do
 		World.Plots[i] = buildPlot(i, cf)
 	end
-	hut("Rides", "🛟 RIDES", C(40, 190, 255), Vector3.new(-62, Config.BEACH_TOP, -92))
-	hut("Index", "📖 INDEX", C(255, 150, 30), Vector3.new(62, Config.BEACH_TOP, -92))
-	hut("Shop", "🛒 SHOP", C(255, 70, 170), Vector3.new(-112, Config.BEACH_TOP, -100))
+	buildRideShop()
+	for _, h in Layout.Huts do
+		hut(h.kind, h.title, h.color, h.pos)
+	end
 	buildBoard()
 	buildTerrain()
 	buildLane()

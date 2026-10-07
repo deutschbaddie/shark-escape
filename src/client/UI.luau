@@ -223,10 +223,40 @@ function UI.recolor(b: GuiObject, color: Color3)
 	b.BackgroundColor3 = color
 end
 
--- square icon button with a caption (left-side menu)
+-- One of the game's icons by name (Config.Icons). Draws from the uploaded
+-- sheet when its id is set, otherwise falls back to the emoji.
+function UI.icon(parent: Instance, name: string, props: { [string]: any }?): GuiObject
+	local icons = Config.Icons
+	local cell = icons.cells[name]
+	local sheet = cell and (cell[1] == "A" and icons.SheetA or icons.SheetB) or ""
+	local obj: GuiObject
+	if cell and sheet ~= "" then
+		local img = Instance.new("ImageLabel")
+		img.BackgroundTransparency = 1
+		img.Image = sheet
+		img.ImageRectSize = Vector2.new(256, 256)
+		img.ImageRectOffset = Vector2.new(((cell[2] - 1) % 4) * 256, math.floor((cell[2] - 1) / 4) * 256)
+		img.ScaleType = Enum.ScaleType.Fit
+		obj = img
+	else
+		local t = Instance.new("TextLabel")
+		t.BackgroundTransparency = 1
+		t.TextScaled = true
+		t.Font = UI.FONT
+		t.Text = icons.emoji[name] or name
+		obj = t
+	end
+	obj.Name = "Icon"
+	obj.Size = UDim2.fromScale(1, 1)
+	apply(obj, props)
+	obj.Parent = parent
+	return obj
+end
+
+-- square icon button with a caption (left-side menu); icon is an icon name
 function UI.iconButton(parent: Instance, icon: string, caption: string, color: Color3, onClick: () -> (), props: { [string]: any }?): TextButton
 	local b = UI.button(parent, "", color, onClick, props)
-	UI.text(b, icon, { Name = "Icon", Size = UDim2.fromScale(0.78, 0.6), Position = UDim2.fromScale(0.5, 0.06), AnchorPoint = Vector2.new(0.5, 0), ZIndex = b.ZIndex + 1 })
+	UI.icon(b, icon, { Size = UDim2.fromScale(0.74, 0.62), Position = UDim2.fromScale(0.5, 0.02), AnchorPoint = Vector2.new(0.5, 0), ZIndex = b.ZIndex + 1 })
 	local l = b:FindFirstChild("Label") :: TextLabel
 	l.Text = caption
 	l.Size = UDim2.new(1, -6, 0.3, 0)
@@ -262,7 +292,7 @@ end
 
 -- dark panel with a studded color header, title and red X.
 -- returns (frame, body, closeButton)
-function UI.window(parent: Instance, title: string, color: Color3, size: Vector2, onClose: () -> ()): (Frame, Frame, TextButton)
+function UI.window(parent: Instance, title: string, color: Color3, size: Vector2, onClose: () -> (), iconName: string?): (Frame, Frame, TextButton)
 	local f = UI.frame(parent, { Name = "Window", Size = UDim2.fromOffset(size.X, size.Y), Position = UDim2.fromScale(0.5, 0.52),
 		AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = UI.C.panel })
 	UI.corner(f, 12)
@@ -278,7 +308,12 @@ function UI.window(parent: Instance, title: string, color: Color3, size: Vector2
 		UI.frame(head, { Size = UDim2.new(0, i == 1 and 46 or 22, 2.4, 0), Position = UDim2.fromScale(x, -0.7), Rotation = 35,
 			BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0.72 })
 	end
-	UI.outlined(head, title, { Name = "Title", Size = UDim2.new(1, -96, 0, 46), Position = UDim2.fromOffset(18, 8), TextXAlignment = Enum.TextXAlignment.Left })
+	local tx = 18
+	if iconName then
+		UI.icon(head, iconName, { Size = UDim2.fromOffset(58, 58), Position = UDim2.fromOffset(10, 2), ZIndex = head.ZIndex + 2 })
+		tx = 74
+	end
+	UI.outlined(head, title, { Name = "Title", Size = UDim2.new(1, -96 - tx, 0, 46), Position = UDim2.fromOffset(tx, 8), TextXAlignment = Enum.TextXAlignment.Left })
 	local x = UI.button(f, "X", UI.C.red, onClose, { Name = "Close", Size = UDim2.fromOffset(62, 62), Position = UDim2.new(1, -6, 0, 6), AnchorPoint = Vector2.new(1, 0) })
 	local body = UI.frame(f, { Name = "Body", Size = UDim2.new(1, -24, 1, -86), Position = UDim2.fromOffset(12, 76), BackgroundTransparency = 1 })
 	UI.pop(f, 0.85)

@@ -9,6 +9,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 local MarketplaceService = game:GetService("MarketplaceService")
 
 local Shared = game.ReplicatedStorage.Shared
@@ -20,6 +21,7 @@ local Fx = require(script.Parent.Fx)
 local State = require(script.Parent.State)
 local Water = require(script.Parent.Water)
 local SharkView = require(script.Parent.SharkView)
+local Guide = require(script.Parent.Guide)
 
 local HUD = {}
 local C = UI.C
@@ -53,6 +55,13 @@ local stopRidePulse: (() -> ())? = nil
 HUD.onRides = nil :: (() -> ())?
 HUD.onShop = nil :: (() -> ())?
 HUD.onIndex = nil :: (() -> ())?
+HUD.atRideShop = nil :: (() -> boolean)?
+HUD.onRebirth = nil :: (() -> ())?
+
+function HUD.goToRideShop()
+	Guide.set("shop", Layout.RideShopPad + Vector3.new(0, 1, 0), "Ride Shop")
+	HUD.toast("🛟 Follow the arrow to the Ride Shop!", C.sky, 2.5)
+end
 
 local function call(fn: (() -> ())?)
 	if fn then
@@ -83,25 +92,25 @@ local function build()
 	grid.CellPadding = UDim2.fromOffset(10, 10)
 	grid.SortOrder = Enum.SortOrder.LayoutOrder
 	grid.Parent = menu
-	menuButtons.Rides = UI.iconButton(menu, "🛟", "Rides", C.sky, function()
+	menuButtons.Rides = UI.iconButton(menu, "Rides", "Rides", C.sky, function()
 		call(HUD.onRides)
 	end, { LayoutOrder = 1 })
-	menuButtons.Index = UI.iconButton(menu, "📖", "Index", C.orange, function()
+	menuButtons.Index = UI.iconButton(menu, "Index", "Index", C.orange, function()
 		call(HUD.onIndex)
 	end, { LayoutOrder = 2 })
-	menuButtons.Shop = UI.iconButton(menu, "🛒", "Shop", C.pink, function()
+	menuButtons.Shop = UI.iconButton(menu, "Shop", "Shop", C.pink, function()
 		UI.clearBadge(menuButtons.Shop)
 		call(HUD.onShop)
 	end, { LayoutOrder = 3, Visible = false })
-	menuButtons.Rebirth = UI.iconButton(menu, "🔁", "Rebirth", C.green, function()
-		State.action("rebirth")
+	menuButtons.Rebirth = UI.iconButton(menu, "Rebirth", "Rebirth", C.green, function()
+		call(HUD.onRebirth)
 	end, { LayoutOrder = 4, Visible = false })
 
 	-- bottom-left: the two big numbers
 	local stats = UI.frame(gui, { Size = UDim2.fromOffset(300, 120), Position = UDim2.new(0, 14, 1, -10), AnchorPoint = Vector2.new(0, 1), BackgroundTransparency = 1 })
-	UI.text(stats, "⚡", { Size = UDim2.fromOffset(52, 52), Position = UDim2.fromOffset(0, 4) })
+	UI.icon(stats, "Speed", { Size = UDim2.fromOffset(56, 56), Position = UDim2.fromOffset(0, 2) })
 	speedLabel = UI.outlined(stats, "0", { Size = UDim2.fromOffset(240, 52), Position = UDim2.fromOffset(58, 4), TextXAlignment = Enum.TextXAlignment.Left, Font = UI.NUMFONT })
-	UI.text(stats, "💰", { Size = UDim2.fromOffset(52, 52), Position = UDim2.fromOffset(0, 62) })
+	UI.icon(stats, "Coins", { Size = UDim2.fromOffset(56, 56), Position = UDim2.fromOffset(0, 60) })
 	coinsLabel = UI.outlined(stats, "0", { Size = UDim2.fromOffset(240, 52), Position = UDim2.fromOffset(58, 62), TextXAlignment = Enum.TextXAlignment.Left, Font = UI.NUMFONT, TextColor3 = C.money })
 	extrasLabel = UI.outlined(gui, "", { Size = UDim2.fromOffset(280, 24), Position = UDim2.new(0, 16, 1, -134), AnchorPoint = Vector2.new(0, 1), TextXAlignment = Enum.TextXAlignment.Left })
 
@@ -116,7 +125,11 @@ local function build()
 		local d = State.data
 		local nxt = d and HUD.nextRide(d)
 		if nxt and d.coins >= nxt.price then
-			State.action("buyRide", nxt.id)
+			if HUD.atRideShop and HUD.atRideShop() then
+				State.action("buyRide", nxt.id)
+			else
+				HUD.goToRideShop()
+			end
 		else
 			call(HUD.onRides)
 		end
@@ -145,8 +158,18 @@ local function build()
 	timerPill = UI.frame(gui, { Size = UDim2.fromOffset(190, 48), Position = UDim2.new(1, -14, 1, -12), AnchorPoint = Vector2.new(1, 1),
 		BackgroundColor3 = Color3.fromRGB(0, 0, 0), BackgroundTransparency = 0.55 })
 	UI.corner(timerPill, 24)
-	UI.text(timerPill, "🦈", { Size = UDim2.fromOffset(40, 40), Position = UDim2.fromOffset(8, 4) })
+	UI.icon(timerPill, "Shark", { Size = UDim2.fromOffset(52, 52), Position = UDim2.fromOffset(0, -4) })
 	timerLabel = UI.outlined(timerPill, "", { Size = UDim2.new(1, -60, 1, -12), Position = UDim2.fromOffset(52, 6), TextXAlignment = Enum.TextXAlignment.Left, Font = UI.NUMFONT })
+
+	-- touch screens: the thumbstick and jump button own the bottom corners
+	if UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled then
+		stats.AnchorPoint = Vector2.new(0, 0)
+		stats.Position = UDim2.fromOffset(14, 4)
+		extrasLabel.AnchorPoint = Vector2.new(0, 0)
+		extrasLabel.Position = UDim2.fromOffset(16, 126)
+		timerPill.AnchorPoint = Vector2.new(1, 0)
+		timerPill.Position = UDim2.new(1, -14, 0, 8)
+	end
 
 	-- top-center
 	distLabel = UI.outlined(gui, "", { Size = UDim2.fromOffset(300, 56), Position = UDim2.new(0.5, 0, 0, 76), AnchorPoint = Vector2.new(0.5, 0), Font = UI.NUMFONT, TextColor3 = C.gold, Visible = false })
@@ -346,7 +369,8 @@ local function render(d: any)
 	rideBtn.Visible = nxt ~= nil
 	if nxt then
 		local afford = d.coins >= nxt.price
-		UI.setText(rideBtn, afford and ("%s BUY %s!"):format(nxt.icon, nxt.name:upper()) or ("%s %s"):format(nxt.icon, nxt.name))
+		local here = HUD.atRideShop and HUD.atRideShop()
+		UI.setText(rideBtn, afford and (here and ("%s BUY %s!"):format(nxt.icon, nxt.name:upper()) or ("%s GET %s!"):format(nxt.icon, nxt.name:upper())) or ("%s %s"):format(nxt.icon, nxt.name))
 		ridePrice.Text = ("+%d/s  ·  💰 %s"):format(nxt.gain or 0, UI.short(nxt.price))
 		rideFill.Size = UDim2.fromScale(math.clamp(d.coins / nxt.price, 0, 1), 1)
 		rideBtn.BackgroundColor3 = afford and C.green or C.gold
@@ -519,6 +543,10 @@ handlers.ride = function(d)
 	Fx.bigWord(("%s NEW RIDE!"):format(ride and ride.icon or ""), C.gold, 1.2)
 	HUD.toast(("Now gaining +%s speed every second!"):format(UI.short(d.gain)), C.green)
 	UI.pop(gainLabel, 1.5)
+end
+
+handlers.rideShop = function()
+	HUD.goToRideShop()
 end
 
 handlers.slot = function(d)

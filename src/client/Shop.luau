@@ -9,8 +9,10 @@ local MarketplaceService = game:GetService("MarketplaceService")
 local Shared = game.ReplicatedStorage.Shared
 local Config = require(Shared.Config)
 local Rides = require(Shared.Rides)
+local Layout = require(Shared.Layout)
 local UI = require(script.Parent.UI)
 local State = require(script.Parent.State)
+local Guide = require(script.Parent.Guide)
 
 local Shop = {}
 local C = UI.C
@@ -29,15 +31,15 @@ local function closeAll()
 end
 
 -- one window at a time; Index and popups share this
-function Shop.window(title: string, color: Color3, size: Vector2?): (Frame, Frame)
+function Shop.window(title: string, color: Color3, size: Vector2?, iconName: string?): (Frame, Frame)
 	closeAll()
-	local f, body = UI.window(gui, title, color, size or Vector2.new(700, 470), closeAll)
+	local f, body = UI.window(gui, title, color, size or Vector2.new(700, 470), closeAll, iconName)
 	open = f
 	return f, body
 end
 
-local function window(title: string, color: Color3): (Frame, ScrollingFrame)
-	local f, body = Shop.window(title, color)
+local function window(title: string, color: Color3, iconName: string?): (Frame, ScrollingFrame)
+	local f, body = Shop.window(title, color, nil, iconName)
 	local scroll = Instance.new("ScrollingFrame")
 	scroll.Size = UDim2.fromScale(1, 1)
 	scroll.BackgroundTransparency = 1
@@ -121,7 +123,7 @@ function Shop.openRides()
 	if not d then
 		return
 	end
-	local _, scroll = window("🛟 Rides", C.sky)
+	local _, scroll = window("Rides", C.sky, "Rides")
 	local function refresh()
 		if not open then
 			return
@@ -135,7 +137,7 @@ function Shop.openRides()
 		d = State.data
 		-- tank slot card first
 		local slotCard = item(scroll, 0, C.blue)
-		UI.text(slotCard, "🐟", { Size = UDim2.new(1, 0, 0, 80), Position = UDim2.fromOffset(0, 14) })
+		UI.icon(slotCard, "BigTank", { Size = UDim2.fromOffset(96, 96), Position = UDim2.new(0.5, 0, 0, 8), AnchorPoint = Vector2.new(0.5, 0) })
 		UI.outlined(slotCard, ("Tank %d / %d"):format(#d.tank, d.slots), { Size = UDim2.new(1, -16, 0, 28), Position = UDim2.fromOffset(8, 104) })
 		UI.outlined(slotCard, "More room = more coins", { Size = UDim2.new(1, -16, 0, 18), Position = UDim2.fromOffset(8, 136), TextColor3 = C.gold })
 		if d.slotPrice then
@@ -175,10 +177,17 @@ function Shop.openRides()
 			elseif not foundNext then
 				foundNext = true
 				local can = d.coins >= ride.price
-				btnText = (can and "BUY  💰" or "💰") .. UI.short(ride.price)
-				btnColor = can and C.green or C.gold
-				onClick = function()
-					State.action("buyRide", ride.id)
+				if can and not Shop.atRideShop() then
+					btnText, btnColor = "📍 GO TO SHOP", C.sky
+					onClick = function()
+						Shop.goToRideShop()
+					end
+				else
+					btnText = (can and "BUY  💰" or "💰") .. UI.short(ride.price)
+					btnColor = can and C.green or C.gold
+					onClick = function()
+						State.action("buyRide", ride.id)
+					end
 				end
 			else
 				btnText = "🔒 💰" .. UI.short(ride.price)
@@ -220,12 +229,12 @@ function Shop.openStore()
 	if not d then
 		return
 	end
-	local _, scroll = window("🛒 Shop", C.pink)
+	local _, scroll = window("Shop", C.pink, "Shop")
 	local order = 0
 	local function add(kind: string, key: string, def: any, owned: boolean?)
 		order += 1
 		local f = item(scroll, order, key == "StarterPack" and C.gold or (kind == "pass" and C.purple or C.blue))
-		UI.text(f, def.icon, { Size = UDim2.new(1, 0, 0, 70), Position = UDim2.fromOffset(0, 14) })
+		UI.icon(f, def.iconName, { Size = UDim2.fromOffset(88, 88), Position = UDim2.new(0.5, 0, 0, 4), AnchorPoint = Vector2.new(0.5, 0) })
 		UI.outlined(f, def.name, { Size = UDim2.new(1, -12, 0, 26), Position = UDim2.fromOffset(6, 92) })
 		UI.outlined(f, def.desc, { Size = UDim2.new(1, -16, 0, 40), Position = UDim2.fromOffset(8, 122), TextWrapped = true, TextColor3 = Color3.fromRGB(230, 236, 255) })
 		if owned then
@@ -270,6 +279,18 @@ function Shop.start()
 end
 
 Shop.close = closeAll
+
+function Shop.atRideShop(): boolean
+	local char = player.Character
+	local hrp = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	return hrp ~= nil and Layout.atRideShop(hrp.Position)
+end
+
+-- close menus and point the guide beam at the Ride Shop
+function Shop.goToRideShop()
+	closeAll()
+	Guide.set("shop", Layout.RideShopPad + Vector3.new(0, 1, 0), "Ride Shop")
+end
 function Shop.isOpen(): boolean
 	return open ~= nil and open.Parent ~= nil
 end

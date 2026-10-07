@@ -139,16 +139,16 @@ export type Ride = {
 Config.Rides = {
 	{ id = "Noodle", name = "Pool Noodle", icon = "🟠", price = 0, gain = 1 },
 	{ id = "Duck", name = "Rubber Duck Floatie", icon = "🦆", price = 25, gain = 2 },
-	{ id = "Tube", name = "Inner Tube", icon = "🛟", price = 100, gain = 4 },
-	{ id = "Boogie", name = "Boogie Board", icon = "🟥", price = 400, gain = 8 },
-	{ id = "Surf", name = "Surfboard", icon = "🏄", price = 1500, gain = 15 },
-	{ id = "Bathtub", name = "Bathtub", icon = "🛁", price = 5000, gain = 30 },
-	{ id = "Banana", name = "Banana Boat", icon = "🍌", price = 15000, gain = 60 },
-	{ id = "JetSki", name = "Jet Ski", icon = "🚤", price = 50000, gain = 120 },
-	{ id = "Speedboat", name = "Speedboat", icon = "🛥️", price = 150000, gain = 250 },
-	{ id = "Dolphin", name = "Dolphin", icon = "🐬", price = 500000, gain = 500 },
-	{ id = "Donut", name = "Giant Donut", icon = "🍩", price = 1500000, gain = 1000 },
-	{ id = "Rocket", name = "Rocket Surfboard", icon = "🚀", price = 5000000, gain = 2500 },
+	{ id = "Tube", name = "Inner Tube", icon = "🛟", price = 85, gain = 3 },
+	{ id = "Boogie", name = "Boogie Board", icon = "🟥", price = 300, gain = 4 },
+	{ id = "Surf", name = "Surfboard", icon = "🏄", price = 1000, gain = 5 },
+	{ id = "Bathtub", name = "Bathtub", icon = "🛁", price = 3300, gain = 7 },
+	{ id = "Banana", name = "Banana Boat", icon = "🍌", price = 11000, gain = 9 },
+	{ id = "JetSki", name = "Jet Ski", icon = "🚤", price = 38000, gain = 12 },
+	{ id = "Speedboat", name = "Speedboat", icon = "🛥️", price = 130000, gain = 16 },
+	{ id = "Dolphin", name = "Dolphin", icon = "🐬", price = 450000, gain = 22 },
+	{ id = "Donut", name = "Giant Donut", icon = "🍩", price = 1500000, gain = 30 },
+	{ id = "Rocket", name = "Rocket Surfboard", icon = "🚀", price = 5000000, gain = 40 },
 	-- Robux rides: never skip the ladder, they multiply it.
 	{ id = "GoldDuck", name = "Golden Duck", icon = "✨", price = 0, robux = "GoldDuck", mult = 1.25 },
 	{ id = "SharkBoard", name = "Shark Board", icon = "🦈", price = 0, robux = "SharkBoard", mult = 1.5 },
@@ -166,6 +166,39 @@ function Config.ride(id: string): Ride?
 		end
 	end
 	return nil
+end
+
+-- How each ride handles on the water (client ride controller):
+--   stance   pose: stand / sit / straddle / prone / float
+--   accel    seconds to reach top speed      coast  seconds to drift to a stop
+--   turn     turn rate (rad/s)               grip   how fast sideways slide dies
+--   lean     roll into turns                 plane  nose-up at speed
+--   bob      bob height (studs), bobSpeed    wobble idle side-to-side yaw
+--   porpoise dolphin-style dive arcs         hop    jump velocity
+export type RideFeel = {
+	stance: string, accel: number, coast: number, turn: number, grip: number, lean: number,
+	bob: number, bobSpeed: number, plane: number?, wobble: number?, porpoise: boolean?, hop: number?,
+}
+Config.RideFeel = {
+	Noodle = { stance = "float", accel = 1.0, coast = 1.4, turn = 2.8, grip = 3, lean = 0.1, bob = 0.3, bobSpeed = 2.0, wobble = 0.06 },
+	Duck = { stance = "sit", accel = 0.9, coast = 1.2, turn = 3.0, grip = 3.5, lean = 0.12, bob = 0.45, bobSpeed = 3.2, wobble = 0.1 },
+	Tube = { stance = "sit", accel = 0.9, coast = 1.8, turn = 2.4, grip = 1.6, lean = 0.08, bob = 0.35, bobSpeed = 2.4, wobble = 0.25 },
+	Boogie = { stance = "prone", accel = 0.8, coast = 1.2, turn = 3.4, grip = 4, lean = 0.3, bob = 0.2, bobSpeed = 3 },
+	Surf = { stance = "stand", accel = 0.7, coast = 1.5, turn = 3.2, grip = 4.5, lean = 0.55, bob = 0.15, bobSpeed = 2.5, plane = 0.05 },
+	Bathtub = { stance = "sit", accel = 1.4, coast = 2.2, turn = 1.8, grip = 2.2, lean = 0.06, bob = 0.25, bobSpeed = 1.6, wobble = 0.12 },
+	Banana = { stance = "straddle", accel = 0.9, coast = 1.4, turn = 2.0, grip = 3, lean = 0.2, bob = 0.35, bobSpeed = 2.8 },
+	JetSki = { stance = "straddle", accel = 0.45, coast = 1.0, turn = 4.2, grip = 2.2, lean = 0.6, bob = 0.18, bobSpeed = 4, plane = 0.12 },
+	Speedboat = { stance = "straddle", accel = 0.6, coast = 1.3, turn = 2.6, grip = 3.5, lean = 0.25, bob = 0.12, bobSpeed = 3, plane = 0.18 },
+	Dolphin = { stance = "straddle", accel = 0.5, coast = 1.2, turn = 4.6, grip = 5, lean = 0.4, bob = 1.1, bobSpeed = 3.4, porpoise = true, hop = 40 },
+	Donut = { stance = "sit", accel = 0.8, coast = 2.0, turn = 3.0, grip = 1.2, lean = 0.1, bob = 0.4, bobSpeed = 2.6, wobble = 0.35 },
+	Rocket = { stance = "stand", accel = 0.3, coast = 0.9, turn = 3.0, grip = 5, lean = 0.45, bob = 0.1, bobSpeed = 6, plane = 0.1 },
+} :: { [string]: RideFeel }
+Config.RideFeel.GoldDuck = Config.RideFeel.Duck
+Config.RideFeel.SharkBoard = { stance = "stand", accel = 0.6, coast = 1.4, turn = 3.6, grip = 4.5, lean = 0.6, bob = 0.15, bobSpeed = 2.5, plane = 0.06 }
+Config.RideFeel.RainbowSki = Config.RideFeel.JetSki
+
+function Config.feel(rideId: string?): RideFeel
+	return Config.RideFeel[rideId or "Noodle"] or Config.RideFeel.Noodle
 end
 
 ----------------------------------------------------------------- creatures
@@ -219,6 +252,7 @@ Config.Luck = {
 	pass = 0.15,
 	potion = 0.15,
 	pityGrab = 3, -- the 3rd creature you ever grab is at least Rare
+	pityEpic = 30, -- and the 30th is at least Epic (if you've never had one)
 }
 
 Config.BUBBLES_PER_ZONE = 9
@@ -255,26 +289,26 @@ Config.Rebirth = { speed = 25000, mult = 1.5 }
 -- Fill these in from Creator Dashboard after you create the passes/products.
 -- An id of 0 hides the buy button instead of prompting a fake purchase.
 Config.Passes = {
-	TwoXSpeed = { id = 0, price = 399, name = "2x Speed", icon = "⚡", desc = "Double speed gain forever" },
-	TwoXCoins = { id = 0, price = 199, name = "2x Coins", icon = "💰", desc = "Double coins from your tank" },
-	AutoCollect = { id = 0, price = 99, name = "Auto Collect", icon = "🧲", desc = "Coins go straight to you" },
-	LuckyNet = { id = 0, price = 199, name = "Lucky Net", icon = "🍀", desc = "+15% chance to upgrade rarity" },
-	BigTank = { id = 0, price = 99, name = "+4 Tank Slots", icon = "🐟", desc = "Room for 4 more creatures" },
-	VIP = { id = 0, price = 399, name = "VIP", icon = "👑", desc = "Gold wake, VIP tag, +10% coins" },
-	GoldDuck = { id = 0, price = 99, name = "Golden Duck", icon = "✨", desc = "Ride it - x1.25 speed gain" },
-	SharkBoard = { id = 0, price = 199, name = "Shark Board", icon = "🦈", desc = "Ride it - x1.5 speed gain" },
-	RainbowSki = { id = 0, price = 399, name = "Rainbow Jet Ski", icon = "🌈", desc = "Ride it - x2 speed gain" },
+	TwoXSpeed = { iconName = "X2Speed", id = 0, price = 399, name = "2x Speed", icon = "⚡", desc = "Double speed gain forever" },
+	TwoXCoins = { iconName = "X2Coins", id = 0, price = 199, name = "2x Coins", icon = "💰", desc = "Double coins from your tank" },
+	AutoCollect = { iconName = "Magnet", id = 0, price = 99, name = "Auto Collect", icon = "🧲", desc = "Coins go straight to you" },
+	LuckyNet = { iconName = "Clover", id = 0, price = 199, name = "Lucky Net", icon = "🍀", desc = "+15% chance to upgrade rarity" },
+	BigTank = { iconName = "BigTank", id = 0, price = 99, name = "+4 Tank Slots", icon = "🐟", desc = "Room for 4 more creatures" },
+	VIP = { iconName = "Crown", id = 0, price = 399, name = "VIP", icon = "👑", desc = "Gold wake, VIP tag, +10% coins" },
+	GoldDuck = { iconName = "GoldDuck", id = 0, price = 99, name = "Golden Duck", icon = "✨", desc = "Ride it - x1.25 speed gain" },
+	SharkBoard = { iconName = "SharkBoard", id = 0, price = 199, name = "Shark Board", icon = "🦈", desc = "Ride it - x1.5 speed gain" },
+	RainbowSki = { iconName = "RainbowSki", id = 0, price = 399, name = "Rainbow Jet Ski", icon = "🌈", desc = "Ride it - x2 speed gain" },
 }
 
 Config.Products = {
-	Shield = { id = 0, price = 25, name = "Shark Shield", icon = "🛡️", desc = "Survive one bite, keep your creature" },
-	SpeedBoost = { id = 0, price = 49, name = "2x Speed (15 min)", icon = "⏩", desc = "Double speed gain for 15 minutes" },
-	LuckPotion = { id = 0, price = 49, name = "Luck Potion (10 min)", icon = "🧪", desc = "+15% rarity upgrade chance" },
-	GoldenBubble = { id = 0, price = 99, name = "Golden Bubble", icon = "🫧",
+	Shield = { iconName = "Shield", id = 0, price = 25, name = "Shark Shield", icon = "🛡️", desc = "Survive one bite, keep your creature" },
+	SpeedBoost = { iconName = "Boost", id = 0, price = 49, name = "2x Speed (15 min)", icon = "⏩", desc = "Double speed gain for 15 minutes" },
+	LuckPotion = { iconName = "Potion", id = 0, price = 49, name = "Luck Potion (10 min)", icon = "🧪", desc = "+15% rarity upgrade chance" },
+	GoldenBubble = { iconName = "GoldBubble", id = 0, price = 99, name = "Golden Bubble", icon = "🫧",
 		desc = "Rare 70% · Epic 25% · Legendary 5%" },
-	StarterPack = { id = 0, price = 49, name = "Starter Pack", icon = "🎁",
+	StarterPack = { iconName = "Gift", id = 0, price = 49, name = "Starter Pack", icon = "🎁",
 		desc = "Rare Octopus + 30 min 2x Speed + 3 Shields" },
-	DoubleOffline = { id = 0, price = 9, name = "2x Offline Coins", icon = "⏰", desc = "Double your welcome-back coins" },
+	DoubleOffline = { iconName = "Clock", id = 0, price = 25, name = "2x Offline Coins", icon = "⏰", desc = "Double your welcome-back coins" },
 }
 
 Config.GoldenBubbleOdds = { { "Rare", 70 }, { "Epic", 25 }, { "Legendary", 5 } }
@@ -291,8 +325,8 @@ function Config.indexReward(zoneId: string, rarityId: string): (number, number)
 	local zone = Config.zoneById(zoneId)
 	local r = Config.rarity(rarityId)
 	local v = zone and zone.value or 1
-	local coins = math.floor(50 * v * r.mult ^ 0.75)
-	local speed = math.floor(20 * v ^ 0.8 * r.index)
+	local coins = math.floor(20 * v * r.mult ^ 0.75)
+	local speed = math.floor((5 + (zone and zone.gate or 0) * 0.02) * r.index)
 	return coins, speed
 end
 
@@ -301,11 +335,36 @@ end
 Config.Offline = { rate = 0.5, maxHours = 6, minSeconds = 120 }
 
 ----------------------------------------------------------------- images
--- Optional uploaded images. Empty strings fall back to built-in looks:
--- Studs: upload assets/textures/studs.png (Creator Hub > Decals) and paste
--- the rbxassetid:// here for a crisper stud texture on buttons and panels.
+-- Stud texture: "Studs" by aetoreous (public domain). Decal 6927295857,
+-- image 6927295847. The image is a 4x4 grid of studs.
 Config.Images = {
-	Studs = "",
+	Studs = "rbxassetid://6927295847",
+	StudsWorldTile = 8, -- studs of world space one image tile covers on parts
+}
+
+-- Custom icon set: two 1024x1024 sheets (4x4 grid of 256px icons) in
+-- assets/icons. Upload IconsA.png and IconsB.png (Asset Manager > Import),
+-- paste the ids below. Until then every icon falls back to its emoji.
+Config.Icons = {
+	SheetA = "",
+	SheetB = "",
+	cells = {
+		Speed = { "A", 1 }, Coins = { "A", 2 }, Rides = { "A", 3 }, Index = { "A", 4 },
+		Shop = { "A", 5 }, Rebirth = { "A", 6 }, Shark = { "A", 7 }, Tank = { "A", 8 },
+		Shield = { "A", 9 }, Boost = { "A", 10 }, Potion = { "A", 11 }, Lock = { "A", 12 },
+		Gift = { "A", 13 }, Clock = { "A", 14 }, Trophy = { "A", 15 }, Sparkle = { "A", 16 },
+		X2Speed = { "B", 1 }, X2Coins = { "B", 2 }, Magnet = { "B", 3 }, Clover = { "B", 4 },
+		BigTank = { "B", 5 }, Crown = { "B", 6 }, GoldDuck = { "B", 7 }, SharkBoard = { "B", 8 },
+		RainbowSki = { "B", 9 }, GoldBubble = { "B", 10 }, Chest = { "B", 11 }, Fin = { "B", 12 },
+		Arrow = { "B", 13 }, MoneyBag = { "B", 14 }, Fish = { "B", 15 }, Island = { "B", 16 },
+	},
+	emoji = {
+		Speed = "⚡", Coins = "💰", Rides = "🛟", Index = "📖", Shop = "🛒", Rebirth = "🔁", Shark = "🦈", Tank = "🐟",
+		Shield = "🛡️", Boost = "⏩", Potion = "🧪", Lock = "🔒", Gift = "🎁", Clock = "⏰", Trophy = "🏆", Sparkle = "✨",
+		X2Speed = "⚡", X2Coins = "💰", Magnet = "🧲", Clover = "🍀", BigTank = "🐟", Crown = "👑", GoldDuck = "🦆",
+		SharkBoard = "🏄", RainbowSki = "🌈", GoldBubble = "🫧", Chest = "🧰", Fin = "🦈", Arrow = "⬇️", MoneyBag = "💰",
+		Fish = "🐠", Island = "🏝️",
+	},
 }
 
 ----------------------------------------------------------------- audio
@@ -317,9 +376,10 @@ Config.Sounds = {
 	chomp = "rbxasset://sounds/impact_explosion_03.mp3",
 	music = "",
 	sharkAlarm = "",
-	coin = "",
-	buy = "",
-	grab = "",
+	-- built-in Roblox client sounds (rbxasset://) - no upload needed
+	coin = "rbxasset://sounds/electronicpingshort.wav",
+	buy = "rbxasset://sounds/electronicpingshort.wav",
+	grab = "rbxasset://sounds/impact_water.mp3",
 	legendary = "",
 }
 

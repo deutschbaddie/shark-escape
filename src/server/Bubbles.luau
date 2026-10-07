@@ -1,6 +1,7 @@
 -- Creature bubbles floating in every zone. Swim into one to grab it.
 -- Rarity and mutation are rolled on the server; luck can bump a grab up a tier.
 
+local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local CollectionService = game:GetService("CollectionService")
 
@@ -128,6 +129,18 @@ local function grab(s: Game.Session, b: Bubble)
 		r = "Rare"
 		pity = true
 	end
+	if s.profile.grabs == Config.Luck.pityEpic and Config.rarity(r).index < 4 then
+		local hadEpic = false
+		for key in s.profile.index do
+			if key:match(":Epic$") or key:match(":Legendary$") then
+				hadEpic = true
+			end
+		end
+		if not hadEpic then
+			r = "Epic"
+			pity = true
+		end
+	end
 	local c = { r = r, z = b.zone.id, m = b.m }
 	Game.setCarry(s, c)
 	Game.discover(s, c)
@@ -135,18 +148,21 @@ local function grab(s: Game.Session, b: Bubble)
 		v = Config.creatureValue(r, b.zone.id, b.m) * Game.coinMult(s) })
 end
 
+local lastPos: { [Player]: Vector3 } = {}
+
 local function tick()
-	for _, s in Game.sessions do
-		if s.carrying or os.clock() < s.eatenUntil then
-			continue
-		end
+	for player, s in Game.sessions do
 		local hrp = Game.root(s.player)
-		if not hrp then
+		local prev = lastPos[player]
+		lastPos[player] = hrp and hrp.Position or nil
+		if s.carrying or os.clock() < s.eatenUntil or not hrp then
 			continue
 		end
 		local pos = hrp.Position
+		-- swept: anything you passed through since the last tick counts
+		local from = (prev and (prev - pos).Magnitude < 120) and prev or pos
 		for i, b in live do
-			if Vector2.new(pos.X - b.pos.X, pos.Z - b.pos.Z).Magnitude < Config.GRAB_RADIUS and math.abs(pos.Y - b.pos.Y) < 9 then
+			if Layout.segmentDist(b.pos, from, pos) < Config.GRAB_RADIUS and math.abs(pos.Y - b.pos.Y) < 9 then
 				table.remove(live, i)
 				b.model:Destroy()
 				grab(s, b)
@@ -176,6 +192,9 @@ function Bubbles.give(s: Game.Session, r: string, zoneId: string?)
 end
 
 function Bubbles.start()
+	Players.PlayerRemoving:Connect(function(p)
+		lastPos[p] = nil
+	end)
 	folder = Instance.new("Folder")
 	folder.Name = "Bubbles"
 	folder.Parent = Workspace

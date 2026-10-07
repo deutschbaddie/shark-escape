@@ -24,6 +24,7 @@ export type Session = {
 	carryModel: Model?,
 	rideModel: Model?,
 	pending: number,
+	lastPos: Vector3?,
 	passes: { [string]: boolean },
 	joinedAt: number,
 	eatenUntil: number,
@@ -193,6 +194,7 @@ function Game.attachRide(s: Session)
 		return
 	end
 	local id = Game.ownsRide(s, s.profile.ride) and s.profile.ride or "Noodle"
+	char:SetAttribute("Ride", id) -- clients pick the pose + handling from this
 	local model = Rides.build(id)
 	local feet = hrp.CFrame * CFrame.new(0, -(hum.HipHeight + hrp.Size.Y / 2), 0)
 	model:PivotTo(feet)
@@ -389,6 +391,12 @@ actions.buyRide = function(s, id)
 		return
 	end
 	if s.profile.coins < ride.price then
+		return
+	end
+	-- rides are bought at the Ride Shop
+	local hrp = root(s.player)
+	if not (hrp and Layout.atRideShop(hrp.Position)) then
+		Game.notify(s.player, "rideShop", {})
 		return
 	end
 	s.profile.coins -= ride.price
@@ -671,6 +679,9 @@ local function fastTick()
 			continue
 		end
 		local pos = hrp.Position
+		local prev = s.lastPos
+		s.lastPos = pos
+		local from = (prev and (prev - pos).Magnitude < 120) and prev or pos
 		local wet = Layout.inWater(pos) and not Layout.islandAt(pos, 0)
 		if wet ~= s.inWater then
 			s.inWater = wet
@@ -679,7 +690,7 @@ local function fastTick()
 		local plot = s.plot
 		if plot then
 			local pad = Layout.padPos(plot.cf)
-			if s.pending > 0 and Vector2.new(pos.X - pad.X, pos.Z - pad.Z).Magnitude < Config.COLLECT_RADIUS and math.abs(pos.Y - pad.Y) < 8 then
+			if s.pending > 0 and Layout.segmentDist(pad, from, pos) < Config.COLLECT_RADIUS and math.abs(pos.Y - pad.Y) < 8 then
 				local amount = s.pending
 				s.profile.coins += amount
 				s.pending = 0
@@ -689,7 +700,7 @@ local function fastTick()
 			end
 			if s.carrying then
 				local tank = Layout.tankPos(plot.cf)
-				if Vector2.new(pos.X - tank.X, pos.Z - tank.Z).Magnitude < Config.DEPOSIT_RADIUS then
+				if Layout.segmentDist(tank, from, pos) < Config.DEPOSIT_RADIUS then
 					local c = s.carrying :: Data.Creature
 					Game.setCarry(s, nil)
 					Game.addToTank(s, c)

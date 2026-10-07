@@ -3,13 +3,12 @@
 --   1  bring it back to your dock
 --   2  step on the pad to collect coins
 --   3  shark drill: a harmless practice shark chases you back to safety
---   4  buy your first ride (finger on the NEXT RIDE button)
+--   4  buy your first ride at the Ride Shop
 --   5  done (server stops the new-player shark grace)
 -- The step is saved on the server (profile.tut); the client only advances it.
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local Workspace = game:GetService("Workspace")
 local CollectionService = game:GetService("CollectionService")
 
 local Shared = game.ReplicatedStorage.Shared
@@ -22,6 +21,7 @@ local State = require(script.Parent.State)
 local Water = require(script.Parent.Water)
 local HUD = require(script.Parent.HUD)
 local SharkView = require(script.Parent.SharkView)
+local Guide = require(script.Parent.Guide)
 
 local Onboarding = {}
 local C = UI.C
@@ -30,95 +30,8 @@ local player = Players.LocalPlayer
 local DONE = 5
 local step = -1 -- local copy, never behind the server
 
------------------------------------------------------------------ guide arrow
--- A beam from your feet to the target plus a bouncing marker above it.
-local guideFolder = Instance.new("Folder")
-guideFolder.Name = "Guide"
-guideFolder.Parent = Workspace
-
-local target = Instance.new("Part")
-target.Name = "GuideTarget"
-target.Anchored = true
-target.CanCollide = false
-target.CanQuery = false
-target.CanTouch = false
-target.Transparency = 1
-target.Size = Vector3.new(0.2, 0.2, 0.2)
-target.Parent = guideFolder
-
-local targetAtt = Instance.new("Attachment")
-targetAtt.Parent = target
-
-local beam = Instance.new("Beam")
-beam.Attachment1 = targetAtt
-beam.FaceCamera = true
-beam.Width0 = 1.4
-beam.Width1 = 0.6
-beam.Segments = 24
-beam.CurveSize0 = 6
-beam.CurveSize1 = -6
-beam.LightEmission = 1
-beam.LightInfluence = 0
-beam.Color = ColorSequence.new(C.gold)
-beam.Transparency = NumberSequence.new({
-	NumberSequenceKeypoint.new(0, 0.85),
-	NumberSequenceKeypoint.new(0.25, 0.15),
-	NumberSequenceKeypoint.new(1, 0.1),
-})
-beam.Enabled = false
-beam.Parent = target
-
-local marker = Instance.new("BillboardGui")
-marker.Size = UDim2.fromOffset(150, 110)
-marker.StudsOffset = Vector3.new(0, 6, 0)
-marker.AlwaysOnTop = true
-marker.LightInfluence = 0
-marker.Enabled = false
-marker.Parent = target
-local markerText = UI.outlined(marker, "", { Size = UDim2.new(1, 0, 0, 34), TextColor3 = C.gold })
-local markerArrow = UI.outlined(marker, "⬇️", { Size = UDim2.new(1, 0, 0, 64), Position = UDim2.fromOffset(0, 40) })
-
-local feetAtt: Attachment? = nil
-local function ensureFeet()
-	local char = player.Character
-	local hrp = char and char:FindFirstChild("HumanoidRootPart")
-	if not hrp then
-		return
-	end
-	if not feetAtt or feetAtt.Parent ~= hrp then
-		local a = Instance.new("Attachment")
-		a.Name = "GuideFeet"
-		a.Position = Vector3.new(0, -2, 0)
-		a.Parent = hrp
-		feetAtt = a
-		beam.Attachment0 = a
-	end
-end
-
 local function point(at: Vector3?, label: string?)
-	if not at then
-		beam.Enabled = false
-		marker.Enabled = false
-		return
-	end
-	ensureFeet()
-	target.Position = at
-	markerText.Text = label or ""
-	beam.Enabled = feetAtt ~= nil
-	marker.Enabled = true
-end
-
------------------------------------------------------------------ finger on the ride button
-local finger: TextLabel? = nil
-local function showFinger(on: boolean)
-	if on and not finger then
-		finger = UI.outlined(HUD.rideButton(), "👇", {
-			Size = UDim2.fromOffset(64, 64), Position = UDim2.new(0.5, 0, 0, -4), AnchorPoint = Vector2.new(0.5, 1), ZIndex = 5,
-		})
-	elseif not on and finger then
-		finger:Destroy()
-		finger = nil
-	end
+	Guide.set("tut", at, label)
 end
 
 ----------------------------------------------------------------- helpers
@@ -273,7 +186,6 @@ local function update()
 	local hrp = myRoot()
 	if not d or step >= DONE or not hrp then
 		point(nil)
-		showFinger(false)
 		HUD.hint(nil)
 		return
 	end
@@ -313,7 +225,8 @@ local function update()
 		if not nxt or nxt.order > 2 then
 			advance(5)
 		elseif d.coins >= nxt.price then
-			hint = ("%s Buy the %s for more speed!"):format(nxt.icon, nxt.name)
+			at, label = Layout.RideShopPad + Vector3.new(0, 1, 0), "Ride Shop"
+			hint = ("%s Buy the %s at the Ride Shop!"):format(nxt.icon, nxt.name)
 		else
 			-- not enough yet: keep them on the loop that earns coins
 			if d.carrying then
@@ -325,9 +238,6 @@ local function update()
 			end
 			hint = ("💰 %s / %s coins for the %s"):format(UI.short(d.coins), UI.short(nxt.price), nxt.name)
 		end
-		showFinger(nxt ~= nil and d.coins >= nxt.price)
-	else
-		showFinger(false)
 	end
 
 	point(at, label)
@@ -362,15 +272,9 @@ function Onboarding.start()
 	local conn
 	conn = RunService.Heartbeat:Connect(function()
 		update()
-		local t = os.clock()
-		markerArrow.Position = UDim2.fromOffset(0, 40 + math.abs(math.sin(t * 4)) * -12)
-		if finger then
-			finger.Position = UDim2.new(0.5, 0, 0, -4 - math.abs(math.sin(t * 5)) * 10)
-		end
 		if step >= DONE then
 			conn:Disconnect()
 			point(nil)
-			showFinger(false)
 			HUD.hint(nil)
 			if drill.shark then
 				drillEnd("abort")

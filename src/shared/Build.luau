@@ -1,6 +1,8 @@
 -- Tiny part-building kit for the cartoon low-poly stud look.
 -- One visual family: Plastic/SmoothPlastic, bright colors, studs on tops.
 
+local Config = require(script.Parent.Config)
+
 local Build = {}
 
 export type Props = { [string]: any }
@@ -27,10 +29,33 @@ function Build.part(parent: Instance?, size: Vector3, cf: CFrame, color: Color3,
 	return p
 end
 
--- classic Roblox studs on the top face
-function Build.studs(p: BasePart): BasePart
-	p.Material = Enum.Material.Plastic
-	p.TopSurface = Enum.SurfaceType.Studs
+-- Stud texture on the given faces (default: top), tinted to the part's
+-- color so one white stud image works on every color. Falls back to the
+-- classic stud surface if no texture is configured.
+local ALL_FACES = { Enum.NormalId.Top, Enum.NormalId.Front, Enum.NormalId.Back, Enum.NormalId.Left, Enum.NormalId.Right }
+Build.ALL_FACES = ALL_FACES
+
+function Build.studs(p: BasePart, faces: { Enum.NormalId }?): BasePart
+	local img = Config.Images.Studs
+	if img == "" then
+		p.Material = Enum.Material.Plastic
+		for _, face in faces or { Enum.NormalId.Top } do
+			(p :: any)[face.Name .. "Surface"] = Enum.SurfaceType.Studs
+		end
+		return p
+	end
+	p.Material = Enum.Material.SmoothPlastic
+	local tile = Config.Images.StudsWorldTile
+	for _, face in faces or { Enum.NormalId.Top } do
+		local t = Instance.new("Texture")
+		t.Name = "Studs"
+		t.Texture = img
+		t.Face = face
+		t.StudsPerTileU = tile
+		t.StudsPerTileV = tile
+		t.Color3 = p.Color
+		t.Parent = p
+	end
 	return p
 end
 

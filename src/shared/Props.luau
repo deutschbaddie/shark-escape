@@ -169,13 +169,15 @@ function Props.island(parent: Instance, pos: Vector3, radius: number, palm: bool
 	local m = Build.model("Island", parent)
 	local sand, wet = C(255, 228, 150), C(236, 200, 120)
 	local side = radius * 2
-	for _, a in { 0, math.pi / 4 } do
-		Build.studs(Build.part(m, Vector3.new(side, 3, side), CFrame.new(pos + Vector3.new(0, -1, 0)) * CFrame.Angles(0, a, 0), sand))
-		Build.part(m, Vector3.new(side + 3, 2, side + 3), CFrame.new(pos + Vector3.new(0, -2.2, 0)) * CFrame.Angles(0, a, 0), wet, { CanCollide = false })
+	-- the 45-degree block sits a hair lower so the two tops never z-fight
+	for i, a in { 0, math.pi / 4 } do
+		local drop = (i - 1) * 0.06
+		Build.studs(Build.part(m, Vector3.new(side, 3, side), CFrame.new(pos + Vector3.new(0, -1 - drop, 0)) * CFrame.Angles(0, a, 0), sand))
+		Build.part(m, Vector3.new(side + 3, 2, side + 3), CFrame.new(pos + Vector3.new(0, -2.2 - drop, 0)) * CFrame.Angles(0, a, 0), wet, { CanCollide = false })
 	end
 	if palm then
-		for _, a in { 0, math.pi / 4 } do
-			Build.studs(Build.part(m, Vector3.new(side * 0.45, 0.6, side * 0.45), CFrame.new(pos + Vector3.new(radius * 0.25, 0.8, 0)) * CFrame.Angles(0, a, 0), C(110, 214, 64)))
+		for i, a in { 0, math.pi / 4 } do
+			Build.studs(Build.part(m, Vector3.new(side * 0.45, 0.6, side * 0.45), CFrame.new(pos + Vector3.new(radius * 0.25, 0.8 - (i - 1) * 0.06, 0)) * CFrame.Angles(0, a, 0), C(110, 214, 64)))
 		end
 	end
 	-- glow ring lit up during attacks (client tweens it)

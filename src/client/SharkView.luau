@@ -8,7 +8,6 @@ local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
-local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage.Shared
 local Config = require(Shared.Config)

@@ -53,9 +53,35 @@ function Layout.spawnCFrame(plot: CFrame): CFrame
 	return plot * CFrame.new(4, 3, -14)
 end
 
+----------------------------------------------------------------- plaza buildings
+-- The Ride Shop is where rides are bought (the server checks you're there).
+Layout.RideShop = Vector3.new(0, Config.BEACH_TOP, -88) -- pedestal
+Layout.RideShopPad = Vector3.new(0, Config.BEACH_TOP, -66) -- step here to shop
+Layout.RIDE_SHOP_RADIUS = 26
+Layout.Huts = {
+	{ kind = "Shop", title = "SHOP", color = Color3.fromRGB(255, 70, 170), pos = Vector3.new(-66, Config.BEACH_TOP, -96) },
+	{ kind = "Index", title = "INDEX", color = Color3.fromRGB(255, 150, 30), pos = Vector3.new(66, Config.BEACH_TOP, -96) },
+}
+Layout.Board = Vector3.new(-112, Config.BEACH_TOP, -114)
+
+function Layout.atRideShop(pos: Vector3): boolean
+	local d = Vector2.new(pos.X - Layout.RideShopPad.X, pos.Z - (Layout.RideShopPad.Z - 8)).Magnitude
+	return d < Layout.RIDE_SHOP_RADIUS and math.abs(pos.Y - Config.BEACH_TOP) < 12
+end
+
 ----------------------------------------------------------------- queries
 function Layout.inWater(pos: Vector3): boolean
 	return pos.Z >= Config.SHORE_Z + 1
+end
+
+-- distance from p to the segment a-b on the XZ plane (swept pickups, so
+-- nothing is missed at high speed between server ticks)
+function Layout.segmentDist(p: Vector3, a: Vector3, b: Vector3): number
+	local ab = Vector2.new(b.X - a.X, b.Z - a.Z)
+	local ap = Vector2.new(p.X - a.X, p.Z - a.Z)
+	local len2 = ab:Dot(ab)
+	local t = len2 > 0 and math.clamp(ap:Dot(ab) / len2, 0, 1) or 0
+	return (ap - ab * t).Magnitude
 end
 
 function Layout.islandAt(pos: Vector3, pad: number?): Island?

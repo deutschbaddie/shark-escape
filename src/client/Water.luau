@@ -16,7 +16,6 @@ local Config = require(Shared.Config)
 local Layout = require(Shared.Layout)
 local Fx = require(script.Parent.Fx)
 local UI = require(script.Parent.UI)
-local State = require(script.Parent.State)
 
 local Water = {}
 local player = Players.LocalPlayer
@@ -167,33 +166,99 @@ local function trackPlayer(p: Player)
 	end)
 end
 
--- surf stance: knees bent, arms out for balance, a little bob.
--- Applied after the Animator each frame (PreSimulation) so it wins.
-local POSE = {
-	Root = function(t, s) return CFrame.new(0, -0.35 + math.sin(t * 6) * 0.06, 0) * CFrame.Angles(0, 0, math.sin(t * 2) * 0.05 * s) end,
-	Waist = function(t) return CFrame.Angles(0.12, 0.35, 0) end,
-	Neck = function(t) return CFrame.Angles(-0.05, -0.3, 0) end,
-	LeftShoulder = function(t) return CFrame.Angles(0, 0, -1.15 + math.sin(t * 3) * 0.08) end,
-	RightShoulder = function(t) return CFrame.Angles(0, 0, 1.15 - math.sin(t * 3) * 0.08) end,
-	LeftElbow = function() return CFrame.Angles(0.25, 0, 0) end,
-	RightElbow = function() return CFrame.Angles(0.25, 0, 0) end,
-	LeftWrist = function() return CFrame.new() end,
-	RightWrist = function() return CFrame.new() end,
-	LeftHip = function() return CFrame.Angles(0.55, 0, -0.08) end,
-	RightHip = function() return CFrame.Angles(-0.05, 0, 0.08) end,
-	LeftKnee = function() return CFrame.Angles(-0.75, 0, 0) end,
-	RightKnee = function() return CFrame.Angles(-0.55, 0, 0) end,
-	LeftAnkle = function() return CFrame.Angles(0.2, 0, 0) end,
-	RightAnkle = function() return CFrame.Angles(0.5, 0, 0) end,
+-- Ride poses, one per stance (Config.RideFeel[ride].stance). Applied after
+-- the Animator each frame (PreSimulation) so they win; the local player's
+-- Animate script is switched off while riding (Ride.luau), so there's no
+-- walk cycle on the water. t = time, s = sway (0.3..1.5 with speed).
+local A = CFrame.Angles
+local function hold() return CFrame.new() end
+local POSES: { [string]: { [string]: (number, number) -> CFrame } } = {
+	-- standing surf stance: knees bent, arms out for balance
+	stand = {
+		Root = function(t, s) return CFrame.new(0, -0.35 + math.sin(t * 6) * 0.05, 0) * A(0, 0, math.sin(t * 2) * 0.05 * s) end,
+		Waist = function() return A(0.12, 0.35, 0) end,
+		Neck = function() return A(-0.05, -0.3, 0) end,
+		LeftShoulder = function(t) return A(0, 0, -1.15 + math.sin(t * 3) * 0.08) end,
+		RightShoulder = function(t) return A(0, 0, 1.15 - math.sin(t * 3) * 0.08) end,
+		LeftElbow = function() return A(0.25, 0, 0) end,
+		RightElbow = function() return A(0.25, 0, 0) end,
+		LeftHip = function() return A(0.55, 0, -0.08) end,
+		RightHip = function() return A(-0.05, 0, 0.08) end,
+		LeftKnee = function() return A(-0.75, 0, 0) end,
+		RightKnee = function() return A(-0.55, 0, 0) end,
+		LeftAnkle = function() return A(0.2, 0, 0) end,
+		RightAnkle = function() return A(0.5, 0, 0) end,
+	},
+	-- sitting in a ring (tube, duck, donut, bathtub): legs forward, hands on the rim
+	sit = {
+		Root = function(t) return CFrame.new(0, -1.25 + math.sin(t * 3) * 0.04, 0) end,
+		Waist = function() return A(-0.15, 0, 0) end,
+		Neck = function(t) return A(0.1, math.sin(t * 0.8) * 0.15, 0) end,
+		LeftShoulder = function(t) return A(0.2, 0, -0.55 + math.sin(t * 2) * 0.05) end,
+		RightShoulder = function(t) return A(0.2, 0, 0.55 - math.sin(t * 2) * 0.05) end,
+		LeftElbow = function() return A(0.4, 0, 0) end,
+		RightElbow = function() return A(0.4, 0, 0) end,
+		LeftHip = function() return A(1.45, 0, -0.12) end,
+		RightHip = function() return A(1.45, 0, 0.12) end,
+		LeftKnee = function(t) return A(-0.55 + math.sin(t * 2.4) * 0.12, 0, 0) end,
+		RightKnee = function(t) return A(-0.55 - math.sin(t * 2.4) * 0.12, 0, 0) end,
+		LeftAnkle = hold, RightAnkle = hold,
+	},
+	-- straddling a jet ski / boat / banana / dolphin: lean in, hands forward
+	straddle = {
+		Root = function(t, s) return CFrame.new(0, -0.95, 0) * A(-0.12 * s, 0, 0) end,
+		Waist = function() return A(-0.2, 0, 0) end,
+		Neck = function() return A(0.2, 0, 0) end,
+		LeftShoulder = function(t) return A(1.25, 0, -0.18 + math.sin(t * 9) * 0.02) end,
+		RightShoulder = function(t) return A(1.25, 0, 0.18 - math.sin(t * 9) * 0.02) end,
+		LeftElbow = function() return A(0.35, 0, 0) end,
+		RightElbow = function() return A(0.35, 0, 0) end,
+		LeftHip = function() return A(1.15, 0, -0.35) end,
+		RightHip = function() return A(1.15, 0, 0.35) end,
+		LeftKnee = function() return A(-1.5, 0, 0) end,
+		RightKnee = function() return A(-1.5, 0, 0) end,
+		LeftAnkle = function() return A(0.4, 0, 0) end,
+		RightAnkle = function() return A(0.4, 0, 0) end,
+	},
+	-- lying on a boogie board, paddling
+	prone = {
+		Root = function(t) return CFrame.new(0, -1.7, 0.4) * A(-1.42, 0, math.sin(t * 3) * 0.04) end,
+		Waist = function() return A(0.25, 0, 0) end,
+		Neck = function() return A(0.9, 0, 0) end,
+		LeftShoulder = function(t) return A(2.6 + math.sin(t * 6) * 0.5, 0, -0.15) end,
+		RightShoulder = function(t) return A(2.6 - math.sin(t * 6) * 0.5, 0, 0.15) end,
+		LeftElbow = hold, RightElbow = hold,
+		LeftHip = function() return A(0, 0, -0.1) end,
+		RightHip = function() return A(0, 0, 0.1) end,
+		LeftKnee = function(t) return A(-0.3 - math.max(0, math.sin(t * 6)) * 0.6, 0, 0) end,
+		RightKnee = function(t) return A(-0.3 - math.max(0, -math.sin(t * 6)) * 0.6, 0, 0) end,
+		LeftAnkle = hold, RightAnkle = hold,
+	},
+	-- floating on a pool noodle: chest-deep, arms over the noodle, kicking
+	float = {
+		Root = function(t) return CFrame.new(0, -1.9 + math.sin(t * 2) * 0.08, 0) * A(-0.35, 0, 0) end,
+		Waist = function() return A(0.1, 0, 0) end,
+		Neck = function() return A(0.3, 0, 0) end,
+		LeftShoulder = function() return A(1.35, 0, -0.35) end,
+		RightShoulder = function() return A(1.35, 0, 0.35) end,
+		LeftElbow = function() return A(0.9, 0, 0) end,
+		RightElbow = function() return A(0.9, 0, 0) end,
+		LeftHip = function(t) return A(-0.2 + math.sin(t * 7) * 0.35, 0, 0) end,
+		RightHip = function(t) return A(-0.2 - math.sin(t * 7) * 0.35, 0, 0) end,
+		LeftKnee = function() return A(-0.3, 0, 0) end,
+		RightKnee = function() return A(-0.3, 0, 0) end,
+		LeftAnkle = hold, RightAnkle = hold,
+	},
 }
 
 RunService.PreSimulation:Connect(function()
 	local t = os.clock()
-	for _, r in riders do
+	for char, r in riders do
 		if r.wasWet and r.motors.Waist then -- R15 only
 			local speed = (r.hrp.AssemblyLinearVelocity * Vector3.new(1, 0, 1)).Magnitude
 			local sway = math.clamp(speed / 60, 0.3, 1.5)
-			for name, fn in POSE do
+			local pose = POSES[Config.feel(char:GetAttribute("Ride") :: string?).stance] or POSES.stand
+			for name, fn in pose do
 				local m = r.motors[name]
 				if m then
 					m.Transform = fn(t, sway)
@@ -212,6 +277,11 @@ local function updateRiders(dt: number)
 		local speed = vel.Magnitude
 		if wet ~= r.wasWet then
 			r.wasWet = wet
+			if not wet then
+				for _, m in r.motors do
+					m.Transform = CFrame.new()
+				end
+			end
 			if wet then
 				Fx.splash(Vector3.new(pos.X, 0.4, pos.Z), 0.9)
 				if char == myChar then
