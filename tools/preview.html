@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shark Preview</title>
+<style>
+  :root { --bg:#9fdcf5; --ink:#1b1d3f; --chip:#ffffff; }
+  html,body { margin:0; height:100%; background:var(--bg); font-family: system-ui, sans-serif; color:var(--ink); }
+  #ui { position:fixed; top:10px; left:10px; right:10px; display:flex; flex-wrap:wrap; gap:6px; z-index:2; }
+  button { border:0; border-radius:999px; padding:8px 14px; font-weight:800; background:var(--chip); color:var(--ink); cursor:pointer; box-shadow:0 2px 0 rgba(0,0,0,.15); }
+  button.on { background:#ff3d9a; color:#fff; }
+  #info { position:fixed; bottom:10px; left:10px; font-weight:700; background:#fff8; padding:6px 10px; border-radius:10px; }
+  canvas { display:block; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script src="preview_data.js"></script>
+</head>
+<body>
+<div id="ui"></div>
+<div id="info"></div>
+<script type="module">
+import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(devicePixelRatio);
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x9fdcf5);
+scene.fog = new THREE.Fog(0x9fdcf5, 120, 400);
+const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 2000);
+const controls = new OrbitControls(camera, renderer.domElement);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x3a6d8c, 1.6));
+const sun = new THREE.DirectionalLight(0xffffff, 2.2); sun.position.set(30, 60, -20); scene.add(sun);
+
+const water = new THREE.Mesh(new THREE.PlaneGeometry(2000, 2000),
+  new THREE.MeshStandardMaterial({ color: 0x1fc3dc, transparent: true, opacity: 0.55, roughness: 0.2 }));
+water.rotation.x = -Math.PI / 2; scene.add(water);
+
+const params = new URLSearchParams(location.search);
+if (params.has("nw")) water.visible = false;
+const loader = new GLTFLoader();
+const sharks = {};
+const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0)).buffer;
+
+function rigOf(root) {
+  const bones = {};
+  root.traverse(o => { if (o.isBone) bones[o.name] = o; if (o.isMesh) { o.material.flatShading = true; o.material.needsUpdate = true; } });
+  return bones;
+}
+
+// Same procedural animation the Roblox client runs (SharkAnim.luau)
+function animate(sh, t, mode, dt) {
+  const b = sh.bones, L = sh.L;
+  const speed = mode === "chase" ? 2.2 : 1.2;
+  const w = t * (mode === "chase" ? 9 : 5.5);
+  const amp = mode === "chase" ? 1.25 : 1.0;
+  b.Head.rotation.y = -0.07 * amp * Math.sin(w);
+  b.Spine2.rotation.y = 0.09 * amp * Math.sin(w - 0.9);
+  b.Spine3.rotation.y = 0.13 * amp * Math.sin(w - 1.8);
+  b.Spine4.rotation.y = 0.17 * amp * Math.sin(w - 2.7);
+  b.Tail.rotation.y = 0.24 * amp * Math.sin(w - 3.6);
+  b.PecL.rotation.z = 0.12 * Math.sin(w * 0.5);
+  b.PecR.rotation.z = -0.12 * Math.sin(w * 0.5);
+  let jaw = 0.06 + 0.04 * Math.sin(t * 2.3);
+  let rootY = 0, pitch = 0;
+  if (mode === "chomp") {
+    const c = (t % 1.6) / 1.6;
+    jaw = c < 0.35 ? 0.85 * Math.sin(c / 0.35 * Math.PI / 2) : c < 0.45 ? 0.85 * (1 - (c - 0.35) / 0.1) : 0.02;
+    pitch = c < 0.45 ? -0.18 * Math.sin(c / 0.45 * Math.PI) : 0;
+    rootY = c < 0.45 ? 0.12 * L * Math.sin(c / 0.45 * Math.PI) : 0;
+  }
+  if (mode === "breach") {
+    const c = (t % 2.4) / 2.4;
+    rootY = Math.max(-0.2 * L, 0.9 * L * Math.sin(c * Math.PI) - 0.2 * L);
+    pitch = -0.9 * Math.cos(c * Math.PI);
+    jaw = 0.5;
+  }
+  b.Jaw.rotation.x = -jaw;
+  sh.group.position.y = sh.baseY + rootY;
+  sh.group.rotation.x = pitch;
+}
+
+const names = Object.keys(window.SHARKS);
+await Promise.all(names.map(n => new Promise(res => loader.parse(b64(window.SHARKS[n]), "", g => {
+  const group = new THREE.Group(); group.add(g.scene);
+  const box = new THREE.Box3().setFromObject(g.scene); const L = box.max.z - box.min.z;
+  sharks[n] = { group, bones: rigOf(g.scene), L, baseY: 0 };
+  res();
+}, e => { document.getElementById("info").textContent = "LOAD ERROR " + n + ": " + e; res(); }))));
+
+// character for scale: 5 studs tall
+const kid = new THREE.Mesh(new THREE.BoxGeometry(2, 5, 1), new THREE.MeshStandardMaterial({ color: 0xffcc33 }));
+
+let current = params.get("s") || "GreatWhite", mode = params.get("m") || "swim", view = params.get("v") || "34", lineup = params.has("lineup");
+const ui = document.getElementById("ui");
+function btn(label, on, fn) { const b = document.createElement("button"); b.textContent = label; if (on) b.className = "on"; b.onclick = fn; ui.appendChild(b); }
+function rebuild() {
+  ui.innerHTML = "";
+  names.forEach(n => btn(n, !lineup && n === current, () => { current = n; lineup = false; setup(); }));
+  btn("Lineup", lineup, () => { lineup = true; setup(); });
+  ["swim", "chase", "chomp", "breach"].forEach(m => btn(m, m === mode, () => { mode = m; rebuild(); }));
+  ["side", "34", "front", "top"].forEach(v => btn(v, v === view, () => { view = v; setup(); }));
+}
+function setup() {
+  Object.values(sharks).forEach(s => scene.remove(s.group)); scene.remove(kid);
+  if (lineup) {
+    let x = 0;
+    names.forEach(n => { const s = sharks[n]; s.group.position.set(x, 0, 0); s.baseY = s.L * 0.04; scene.add(s.group); x += s.L * 0.55 + 8; });
+    kid.position.set(-8, 2.5, 0); scene.add(kid);
+    camera.position.set(x / 2, 30, 90); controls.target.set(x / 2, 0, 0);
+  } else {
+    const s = sharks[current]; s.group.position.set(0, 0, 0); s.baseY = s.L * 0.04; scene.add(s.group);
+    kid.position.set(0, 2.5, s.L * 0.75); scene.add(kid);
+    const d = s.L * 1.35;
+    const pos = { side: [d, s.L * 0.05, 0], "34": [d * 0.75, d * 0.35, -d * 0.7], front: [0, s.L * 0.08, -d], top: [0.01, d * 1.2, 0] }[view];
+    camera.position.set(...pos); controls.target.set(0, 0, 0);
+  }
+  document.getElementById("info").textContent = lineup ? "True scale lineup (yellow block = 5-stud player)" : `${current} — ${sharks[current].L.toFixed(1)} studs`;
+  rebuild();
+}
+setup();
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  const t = params.has("t") ? parseFloat(params.get("t")) : clock.getElapsedTime();
+  (lineup ? names : [current]).forEach(n => animate(sharks[n], t, mode));
+  controls.update(); renderer.render(scene, camera);
+});
+addEventListener("resize", () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+window.READY = true;
+</script>
+</body>
+</html>
