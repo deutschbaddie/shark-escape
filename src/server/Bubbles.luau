@@ -78,8 +78,8 @@ local function spawnBubble(zone: Config.Zone)
 		})
 	end
 	local bb = Instance.new("BillboardGui")
-	bb.Size = UDim2.fromOffset(160, 40)
-	bb.StudsOffset = Vector3.new(0, 4.6, 0)
+	bb.Size = UDim2.fromScale(7, 1.6) -- in studs, so it shrinks with distance
+	bb.StudsOffset = Vector3.new(0, 4.4, 0)
 	bb.MaxDistance = rarity.index >= 3 and 260 or 90
 	bb.LightInfluence = 0
 	bb.Parent = shell
@@ -89,8 +89,10 @@ local function spawnBubble(zone: Config.Zone)
 	t.Font = Enum.Font.FredokaOne
 	t.TextScaled = true
 	t.TextColor3 = rarity.color
-	t.TextStrokeTransparency = 0.1
-	t.TextStrokeColor3 = Color3.fromRGB(27, 29, 63)
+	local st = Instance.new("UIStroke")
+	st.Color = Color3.fromRGB(22, 22, 34)
+	st.Thickness = 2.5
+	st.Parent = t
 	t.Text = (m and (m .. " ") or "") .. r
 	t.Parent = bb
 	model:SetAttribute("Rarity", r)
@@ -128,6 +130,7 @@ local function grab(s: Game.Session, b: Bubble)
 	end
 	local c = { r = r, z = b.zone.id, m = b.m }
 	Game.setCarry(s, c)
+	Game.discover(s, c)
 	Game.notify(s.player, "grab", { r = r, m = b.m, z = b.zone.id, lucky = lucky, pity = pity,
 		v = Config.creatureValue(r, b.zone.id, b.m) * Game.coinMult(s) })
 end
@@ -163,6 +166,7 @@ end
 function Bubbles.give(s: Game.Session, r: string, zoneId: string?)
 	local zone = Config.zoneForSpeed(s.profile.speed)
 	local c = { r = r, z = zoneId or zone.id, m = Bubbles.rollMutation() }
+	Game.discover(s, c)
 	if s.carrying then
 		Game.addToTank(s, c)
 	else

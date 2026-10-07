@@ -274,10 +274,39 @@ Config.Products = {
 		desc = "Rare 70% · Epic 25% · Legendary 5%" },
 	StarterPack = { id = 0, price = 49, name = "Starter Pack", icon = "🎁",
 		desc = "Rare Octopus + 30 min 2x Speed + 3 Shields" },
+	DoubleOffline = { id = 0, price = 9, name = "2x Offline Coins", icon = "⏰", desc = "Double your welcome-back coins" },
 }
 
 Config.GoldenBubbleOdds = { { "Rare", 70 }, { "Epic", 25 }, { "Legendary", 5 } }
 Config.SHOP_UNLOCK_SECONDS = 300 -- no Robux prompts or offers in the first 5 minutes
+
+----------------------------------------------------------------- index
+-- Every rarity in every zone is one Index entry. Discovering one unlocks a
+-- one-time reward; deeper zones and rarer creatures pay more.
+function Config.indexKey(zoneId: string, rarityId: string): string
+	return zoneId .. ":" .. rarityId
+end
+
+function Config.indexReward(zoneId: string, rarityId: string): (number, number)
+	local zone = Config.zoneById(zoneId)
+	local r = Config.rarity(rarityId)
+	local v = zone and zone.value or 1
+	local coins = math.floor(50 * v * r.mult ^ 0.75)
+	local speed = math.floor(20 * v ^ 0.8 * r.index)
+	return coins, speed
+end
+
+----------------------------------------------------------------- offline
+-- Your tank keeps earning while you're away (at a slower rate, capped).
+Config.Offline = { rate = 0.5, maxHours = 6, minSeconds = 120 }
+
+----------------------------------------------------------------- images
+-- Optional uploaded images. Empty strings fall back to built-in looks:
+-- Studs: upload assets/textures/studs.png (Creator Hub > Decals) and paste
+-- the rbxassetid:// here for a crisper stud texture on buttons and panels.
+Config.Images = {
+	Studs = "",
+}
 
 ----------------------------------------------------------------- audio
 -- rbxasset:// sounds ship with every Roblox client. Empty strings are slots

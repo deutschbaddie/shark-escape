@@ -31,6 +31,7 @@ export type Session = {
 	inWater: boolean,
 	leaderSpeed: IntValue?,
 	leaderRebirths: IntValue?,
+	offline: number, -- welcome-back coins waiting to be claimed
 }
 
 Game.sessions = {} :: { [Player]: Session }
@@ -172,6 +173,9 @@ function Game.push(s: Session)
 		playtime = p.playtime,
 		starter = p.starter,
 		plot = s.plot and s.plot.index or 0,
+		index = p.index,
+		claimed = p.claimed,
+		offline = s.offline,
 	})
 	s.dirty = false
 end
@@ -297,6 +301,33 @@ function Game.addToTank(s: Session, c: Data.Creature)
 	s.dirty = true
 end
 
+----------------------------------------------------------------- index
+-- first time you hold a creature of this rarity from this zone
+function Game.discover(s: Session, c: Data.Creature)
+	local key = Config.indexKey(c.z, c.r)
+	if not s.profile.index[key] then
+		s.profile.index[key] = true
+		Game.notify(s.player, "discover", { r = c.r, z = c.z })
+		s.dirty = true
+	end
+end
+
+local function claimIndex(s: Session, key: string): (number, number)
+	local p = s.profile
+	if not p.index[key] or p.claimed[key] then
+		return 0, 0
+	end
+	local zoneId, rarityId = key:match("^(%w+):(%w+)$")
+	if not zoneId then
+		return 0, 0
+	end
+	p.claimed[key] = true
+	local coins, speed = Config.indexReward(zoneId, rarityId)
+	p.coins += coins
+	p.speed += speed
+	return coins, speed
+end
+
 ----------------------------------------------------------------- shark bites
 function Game.huntable(s: Session): boolean
 	local hrp = root(s.player)
@@ -414,6 +445,39 @@ actions.rebirth = function(s)
 	s.dirty = true
 end
 
+actions.claimIndex = function(s, key)
+	if typeof(key) ~= "string" then
+		return
+	end
+	local coins, speed = claimIndex(s, key)
+	if coins > 0 then
+		Game.notify(s.player, "indexClaim", { coins = coins, speed = speed })
+		s.dirty = true
+	end
+end
+
+actions.claimIndexAll = function(s)
+	local coins, speed = 0, 0
+	for key in s.profile.index do
+		local c, sp = claimIndex(s, key)
+		coins += c
+		speed += sp
+	end
+	if coins > 0 then
+		Game.notify(s.player, "indexClaim", { coins = coins, speed = speed })
+		s.dirty = true
+	end
+end
+
+actions.claimOffline = function(s)
+	if s.offline > 0 then
+		s.profile.coins += s.offline
+		Game.notify(s.player, "collect", { amount = s.offline })
+		s.offline = 0
+		s.dirty = true
+	end
+end
+
 actions.tut = function(s, step)
 	if typeof(step) == "number" and step > s.profile.tut and step <= 5 then
 		s.profile.tut = math.floor(step)
@@ -482,8 +546,18 @@ function Game.join(player: Player)
 		eatenUntil = 0,
 		dirty = true,
 		inWater = false,
+		offline = 0,
 	}
 	Game.sessions[player] = s
+	-- welcome back: the tank kept earning (slower) while you were away
+	local away = profile.lastSeen > 0 and os.time() - profile.lastSeen or 0
+	if away >= Config.Offline.minSeconds then
+		local secs = math.min(away, Config.Offline.maxHours * 3600)
+		s.offline = math.floor(Game.income(s) * secs * Config.Offline.rate)
+		if s.offline > 0 then
+			Game.notify(player, "offline", { amount = s.offline, seconds = secs })
+		end
+	end
 	claimPlot(s)
 
 	local ls = Instance.new("Folder")
@@ -518,7 +592,7 @@ function Game.leave(player: Player)
 		return
 	end
 	Game.sessions[player] = nil
-	s.profile.coins += s.pending
+	s.profile.coins += s.pending + s.offline
 	if s.plot then
 		s.plot.owner = nil
 		s.plot.signLabel.Text = "Empty Dock"
@@ -660,8 +734,8 @@ function Game.start()
 	end)
 	game:BindToClose(function()
 		for player, s in Game.sessions do
-			s.profile.coins += s.pending
-			s.pending = 0
+			s.profile.coins += s.pending + s.offline
+			s.pending, s.offline = 0, 0
 			if s.canSave then
 				Data.save(player.UserId, s.profile)
 			end

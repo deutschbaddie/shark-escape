@@ -79,6 +79,12 @@ local grants: { [string]: (Game.Session) -> boolean } = {
 		Bubbles.give(s, "Rare")
 		return true
 	end,
+	DoubleOffline = function(s)
+		s.profile.coins += s.offline * 2
+		Game.notify(s.player, "collect", { amount = s.offline * 2 })
+		s.offline = 0
+		return true
+	end,
 	StarterPack = function(s)
 		-- the shop hides this after the first buy; if it's bought again anyway, still deliver it
 		s.profile.starter = true

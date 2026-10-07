@@ -163,21 +163,28 @@ function Props.jawArch(parent: Instance, cf: CFrame, width: number)
 	return m
 end
 
--- a sandbar island: the only place sharks can't reach you
+-- a blocky sandbar island (two studded squares = a low-poly octagon):
+-- the only place sharks can't reach you
 function Props.island(parent: Instance, pos: Vector3, radius: number, palm: boolean)
 	local m = Build.model("Island", parent)
-	local sand = C(255, 230, 170)
-	local top = Build.cyl(m, 3, radius * 2, CFrame.new(pos + Vector3.new(0, -1.0, 0)), sand)
-	Build.studs(top)
-	top.Material = Enum.Material.Sand
-	Build.cyl(m, 2, radius * 2 + 3, CFrame.new(pos + Vector3.new(0, -2.0, 0)), C(240, 214, 150), { CanCollide = false })
+	local sand, wet = C(255, 228, 150), C(236, 200, 120)
+	local side = radius * 2
+	for _, a in { 0, math.pi / 4 } do
+		Build.studs(Build.part(m, Vector3.new(side, 3, side), CFrame.new(pos + Vector3.new(0, -1, 0)) * CFrame.Angles(0, a, 0), sand))
+		Build.part(m, Vector3.new(side + 3, 2, side + 3), CFrame.new(pos + Vector3.new(0, -2.2, 0)) * CFrame.Angles(0, a, 0), wet, { CanCollide = false })
+	end
+	if palm then
+		for _, a in { 0, math.pi / 4 } do
+			Build.studs(Build.part(m, Vector3.new(side * 0.45, 0.6, side * 0.45), CFrame.new(pos + Vector3.new(radius * 0.25, 0.8, 0)) * CFrame.Angles(0, a, 0), C(110, 214, 64)))
+		end
+	end
 	-- glow ring lit up during attacks (client tweens it)
-	local ring = Build.cyl(m, 0.3, radius * 2 + 1.2, CFrame.new(pos + Vector3.new(0, 0.42, 0)), C(80, 255, 140), {
+	local ring = Build.cyl(m, 0.3, side + 1.2, CFrame.new(pos + Vector3.new(0, 0.42, 0)), C(80, 255, 140), {
 		Name = "SafeRing", Material = Enum.Material.Neon, Transparency = 1, CanCollide = false, CanQuery = false,
 	})
 	ring:SetAttribute("SafeRing", true)
 	if palm then
-		Props.palm(m, CFrame.new(pos + Vector3.new(radius * 0.3, 0.5, 0)), 12 + radius * 0.3)
+		Props.palm(m, CFrame.new(pos + Vector3.new(radius * 0.25, 1.1, 0)), 12 + radius * 0.3)
 	else
 		Props.rock(m, CFrame.new(pos + Vector3.new(-radius * 0.3, 1.2, radius * 0.2)), 3.2)
 	end

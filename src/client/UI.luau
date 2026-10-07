@@ -1,26 +1,44 @@
--- Cartoon UI kit: chunky rounded cards, thick outlines, Fredoka One.
+-- Cartoon UI kit in the classic simulator look: studded, gradient-lit buttons
+-- with a thick dark outline, bold outlined text, dark panels with a bright
+-- studded header bar and a red X.
 
 local TweenService = game:GetService("TweenService")
+
+local Config = require(game.ReplicatedStorage.Shared.Config)
 
 local UI = {}
 
 UI.C = {
-	ink = Color3.fromRGB(27, 29, 63),
+	ink = Color3.fromRGB(22, 22, 34),
 	white = Color3.fromRGB(255, 255, 255),
-	pink = Color3.fromRGB(255, 61, 154),
-	blue = Color3.fromRGB(47, 107, 255),
-	sky = Color3.fromRGB(76, 195, 255),
-	green = Color3.fromRGB(64, 206, 96),
-	gold = Color3.fromRGB(255, 200, 40),
-	red = Color3.fromRGB(255, 64, 64),
+	pink = Color3.fromRGB(255, 70, 170),
+	blue = Color3.fromRGB(30, 120, 255),
+	sky = Color3.fromRGB(40, 200, 255),
+	green = Color3.fromRGB(70, 214, 60),
+	money = Color3.fromRGB(120, 255, 70),
+	gold = Color3.fromRGB(255, 196, 30),
+	orange = Color3.fromRGB(255, 130, 30),
+	red = Color3.fromRGB(235, 40, 40),
+	purple = Color3.fromRGB(160, 80, 255),
+	panel = Color3.fromRGB(48, 50, 60),
+	panel2 = Color3.fromRGB(32, 34, 42),
 	card = Color3.fromRGB(255, 255, 255),
-	mute = Color3.fromRGB(138, 144, 184),
+	mute = Color3.fromRGB(130, 136, 150),
 }
 UI.FONT = Enum.Font.FredokaOne
+UI.NUMFONT = Enum.Font.LuckiestGuy
+
+local function apply(inst: Instance, props: { [string]: any }?)
+	if props then
+		for k, v in props do
+			(inst :: any)[k] = v
+		end
+	end
+end
 
 function UI.corner(parent: Instance, r: number?)
 	local c = Instance.new("UICorner")
-	c.CornerRadius = UDim.new(0, r or 16)
+	c.CornerRadius = UDim.new(0, r or 10)
 	c.Parent = parent
 	return c
 end
@@ -30,19 +48,98 @@ function UI.stroke(parent: Instance, color: Color3?, thick: number?)
 	s.Color = color or UI.C.ink
 	s.Thickness = thick or 3
 	s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	s.LineJoinMode = Enum.LineJoinMode.Round
 	s.Parent = parent
 	return s
+end
+
+-- light top, darker bottom: makes flat colors read as chunky plastic
+function UI.shade(parent: Instance, rotation: number?)
+	local g = Instance.new("UIGradient")
+	g.Rotation = rotation or 90
+	g.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+		ColorSequenceKeypoint.new(0.55, Color3.fromRGB(235, 235, 235)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(175, 175, 175)),
+	})
+	g.Parent = parent
+	return g
+end
+
+-- Stud overlay. Uses a tiled image if Config.Images.Studs is set, otherwise
+-- draws soft circles (capped so big panels stay cheap).
+function UI.studs(parent: GuiObject, opts: { size: number?, alpha: number?, z: number? }?)
+	local o = opts or {}
+	local size = o.size or 22
+	local alpha = o.alpha or 0.78
+	local holder = Instance.new("Frame")
+	holder.Name = "Studs"
+	holder.BackgroundTransparency = 1
+	holder.Size = UDim2.fromScale(1, 1)
+	holder.ClipsDescendants = true
+	holder.ZIndex = o.z or parent.ZIndex
+	holder.Parent = parent
+	if Config.Images.Studs ~= "" then
+		local img = Instance.new("ImageLabel")
+		img.BackgroundTransparency = 1
+		img.Size = UDim2.fromScale(1, 1)
+		img.Image = Config.Images.Studs
+		img.ScaleType = Enum.ScaleType.Tile
+		img.TileSize = UDim2.fromOffset(size * 4, size * 4) -- the image is a 4x4 grid of studs
+		img.ImageTransparency = alpha
+		img.ZIndex = holder.ZIndex
+		img.Parent = holder
+		return holder
+	end
+	local function draw()
+		holder:ClearAllChildren()
+		local abs = parent.AbsoluteSize
+		if abs.X < 4 or abs.Y < 4 then
+			return
+		end
+		local step = size
+		while (abs.X / step) * (abs.Y / step) > 90 do
+			step *= 1.25
+		end
+		local d = step * 0.5
+		for y = step / 2, abs.Y, step do
+			for x = step / 2, abs.X, step do
+				local s = Instance.new("Frame")
+				s.BorderSizePixel = 0
+				s.Size = UDim2.fromOffset(d, d)
+				s.AnchorPoint = Vector2.new(0.5, 0.5)
+				s.Position = UDim2.fromOffset(x, y)
+				s.BackgroundColor3 = Color3.new(1, 1, 1)
+				s.BackgroundTransparency = alpha
+				s.ZIndex = holder.ZIndex
+				local c = Instance.new("UICorner")
+				c.CornerRadius = UDim.new(0.5, 0)
+				c.Parent = s
+				local g = Instance.new("UIGradient")
+				g.Rotation = 90
+				g.Transparency = NumberSequence.new(0, 0.7)
+				g.Parent = s
+				s.Parent = holder
+			end
+		end
+	end
+	local last = Vector2.zero
+	parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+		local now = parent.AbsoluteSize
+		if (now - last).Magnitude > 6 then
+			last = now
+			draw()
+		end
+	end)
+	task.defer(draw)
+	return holder
 end
 
 function UI.frame(parent: Instance, props: { [string]: any }?): Frame
 	local f = Instance.new("Frame")
 	f.BackgroundColor3 = UI.C.card
 	f.BorderSizePixel = 0
-	if props then
-		for k, v in props do
-			(f :: any)[k] = v
-		end
-	end
+	apply(f, props)
 	f.Parent = parent
 	return f
 end
@@ -55,64 +152,160 @@ function UI.text(parent: Instance, text: string, props: { [string]: any }?): Tex
 	t.TextScaled = true
 	t.Text = text
 	t.Size = UDim2.fromScale(1, 1)
-	if props then
-		for k, v in props do
-			(t :: any)[k] = v
-		end
-	end
+	apply(t, props)
 	t.Parent = parent
 	return t
 end
 
--- white text with a dark outline: readable over water and sky
+-- white text with a thick dark outline: readable over anything
 function UI.outlined(parent: Instance, text: string, props: { [string]: any }?): TextLabel
 	local t = UI.text(parent, text, props)
 	t.TextColor3 = (props and props.TextColor3) or UI.C.white
 	local s = Instance.new("UIStroke")
 	s.Color = UI.C.ink
-	s.Thickness = 3
+	s.Thickness = (props and props.TextSize and props.TextSize > 30) and 4 or 3
+	s.LineJoinMode = Enum.LineJoinMode.Round
 	s.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
 	s.Parent = t
 	return t
 end
 
-function UI.button(parent: Instance, text: string, color: Color3, onClick: () -> (), props: { [string]: any }?): TextButton
-	local b = Instance.new("TextButton")
-	b.AutoButtonColor = false
-	b.BackgroundColor3 = color
-	b.BorderSizePixel = 0
-	b.Font = UI.FONT
-	b.TextScaled = true
-	b.TextColor3 = UI.C.white
-	b.Text = text
-	if props then
-		for k, v in props do
-			(b :: any)[k] = v
-		end
-	end
-	UI.corner(b, 14)
-	UI.stroke(b, UI.C.ink, 3)
-	local pad = Instance.new("UIPadding")
-	pad.PaddingTop = UDim.new(0.14, 0)
-	pad.PaddingBottom = UDim.new(0.14, 0)
-	pad.PaddingLeft = UDim.new(0, 8)
-	pad.PaddingRight = UDim.new(0, 8)
-	pad.Parent = b
-	b.TextStrokeColor3 = UI.C.ink
-	b.TextStrokeTransparency = 0.2
+-- press feedback for anything clickable
+local function squish(b: GuiButton)
 	local scale = Instance.new("UIScale")
 	scale.Parent = b
 	b.MouseButton1Down:Connect(function()
 		TweenService:Create(scale, TweenInfo.new(0.06), { Scale = 0.92 }):Play()
 	end)
 	b.MouseButton1Up:Connect(function()
-		TweenService:Create(scale, TweenInfo.new(0.18, Enum.EasingStyle.Back), { Scale = 1 }):Play()
+		TweenService:Create(scale, TweenInfo.new(0.2, Enum.EasingStyle.Back), { Scale = 1 }):Play()
+	end)
+	b.MouseEnter:Connect(function()
+		TweenService:Create(scale, TweenInfo.new(0.12), { Scale = 1.05 }):Play()
 	end)
 	b.MouseLeave:Connect(function()
 		TweenService:Create(scale, TweenInfo.new(0.12), { Scale = 1 }):Play()
 	end)
+end
+
+-- The chunky studded button. Text lives in a child "Label" (UI.setText).
+function UI.button(parent: Instance, text: string, color: Color3, onClick: () -> (), props: { [string]: any }?): TextButton
+	local b = Instance.new("TextButton")
+	b.AutoButtonColor = false
+	b.BackgroundColor3 = color
+	b.BorderSizePixel = 0
+	b.Text = ""
+	b.Size = UDim2.fromOffset(160, 50)
+	apply(b, props)
+	UI.corner(b, 10)
+	UI.stroke(b, UI.C.ink, 3)
+	UI.shade(b)
+	UI.studs(b, { size = 20, alpha = 0.82 })
+	-- bottom lip
+	local lip = UI.frame(b, { Name = "Lip", Size = UDim2.new(1, 0, 0, 6), Position = UDim2.fromScale(0, 1), AnchorPoint = Vector2.new(0, 1),
+		BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.72 })
+	UI.corner(lip, 10)
+	UI.outlined(b, text, { Name = "Label", Size = UDim2.new(1, -14, 1, -14), Position = UDim2.new(0.5, 0, 0.5, -2), AnchorPoint = Vector2.new(0.5, 0.5), ZIndex = b.ZIndex + 1 })
+	squish(b)
 	b.Activated:Connect(onClick)
+	b.Parent = parent
 	return b
+end
+
+function UI.setText(b: GuiObject, text: string)
+	local l = b:FindFirstChild("Label") :: TextLabel?
+	if l then
+		l.Text = text
+	end
+end
+
+function UI.recolor(b: GuiObject, color: Color3)
+	b.BackgroundColor3 = color
+end
+
+-- square icon button with a caption (left-side menu)
+function UI.iconButton(parent: Instance, icon: string, caption: string, color: Color3, onClick: () -> (), props: { [string]: any }?): TextButton
+	local b = UI.button(parent, "", color, onClick, props)
+	UI.text(b, icon, { Name = "Icon", Size = UDim2.fromScale(0.78, 0.6), Position = UDim2.fromScale(0.5, 0.06), AnchorPoint = Vector2.new(0.5, 0), ZIndex = b.ZIndex + 1 })
+	local l = b:FindFirstChild("Label") :: TextLabel
+	l.Text = caption
+	l.Size = UDim2.new(1, -6, 0.3, 0)
+	l.Position = UDim2.new(0.5, 0, 1, -6)
+	l.AnchorPoint = Vector2.new(0.5, 1)
+	return b
+end
+
+-- red "!" bubble on a button's corner
+function UI.badge(b: GuiObject, text: string?): Frame
+	local old = b:FindFirstChild("Badge")
+	if old then
+		local t = old:FindFirstChildOfClass("TextLabel")
+		if t and t.Text == (text or "!") then
+			return old :: Frame
+		end
+		old:Destroy()
+	end
+	local f = UI.frame(b, { Name = "Badge", Size = UDim2.fromOffset(30, 30), Position = UDim2.new(1, 6, 0, -8), AnchorPoint = Vector2.new(1, 0),
+		BackgroundColor3 = UI.C.red, ZIndex = b.ZIndex + 3 })
+	UI.corner(f, 15)
+	UI.stroke(f, UI.C.white, 2.5)
+	UI.outlined(f, text or "!", { Size = UDim2.new(1, -6, 1, -6), Position = UDim2.fromOffset(3, 3), ZIndex = f.ZIndex + 1 })
+	return f
+end
+
+function UI.clearBadge(b: GuiObject)
+	local old = b:FindFirstChild("Badge")
+	if old then
+		old:Destroy()
+	end
+end
+
+-- dark panel with a studded color header, title and red X.
+-- returns (frame, body, closeButton)
+function UI.window(parent: Instance, title: string, color: Color3, size: Vector2, onClose: () -> ()): (Frame, Frame, TextButton)
+	local f = UI.frame(parent, { Name = "Window", Size = UDim2.fromOffset(size.X, size.Y), Position = UDim2.fromScale(0.5, 0.52),
+		AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = UI.C.panel })
+	UI.corner(f, 12)
+	UI.stroke(f, UI.C.ink, 5)
+	UI.studs(f, { size = 26, alpha = 0.94 })
+	local head = UI.frame(f, { Name = "Head", Size = UDim2.new(1, -12, 0, 62), Position = UDim2.fromOffset(6, 6), BackgroundColor3 = color, ClipsDescendants = true })
+	UI.corner(head, 8)
+	UI.stroke(head, UI.C.ink, 3)
+	UI.shade(head)
+	UI.studs(head, { size = 18, alpha = 0.8 })
+	-- diagonal shine stripes
+	for i, x in { 0.55, 0.64 } do
+		UI.frame(head, { Size = UDim2.new(0, i == 1 and 46 or 22, 2.4, 0), Position = UDim2.fromScale(x, -0.7), Rotation = 35,
+			BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0.72 })
+	end
+	UI.outlined(head, title, { Name = "Title", Size = UDim2.new(1, -96, 0, 46), Position = UDim2.fromOffset(18, 8), TextXAlignment = Enum.TextXAlignment.Left })
+	local x = UI.button(f, "X", UI.C.red, onClose, { Name = "Close", Size = UDim2.fromOffset(62, 62), Position = UDim2.new(1, -6, 0, 6), AnchorPoint = Vector2.new(1, 0) })
+	local body = UI.frame(f, { Name = "Body", Size = UDim2.new(1, -24, 1, -86), Position = UDim2.fromOffset(12, 76), BackgroundTransparency = 1 })
+	UI.pop(f, 0.85)
+	return f, body, x
+end
+
+-- inset darker panel inside a window
+function UI.inset(parent: Instance, props: { [string]: any }?): Frame
+	local f = UI.frame(parent, { BackgroundColor3 = UI.C.panel2 })
+	apply(f, props)
+	UI.corner(f, 8)
+	UI.stroke(f, UI.C.ink, 3)
+	return f
+end
+
+-- studded progress bar; returns (back, fill, label)
+function UI.bar(parent: Instance, color: Color3, props: { [string]: any }?): (Frame, Frame, TextLabel)
+	local back = UI.frame(parent, { BackgroundColor3 = Color3.fromRGB(20, 22, 30) })
+	apply(back, props)
+	UI.corner(back, 8)
+	UI.stroke(back, UI.C.ink, 3)
+	local fill = UI.frame(back, { Name = "Fill", Size = UDim2.fromScale(0, 1), BackgroundColor3 = color })
+	UI.corner(fill, 8)
+	UI.shade(fill)
+	UI.studs(fill, { size = 16, alpha = 0.8 })
+	local label = UI.outlined(back, "", { Size = UDim2.new(1, -16, 1, -8), Position = UDim2.fromOffset(8, 4), ZIndex = back.ZIndex + 2 })
+	return back, fill, label
 end
 
 function UI.pop(gui: GuiObject, amount: number?)
@@ -129,7 +322,7 @@ function UI.pulse(gui: GuiObject): () -> ()
 	local alive = true
 	task.spawn(function()
 		while alive and gui.Parent do
-			TweenService:Create(scale, TweenInfo.new(0.45, Enum.EasingStyle.Sine), { Scale = 1.08 }):Play()
+			TweenService:Create(scale, TweenInfo.new(0.45, Enum.EasingStyle.Sine), { Scale = 1.07 }):Play()
 			task.wait(0.45)
 			TweenService:Create(scale, TweenInfo.new(0.45, Enum.EasingStyle.Sine), { Scale = 1 }):Play()
 			task.wait(0.45)
@@ -139,6 +332,29 @@ function UI.pulse(gui: GuiObject): () -> ()
 		alive = false
 		scale.Scale = 1
 	end
+end
+
+-- slow rainbow sweep for premium buttons
+function UI.rainbow(gui: GuiObject)
+	local old = gui:FindFirstChildOfClass("UIGradient")
+	if old then
+		old:Destroy()
+	end
+	gui.BackgroundColor3 = Color3.new(1, 1, 1)
+	local g = Instance.new("UIGradient")
+	local keys = {}
+	for i = 0, 6 do
+		table.insert(keys, ColorSequenceKeypoint.new(i / 6, Color3.fromHSV(i / 6, 0.75, 1)))
+	end
+	g.Color = ColorSequence.new(keys)
+	g.Parent = gui
+	task.spawn(function()
+		while gui.Parent do
+			g.Offset = Vector2.new(math.sin(os.clock()) * 0.3, 0)
+			task.wait(0.05)
+		end
+	end)
+	return g
 end
 
 function UI.short(n: number): string
@@ -154,6 +370,12 @@ function UI.short(n: number): string
 	local s = string.format(n >= 100 and "%.0f" or "%.1f", n)
 	s = s:gsub("%.0$", "")
 	return s .. units[i]
+end
+
+function UI.commas(n: number): string
+	local s = tostring(math.floor(n))
+	local out = s:reverse():gsub("(%d%d%d)", "%1,"):reverse()
+	return (out:gsub("^,", ""))
 end
 
 function UI.time(sec: number): string

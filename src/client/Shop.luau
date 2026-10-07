@@ -28,44 +28,51 @@ local function closeAll()
 	table.clear(spinners)
 end
 
-local function window(title: string, color: Color3): (Frame, ScrollingFrame)
+-- one window at a time; Index and popups share this
+function Shop.window(title: string, color: Color3, size: Vector2?): (Frame, Frame)
 	closeAll()
-	local f = UI.frame(gui, { Size = UDim2.fromOffset(660, 440), Position = UDim2.fromScale(0.5, 0.52), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = Color3.fromRGB(240, 246, 255) })
-	UI.corner(f, 24)
-	UI.stroke(f, C.ink, 4)
-	UI.pop(f, 0.85)
-	local head = UI.frame(f, { Size = UDim2.new(1, 0, 0, 58), BackgroundColor3 = color })
-	UI.corner(head, 24)
-	UI.outlined(head, title, { Size = UDim2.new(1, -120, 1, -12), Position = UDim2.fromOffset(20, 6), TextXAlignment = Enum.TextXAlignment.Left })
-	UI.button(head, "X", C.red, closeAll, { Size = UDim2.fromOffset(48, 48), Position = UDim2.new(1, -54, 0, 5) })
+	local f, body = UI.window(gui, title, color, size or Vector2.new(700, 470), closeAll)
+	open = f
+	return f, body
+end
+
+local function window(title: string, color: Color3): (Frame, ScrollingFrame)
+	local f, body = Shop.window(title, color)
 	local scroll = Instance.new("ScrollingFrame")
-	scroll.Size = UDim2.new(1, -24, 1, -74)
-	scroll.Position = UDim2.fromOffset(12, 66)
+	scroll.Size = UDim2.fromScale(1, 1)
 	scroll.BackgroundTransparency = 1
 	scroll.BorderSizePixel = 0
 	scroll.ScrollBarThickness = 8
+	scroll.ScrollBarImageColor3 = C.white
 	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	scroll.CanvasSize = UDim2.new()
-	scroll.Parent = f
+	scroll.Parent = body
+	local pad = Instance.new("UIPadding")
+	pad.PaddingTop = UDim.new(0, 6)
+	pad.PaddingBottom = UDim.new(0, 6)
+	pad.Parent = scroll
 	local grid = Instance.new("UIGridLayout")
-	grid.CellSize = UDim2.fromOffset(196, 214)
-	grid.CellPadding = UDim2.fromOffset(10, 10)
+	grid.CellSize = UDim2.fromOffset(200, 222)
+	grid.CellPadding = UDim2.fromOffset(12, 12)
 	grid.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	grid.SortOrder = Enum.SortOrder.LayoutOrder
 	grid.Parent = scroll
-	open = f
 	return f, scroll
 end
 
-local function viewport(parent: Instance, model: Model)
+function Shop.viewport(parent: Instance, model: Model, props: { [string]: any }?, spin: boolean?): ViewportFrame
 	local vf = Instance.new("ViewportFrame")
 	vf.Size = UDim2.new(1, -12, 0, 104)
 	vf.Position = UDim2.fromOffset(6, 6)
-	vf.BackgroundColor3 = Color3.fromRGB(170, 228, 255)
+	vf.BackgroundTransparency = 1
 	vf.Ambient = Color3.fromRGB(200, 200, 210)
 	vf.LightDirection = Vector3.new(-1, -2, -1)
+	if props then
+		for k, v in props do
+			(vf :: any)[k] = v
+		end
+	end
 	vf.Parent = parent
-	UI.corner(vf, 14)
 	local cam = Instance.new("Camera")
 	cam.FieldOfView = 40
 	cam.Parent = vf
@@ -75,13 +82,23 @@ local function viewport(parent: Instance, model: Model)
 	local _, size = model:GetBoundingBox()
 	local r = math.max(size.X, size.Y, size.Z)
 	cam.CFrame = CFrame.lookAt(Vector3.new(r * 0.9, r * 0.7, -r * 1.3), Vector3.new(0, -0.3, 0))
-	table.insert(spinners, model)
+	if spin ~= false then
+		table.insert(spinners, model)
+	end
+	return vf
 end
 
+local function viewport(parent: Instance, model: Model)
+	Shop.viewport(parent, model)
+end
+
+-- colored studded card
 local function item(scroll: Instance, order: number, color: Color3?): Frame
-	local f = UI.frame(scroll, { LayoutOrder = order, BackgroundColor3 = color or C.white })
-	UI.corner(f, 18)
+	local f = UI.frame(scroll, { LayoutOrder = order, BackgroundColor3 = color or C.sky })
+	UI.corner(f, 10)
 	UI.stroke(f, C.ink, 3)
+	UI.shade(f)
+	UI.studs(f, { size = 22, alpha = 0.85 })
 	return f
 end
 
@@ -104,7 +121,7 @@ function Shop.openRides()
 	if not d then
 		return
 	end
-	local _, scroll = window("🛟 RIDES - faster ride = more speed/sec", C.sky)
+	local _, scroll = window("🛟 Rides", C.sky)
 	local function refresh()
 		if not open then
 			return
@@ -117,28 +134,28 @@ function Shop.openRides()
 		table.clear(spinners)
 		d = State.data
 		-- tank slot card first
-		local slotCard = item(scroll, 0, Color3.fromRGB(220, 244, 255))
+		local slotCard = item(scroll, 0, C.blue)
 		UI.text(slotCard, "🐟", { Size = UDim2.new(1, 0, 0, 80), Position = UDim2.fromOffset(0, 14) })
-		UI.text(slotCard, ("Tank %d / %d"):format(#d.tank, d.slots), { Size = UDim2.new(1, -16, 0, 28), Position = UDim2.fromOffset(8, 104) })
-		UI.text(slotCard, "More room = more coins", { Size = UDim2.new(1, -16, 0, 18), Position = UDim2.fromOffset(8, 134), TextColor3 = C.mute })
+		UI.outlined(slotCard, ("Tank %d / %d"):format(#d.tank, d.slots), { Size = UDim2.new(1, -16, 0, 28), Position = UDim2.fromOffset(8, 104) })
+		UI.outlined(slotCard, "More room = more coins", { Size = UDim2.new(1, -16, 0, 18), Position = UDim2.fromOffset(8, 136), TextColor3 = C.gold })
 		if d.slotPrice then
 			local can = d.coins >= d.slotPrice
-			UI.button(slotCard, ("+1 SLOT  💰%s"):format(UI.short(d.slotPrice)), can and C.green or C.mute, function()
+			UI.button(slotCard, ("+1 SLOT  💰%s"):format(UI.short(d.slotPrice)), can and C.green or C.gold, function()
 				State.action("buySlot")
 			end, { Size = UDim2.new(1, -16, 0, 44), Position = UDim2.new(0, 8, 1, -52) })
 		end
 		local foundNext = false
 		for _, ride in Config.Rides do
 			local owned = d.rides[ride.id] == true
-			local f = item(scroll, ride.order, ride.robux and Color3.fromRGB(255, 236, 248) or C.white)
+			local f = item(scroll, ride.order, ride.robux and C.pink or (owned and C.green or C.sky))
 			viewport(f, Rides.build(ride.id))
-			UI.text(f, ride.icon .. " " .. ride.name, { Size = UDim2.new(1, -12, 0, 24), Position = UDim2.fromOffset(6, 112) })
+			UI.outlined(f, ride.icon .. " " .. ride.name, { Size = UDim2.new(1, -12, 0, 24), Position = UDim2.fromOffset(6, 112) })
 			local perk = ride.robux and ("x%s speed gain"):format(tostring(ride.mult)) or ("+%d speed / sec"):format(ride.gain or 0)
-			UI.text(f, perk, { Size = UDim2.new(1, -12, 0, 18), Position = UDim2.fromOffset(6, 138), TextColor3 = C.blue })
-			local btnText, btnColor, onClick = "", C.mute, function() end
+			UI.outlined(f, perk, { Size = UDim2.new(1, -12, 0, 20), Position = UDim2.fromOffset(6, 138), TextColor3 = C.gold })
+			local btnText, btnColor, onClick = "", C.panel, function() end
 			if owned then
 				if d.ride == ride.id then
-					btnText, btnColor = "RIDING ✅", C.blue
+					btnText, btnColor = "RIDING ✅", C.panel
 				else
 					btnText, btnColor = "RIDE", C.sky
 					onClick = function()
@@ -159,7 +176,7 @@ function Shop.openRides()
 				foundNext = true
 				local can = d.coins >= ride.price
 				btnText = (can and "BUY  💰" or "💰") .. UI.short(ride.price)
-				btnColor = can and C.green or C.mute
+				btnColor = can and C.green or C.gold
 				onClick = function()
 					State.action("buyRide", ride.id)
 				end
@@ -186,10 +203,10 @@ end
 ----------------------------------------------------------------- robux shop
 local function priceButton(parent: Instance, kind: string, key: string, def: any)
 	if def.id == 0 then
-		UI.button(parent, "Soon", C.mute, function() end, { Size = UDim2.new(1, -16, 0, 44), Position = UDim2.new(0, 8, 1, -52) })
+		UI.button(parent, "Soon", C.panel, function() end, { Size = UDim2.new(1, -16, 0, 44), Position = UDim2.new(0, 8, 1, -52) })
 		return
 	end
-	UI.button(parent, "R$ " .. def.price, C.pink, function()
+	UI.button(parent, "R$ " .. def.price, C.green, function()
 		if kind == "pass" then
 			MarketplaceService:PromptGamePassPurchase(player, def.id)
 		else
@@ -203,16 +220,16 @@ function Shop.openStore()
 	if not d then
 		return
 	end
-	local _, scroll = window("🛒 SHOP", C.pink)
+	local _, scroll = window("🛒 Shop", C.pink)
 	local order = 0
 	local function add(kind: string, key: string, def: any, owned: boolean?)
 		order += 1
-		local f = item(scroll, order, key == "StarterPack" and Color3.fromRGB(255, 244, 200) or C.white)
+		local f = item(scroll, order, key == "StarterPack" and C.gold or (kind == "pass" and C.purple or C.blue))
 		UI.text(f, def.icon, { Size = UDim2.new(1, 0, 0, 70), Position = UDim2.fromOffset(0, 14) })
-		UI.text(f, def.name, { Size = UDim2.new(1, -12, 0, 26), Position = UDim2.fromOffset(6, 92) })
-		UI.text(f, def.desc, { Size = UDim2.new(1, -16, 0, 40), Position = UDim2.fromOffset(8, 120), TextColor3 = C.mute, TextWrapped = true })
+		UI.outlined(f, def.name, { Size = UDim2.new(1, -12, 0, 26), Position = UDim2.fromOffset(6, 92) })
+		UI.outlined(f, def.desc, { Size = UDim2.new(1, -16, 0, 40), Position = UDim2.fromOffset(8, 122), TextWrapped = true, TextColor3 = Color3.fromRGB(230, 236, 255) })
 		if owned then
-			UI.button(f, "OWNED ✅", C.blue, function() end, { Size = UDim2.new(1, -16, 0, 44), Position = UDim2.new(0, 8, 1, -52) })
+			UI.button(f, "OWNED ✅", C.panel, function() end, { Size = UDim2.new(1, -16, 0, 44), Position = UDim2.new(0, 8, 1, -52) })
 		else
 			priceButton(f, kind, key, def)
 		end
@@ -238,7 +255,7 @@ function Shop.start()
 	scale.Parent = gui
 	local function rescale()
 		local v = workspace.CurrentCamera.ViewportSize
-		scale.Scale = math.clamp(math.min(v.X / 720, v.Y / 500), 0.5, 1.2)
+		scale.Scale = math.clamp(math.min(v.X / 780, v.Y / 540), 0.5, 1.2)
 	end
 	rescale()
 	workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(rescale)
@@ -253,4 +270,7 @@ function Shop.start()
 end
 
 Shop.close = closeAll
+function Shop.isOpen(): boolean
+	return open ~= nil and open.Parent ~= nil
+end
 return Shop

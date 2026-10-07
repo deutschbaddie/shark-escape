@@ -26,6 +26,9 @@ export type Profile = {
 	receipts: { string },
 	playtime: number,
 	bestSpeed: number,
+	index: { [string]: boolean }, -- "Zone:Rarity" discovered
+	claimed: { [string]: boolean }, -- index rewards already taken
+	lastSeen: number,
 }
 
 local VERSION = "SharkEscape_v1"
@@ -52,6 +55,9 @@ function Data.default(): Profile
 		receipts = {},
 		playtime = 0,
 		bestSpeed = 0,
+		index = {},
+		claimed = {},
+		lastSeen = 0,
 	}
 end
 
@@ -87,6 +93,7 @@ function Data.load(userId: number): (Profile, boolean)
 end
 
 function Data.save(userId: number, profile: Profile): boolean
+	profile.lastSeen = os.time()
 	if not store then
 		return false
 	end
