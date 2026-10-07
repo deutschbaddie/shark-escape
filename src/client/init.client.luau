@@ -1,10 +1,10 @@
 -- +1 Speed to Escape the Shark - client entry.
--- TODO: Onboarding.luau (arrows, practice shark) is not written yet.
 
 local State = require(script.State)
 local Water = require(script.Water)
 local HUD = require(script.HUD)
 local Shop = require(script.Shop)
+local Onboarding = require(script.Onboarding)
 require(script.SharkView)
 
 Water.start()
@@ -13,3 +13,4 @@ HUD.onRides = Shop.openRides
 HUD.onShop = Shop.openStore
 HUD.start()
 State.wait()
+Onboarding.start()

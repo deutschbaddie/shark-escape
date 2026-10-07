@@ -18,6 +18,11 @@ Rojo project. Untested in Studio so far.
 - Create the gamepasses and dev products and put their ids in `src/shared/Config.luau` (0 means "Soon").
 - Choose sounds from the Creator Store and put their ids in `Config.Sounds`. Record every asset id in ASSETS.md.
 
+## Onboarding
+`src/client/Onboarding.luau` walks new players through 5 steps with a 3D guide beam:
+grab a bubble -> bring it to your dock -> collect coins on the pad -> shark drill
+(a harmless, slower client-only shark chases you back to sand/island) -> buy the Rubber Duck.
+Progress is saved as `profile.tut`; finishing it ends the new-player shark grace early.
+
 ## Not done yet
-- Onboarding: arrows to bubble, dock and pad, plus the practice shark.
 - Playtest and balance pass.
