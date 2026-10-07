@@ -87,6 +87,11 @@ function Data.load(userId: number): (Profile, boolean)
 			return reconcile(result), true
 		end
 		warn(("[Data] load failed (%d/3) for %d: %s"):format(attempt, userId, tostring(result)))
+		if RunService:IsStudio() then
+			-- usually "API services not enabled": don't stall the join retrying
+			warn("[Data] Studio: playing with a fresh profile (turn on API services in Game Settings to test saving)")
+			break
+		end
 		task.wait(attempt)
 	end
 	return Data.default(), false

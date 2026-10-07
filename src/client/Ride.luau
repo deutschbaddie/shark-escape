@@ -35,6 +35,7 @@ local vy = 0
 local airborne = false
 local hopQueued = false
 local controls: any = nil
+local lastPos: Vector3? = nil
 
 local function getControls()
 	if controls then
@@ -146,7 +147,9 @@ local function exit(r: Rig)
 	r.ao.Enabled = false
 	r.hum.PlatformStand = false
 	setAnimate(r.char, true)
-	r.hum:ChangeState(Enum.HumanoidStateType.Running)
+	if r.hum.Health > 0 and not r.hrp.Anchored then
+		r.hum:ChangeState(Enum.HumanoidStateType.Running)
+	end
 end
 
 ----------------------------------------------------------------- per frame
@@ -173,6 +176,11 @@ local function step(dt: number)
 	if not active then
 		return
 	end
+	-- teleported (gate bounce, respawn): take the new facing
+	if lastPos and (pos - lastPos).Magnitude > 40 then
+		heading = yawOf(hrp.CFrame.LookVector)
+	end
+	lastPos = pos
 	local feel = Config.feel(r.char:GetAttribute("Ride") :: string?)
 	local top = math.max(hum.WalkSpeed, 8)
 	local t = os.clock()
@@ -225,7 +233,8 @@ local function step(dt: number)
 
 	-- attitude: lean into turns, nose up at speed, idle wobble
 	local speedK = math.clamp(vf / top, 0, 1)
-	roll += (math.clamp(-yawRate * feel.lean * (0.3 + speedK), -0.6, 0.6) - roll) * math.min(dt * 6, 1)
+	-- turning left raises yaw; a positive roll leans left, so lean = +yawRate
+	roll += (math.clamp(yawRate * feel.lean * (0.3 + speedK), -0.6, 0.6) - roll) * math.min(dt * 6, 1)
 	local pitch = (feel.plane or 0) * speedK * 2.2 + math.cos(t * feel.bobSpeed) * feel.bob * 0.05
 	if feel.porpoise then
 		pitch += math.cos(t * feel.bobSpeed) * porpoise * 0.25

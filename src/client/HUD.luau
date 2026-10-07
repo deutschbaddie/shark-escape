@@ -107,12 +107,12 @@ local function build()
 	end, { LayoutOrder = 4, Visible = false })
 
 	-- bottom-left: the two big numbers
-	local stats = UI.frame(gui, { Size = UDim2.fromOffset(300, 120), Position = UDim2.new(0, 14, 1, -10), AnchorPoint = Vector2.new(0, 1), BackgroundTransparency = 1 })
+	local stats = UI.frame(gui, { Size = UDim2.fromOffset(226, 120), Position = UDim2.new(0, 14, 1, -10), AnchorPoint = Vector2.new(0, 1), BackgroundTransparency = 1 })
 	UI.icon(stats, "Speed", { Size = UDim2.fromOffset(56, 56), Position = UDim2.fromOffset(0, 2) })
-	speedLabel = UI.outlined(stats, "0", { Size = UDim2.fromOffset(240, 52), Position = UDim2.fromOffset(58, 4), TextXAlignment = Enum.TextXAlignment.Left, Font = UI.NUMFONT })
+	speedLabel = UI.outlined(stats, "0", { Size = UDim2.fromOffset(166, 52), Position = UDim2.fromOffset(58, 4), TextXAlignment = Enum.TextXAlignment.Left, Font = UI.NUMFONT })
 	UI.icon(stats, "Coins", { Size = UDim2.fromOffset(56, 56), Position = UDim2.fromOffset(0, 60) })
-	coinsLabel = UI.outlined(stats, "0", { Size = UDim2.fromOffset(240, 52), Position = UDim2.fromOffset(58, 62), TextXAlignment = Enum.TextXAlignment.Left, Font = UI.NUMFONT, TextColor3 = C.money })
-	extrasLabel = UI.outlined(gui, "", { Size = UDim2.fromOffset(280, 24), Position = UDim2.new(0, 16, 1, -134), AnchorPoint = Vector2.new(0, 1), TextXAlignment = Enum.TextXAlignment.Left })
+	coinsLabel = UI.outlined(stats, "0", { Size = UDim2.fromOffset(166, 52), Position = UDim2.fromOffset(58, 62), TextXAlignment = Enum.TextXAlignment.Left, Font = UI.NUMFONT, TextColor3 = C.money })
+	extrasLabel = UI.outlined(gui, "", { Size = UDim2.fromOffset(226, 24), Position = UDim2.new(0, 16, 1, -134), AnchorPoint = Vector2.new(0, 1), TextXAlignment = Enum.TextXAlignment.Left })
 
 	-- bottom-center: gain line, goal bar, buttons
 	local bottom = UI.frame(gui, { Name = "Bottom", Size = UDim2.fromOffset(470, 150), Position = UDim2.new(0.5, 0, 1, -10), AnchorPoint = Vector2.new(0.5, 1), BackgroundTransparency = 1 })
