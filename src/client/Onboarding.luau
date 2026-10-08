@@ -35,36 +35,14 @@ local TAP_HINT = UI.TOUCH and "Swim to a bubble, then tap" or "Swim to a bubble,
 local HOLD_HINT = UI.TOUCH and "Swim to a bubble, then hold" or "Swim to a bubble, hold E"
 local step = -1 -- local copy, never behind the server
 
--- the tutorial card: [2/5] BRING IT HOME / what to do. Once you're doing it
--- (moving, swimming or carrying) it folds to a slim "Bring it home  2/5"
--- line so it never blocks the view; standing still a moment opens it again.
-local shownTitle: string? = nil
-local shownAt = 0
-local lastMoved = -math.huge
-local function busy(): boolean
-	local d = State.data
-	local char = player.Character
-	local hum = char and char:FindFirstChildOfClass("Humanoid")
-	local hrp = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
-	if hum and hum.MoveDirection.Magnitude > 0.1 then
-		lastMoved = os.clock()
-	end
-	return (d ~= nil and d.carrying ~= nil) or (hrp ~= nil and Layout.inWater(hrp.Position)) or os.clock() - lastMoved < 2
-end
-
+-- the tutorial line: plain text over the world (no box, no step counter)
 local function tutBanner(title: string?, sub: string?, color: Color3?)
 	if not title then
-		shownTitle = nil
 		Notify.clear("tut")
 		return
 	end
-	if title ~= shownTitle then
-		shownTitle, shownAt = title, os.clock()
-	end
-	-- a new step always shows in full for a moment; urgent (colored) ones stay open
-	local compact = color == nil and os.clock() - shownAt > 2.5 and busy()
-	Notify.banner(title, { key = "tut", sticky = true, priority = 3, sub = sub, color = color,
-		step = ("%d/%d"):format(math.clamp(step + 1, 1, DONE), DONE), compact = compact })
+	-- plain text, no step counter
+	Notify.banner(title, { key = "tut", sticky = true, priority = 3, sub = sub, color = color })
 end
 
 -- a quick "nice!" between steps

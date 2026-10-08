@@ -102,13 +102,6 @@ local function hlist(parent: Instance, gap: number): UIListLayout
 	return l
 end
 
-local function padding(parent: Instance, l: number, r: number)
-	local p = Instance.new("UIPadding")
-	p.PaddingLeft = UDim.new(0, l)
-	p.PaddingRight = UDim.new(0, r)
-	p.Parent = parent
-	return p
-end
 
 local function build()
 	gui = Instance.new("ScreenGui")
@@ -158,10 +151,7 @@ end
 
 ----------------------------------------------------------------- banners
 local function cardHeight(b: Banner): number
-	if b.compact then
-		return 36
-	end
-	return b.sub and 64 or 48
+	return b.sub and 66 or 42 -- plain text: title 40 + sub 24
 end
 
 local function slotHeight(b: Banner): number
@@ -185,77 +175,19 @@ local function bigBanner(b: Banner): (Frame, (Banner) -> ())
 	end
 end
 
--- the compact card: [step chip | icon]  TITLE / short sub line
-local function cardBanner(b: Banner): (Frame, (Banner) -> ())
+-- every other banner (tutorial, shark status...): text only, no box, no
+-- step counter. Title in the message color (gold for the tutorial), sub below.
+local function plainBanner(b: Banner): (Frame, (Banner) -> ())
 	local f = UI.frame(bannerSlot, { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1 })
-	local card = UI.frame(f, { Name = "Card", Size = UDim2.fromOffset(0, cardHeight(b)), AutomaticSize = Enum.AutomaticSize.X, Position = UDim2.fromScale(0.5, 0),
-		AnchorPoint = Vector2.new(0.5, 0), BackgroundColor3 = T.navy, BackgroundTransparency = 0.06 })
-	UI.corner(card, UI.R.card)
-	local edge = UI.stroke(card, T.line, UI.S.card)
-	local g = Instance.new("UIGradient")
-	g.Rotation = 90
-	g.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(190, 196, 220))
-	g.Parent = card
-	local pad = padding(card, SP[2], SP[4])
-	hlist(card, SP[3] - 2)
-
-	local chip = UI.frame(card, { Name = "Step", Size = UDim2.fromOffset(56, 46), BackgroundColor3 = T.blue, LayoutOrder = 1 })
-	local chipCorner = UI.corner(chip, UI.R.button)
-	UI.stroke(chip, UI.dark(T.blue, 0.4), UI.S.card)
-	local cg = Instance.new("UIGradient")
-	cg.Rotation = 90
-	cg.Color = ColorSequence.new(UI.light(T.blue, 0.2), UI.dark(T.blue, 0.15))
-	cg.Parent = chip
-	local chipLabel = UI.label(chip, "value", "", { Size = UDim2.new(1, -8, 1, -8), Position = UDim2.fromOffset(4, 4), StrokeColor = UI.dark(T.blue, 0.55) })
-	local icon: GuiObject? = nil
-	if b.icon then
-		icon = UI.icon(card, b.icon, { Size = UDim2.fromOffset(42, 42), LayoutOrder = 1 })
+	local title = label(f, b.text, 40, b.color or C.gold)
+	local sub = label(f, b.sub or "", 24, SUB_COLOR)
+	sub.Position = UDim2.fromOffset(0, 40)
+	return f, function(nb: Banner)
+		title.Text, title.TextColor3 = nb.text, nb.color or C.gold
+		sub.Text, sub.Visible = nb.sub or "", nb.sub ~= nil
 	end
-
-	local words = UI.frame(card, { Name = "Words", Size = UDim2.fromOffset(0, 46), AutomaticSize = Enum.AutomaticSize.X, BackgroundTransparency = 1, LayoutOrder = 2 })
-	local wl = Instance.new("UIListLayout")
-	wl.SortOrder = Enum.SortOrder.LayoutOrder
-	wl.VerticalAlignment = Enum.VerticalAlignment.Center
-	wl.Parent = words
-	local title = line(words, "", 26, C.white, 1)
-	title.Name = "Title"
-	local sub = line(words, "", 18, SUB_COLOR, 2)
-	sub.Name = "Sub"
-
-	local wasCompact: boolean? = nil
-	local function refresh(nb: Banner)
-		local compact = nb.compact == true
-		local tutorial = nb.step ~= nil
-		local accent = nb.color or (tutorial and T.gold or T.white)
-		card.Size = UDim2.fromOffset(0, cardHeight(nb))
-		edge.Color = nb.color and UI.dark(nb.color, 0.05) or (tutorial and T.blue or T.line)
-		-- the tutorial title shouts in caps; folded, it's a calm one-liner
-		title.Text = (tutorial and not compact) and nb.text:upper() or nb.text
-		title.TextColor3 = accent
-		title.TextSize = compact and 19 or 26
-		title.Size = UDim2.fromOffset(0, compact and 24 or 30)
-		sub.Text = nb.sub or ""
-		sub.Visible = nb.sub ~= nil and not compact
-		words.Size = UDim2.fromOffset(0, compact and 26 or 46)
-		chip.Visible = tutorial
-		chipLabel.Text = nb.step or ""
-		chip.LayoutOrder = compact and 3 or 1
-		chip.Size = compact and UDim2.fromOffset(46, 28) or UDim2.fromOffset(56, 46)
-		chipCorner.CornerRadius = UDim.new(0, compact and UI.R.chip or UI.R.button)
-		pad.PaddingLeft = UDim.new(0, compact and SP[4] or SP[2])
-		pad.PaddingRight = UDim.new(0, compact and SP[2] or SP[4])
-		if icon then
-			icon.Visible = not tutorial and not compact
-		end
-		bannerSlot.Size = UDim2.fromOffset(WIDTH, cardHeight(nb))
-		if wasCompact ~= nil and wasCompact ~= compact then
-			UI.pop(card, compact and 0.92 or 1.06)
-		end
-		wasCompact = compact
-	end
-	refresh(b)
-	return f, refresh
 end
+
 
 local function bannerUI(b: Banner): Frame
 	bannerSlot.Size = UDim2.fromOffset(WIDTH, slotHeight(b))
@@ -263,7 +195,7 @@ local function bannerUI(b: Banner): Frame
 	if b.big then
 		f, refresh = bigBanner(b)
 	else
-		f, refresh = cardBanner(b)
+		f, refresh = plainBanner(b)
 	end
 	bannerRefresh = refresh
 	return f
@@ -361,15 +293,10 @@ end
 ----------------------------------------------------------------- toasts
 -- a small navy pill; the accent edge carries the message's color
 local function toastUI(text: string, color: Color3): Frame
-	local f = UI.frame(toastSlot, { Name = "Toast", Size = UDim2.fromOffset(0, 32), AutomaticSize = Enum.AutomaticSize.X, BackgroundColor3 = T.navyDark,
-		BackgroundTransparency = 0.12 })
-	UI.corner(f, 16)
-	UI.stroke(f, UI.dark(color, 0.1), UI.S.subtle)
-	padding(f, SP[2] + 2, SP[3] + 2)
+	-- text only (no box or outline box), in the message's color
+	local f = UI.frame(toastSlot, { Name = "Toast", Size = UDim2.fromOffset(0, 30), AutomaticSize = Enum.AutomaticSize.X, BackgroundTransparency = 1 })
 	hlist(f, SP[2])
-	local edge = UI.frame(f, { Name = "Edge", Size = UDim2.fromOffset(6, 18), BackgroundColor3 = color, LayoutOrder = 1 })
-	UI.corner(edge, 3)
-	line(f, text, 18, UI.light(color, 0.55), 2)
+	line(f, text, 22, UI.light(color, 0.35), 2)
 	return f
 end
 
