@@ -77,7 +77,7 @@ local function radial(parent: GuiObject): (number) -> ()
 		corner(ring, 0.5)
 		local s = Instance.new("UIStroke")
 		s.Thickness = RING
-		s.Color = Color3.new(1, 1, 1)
+		s.Color = Color3.fromRGB(20, 20, 28) -- dark fill ring on the white key
 		s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		s.Parent = ring
 		local g = Instance.new("UIGradient")
@@ -163,12 +163,13 @@ local function build(prompt: ProximityPrompt, inputType: Enum.ProximityPromptInp
 	pill.Size = UDim2.new(1, 0, 0, 72)
 	pill.Position = UDim2.fromOffset(0, top)
 	pill.BackgroundColor3 = UI.T.navy
-	pill.BackgroundTransparency = 0.08
+	pill.BackgroundTransparency = 1 -- no box: just the white key and outlined text (Steal an Egg style)
 	pill.BorderSizePixel = 0
 	pill.Parent = gui
 	corner(pill, 0.5)
 	local ps = Instance.new("UIStroke")
-	ps.Thickness = UI.S.subtle
+	ps.Thickness = 0
+	ps.Enabled = false
 	ps.Color = UI.T.line
 	ps.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	ps.Parent = pill
@@ -177,7 +178,7 @@ local function build(prompt: ProximityPrompt, inputType: Enum.ProximityPromptInp
 	circle.Name = "Circle"
 	circle.Size = UDim2.fromOffset(64, 64)
 	circle.Position = UDim2.fromOffset(4, 4 + top)
-	circle.BackgroundColor3 = INK
+	circle.BackgroundColor3 = UI.T.white -- the white key button
 	circle.BackgroundTransparency = 0
 	circle.ZIndex = 2
 	circle.BorderSizePixel = 0
@@ -187,6 +188,11 @@ local function build(prompt: ProximityPrompt, inputType: Enum.ProximityPromptInp
 	end
 	circle.Parent = gui
 	corner(circle, 0.5)
+	local cs = Instance.new("UIStroke")
+	cs.Thickness = 2.5
+	cs.Color = Color3.fromRGB(20, 20, 28)
+	cs.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	cs.Parent = circle
 	local setRing = radial(circle)
 
 	local key = Instance.new("TextLabel")
@@ -195,9 +201,9 @@ local function build(prompt: ProximityPrompt, inputType: Enum.ProximityPromptInp
 	key.Position = UDim2.fromScale(0.5, 0.5)
 	-- the key chip: white with navy text
 	key.BackgroundColor3 = UI.T.white
-	key.BackgroundTransparency = 0
+	key.BackgroundTransparency = 1
 	key.Font = UI.FONT
-	key.TextColor3 = UI.T.navy
+	key.TextColor3 = Color3.fromRGB(20, 20, 28)
 	key.TextScaled = true
 	key.ZIndex = circle.ZIndex + 2
 	if touch then
@@ -210,7 +216,8 @@ local function build(prompt: ProximityPrompt, inputType: Enum.ProximityPromptInp
 	key.Parent = circle
 	corner(key, nil, 8)
 	local ks = Instance.new("UIStroke")
-	ks.Thickness = UI.S.card
+	ks.Thickness = 0
+	ks.Enabled = false
 	ks.Color = UI.dark(UI.T.mute, 0.2)
 	ks.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	ks.Parent = key
@@ -226,7 +233,7 @@ local function build(prompt: ProximityPrompt, inputType: Enum.ProximityPromptInp
 	object.Size = UDim2.new(1, -82, 0, 22)
 	object.Position = UDim2.fromOffset(80, 8 + top)
 	object.Font = UI.FONT
-	object.TextColor3 = UI.light(UI.T.mute, 0.3)
+	object.TextColor3 = Color3.fromRGB(235, 235, 240)
 	object.ZIndex = 2
 	object.TextScaled = true
 	object.TextXAlignment = Enum.TextXAlignment.Left
@@ -277,7 +284,7 @@ local function build(prompt: ProximityPrompt, inputType: Enum.ProximityPromptInp
 			g.ZIndex = circle.ZIndex
 			g.Parent = circle
 			corner(g, 0.5)
-			ghost = stroke(g, RING, Color3.new(1, 1, 1))
+			ghost = stroke(g, RING, Color3.fromRGB(20, 20, 28))
 			ghost.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		end
 	end

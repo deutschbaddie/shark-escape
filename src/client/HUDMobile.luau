@@ -341,7 +341,12 @@ end
 local function buildBottom()
 	-- the progression card: next zone, bar, tank stats, next ride
 	progress = UI.card(gui, UI.dark(T.blue, 0.15), { Name = "Progress", Size = UDim2.fromOffset(CARD_W, CARD_H), Position = UDim2.new(0.5, 0, 1, -SP[2]),
-		AnchorPoint = Vector2.new(0.5, 1), BackgroundColor3 = T.navy })
+		AnchorPoint = Vector2.new(0.5, 1), BackgroundColor3 = T.navy, BackgroundTransparency = 1 })
+	-- no panel behind it (Steal an Egg style): just the outlined text, bar and ride button
+	local accent = progress:FindFirstChild("Accent")
+	if accent then
+		accent:Destroy()
+	end
 	UI.icon(progress, "Coral", { Name = "ZoneIcon", Size = UDim2.fromOffset(54, 54), Position = UDim2.fromOffset(4, -10), ZIndex = progress.ZIndex + 3 })
 	zoneLabel = UI.label(progress, "hero", "", { Name = "Zone", Size = UDim2.new(0.5, -60, 0, 32), Position = UDim2.fromOffset(62, SP[2] - 2),
 		TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = T.white })
@@ -385,15 +390,16 @@ local function buildBottom()
 
 	-- carrying: a small pill above the card
 	carryChip = UI.frame(gui, { Name = "Carry", Size = UDim2.fromOffset(0, 30), AutomaticSize = Enum.AutomaticSize.X, Position = UDim2.new(0.5, 0, 1, -(CARD_H + SP[2] * 2)),
-		AnchorPoint = Vector2.new(0.5, 1), BackgroundColor3 = T.navyDark, BackgroundTransparency = 0.12, Visible = false })
+		AnchorPoint = Vector2.new(0.5, 1), BackgroundColor3 = T.navyDark, BackgroundTransparency = 1, Visible = false })
 	UI.corner(carryChip, 15)
 	local cs = UI.stroke(carryChip, T.gold, UI.S.card)
+	cs.Enabled = false -- text only
 	cs.Name = "Accent"
 	local cpad = Instance.new("UIPadding")
 	cpad.PaddingLeft = UDim.new(0, SP[3])
 	cpad.PaddingRight = UDim.new(0, SP[3])
 	cpad.Parent = carryChip
-	carryLabel = UI.outlined(carryChip, "", { Size = UDim2.fromOffset(0, 30), AutomaticSize = Enum.AutomaticSize.X, TextScaled = false, TextSize = 18 })
+	carryLabel = UI.outlined(carryChip, "", { Size = UDim2.fromOffset(0, 30), AutomaticSize = Enum.AutomaticSize.X, TextScaled = false, TextSize = 20, TextColor3 = T.gold })
 end
 
 local function build()
