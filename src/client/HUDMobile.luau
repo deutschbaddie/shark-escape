@@ -556,6 +556,12 @@ local function render(d: any)
 			end
 		end
 		zoneLabel.Text = gate.name
+		local zi = progress:FindFirstChild("ZoneIcon")
+		if zi and zi:GetAttribute("Zone") ~= gate.id then
+			local props = { Name = "ZoneIcon", Size = zi.Size, Position = zi.Position, ZIndex = zi.ZIndex }
+			zi:Destroy()
+			UI.icon(progress, gate.id, props):SetAttribute("Zone", gate.id)
+		end
 		goalText.Text = ("%s / %s"):format(UI.short(d.speed), UI.short(gate.gate))
 		frac = math.clamp((d.speed - prevGate) / (gate.gate - prevGate), 0.02, 1)
 		paintFill(goalFill, T.blue)
@@ -931,7 +937,7 @@ end
 handlers.unlock = function(d)
 	local zone = Config.zoneById(d.zone)
 	if zone then
-		Notify.takeover(zone.name:upper() .. "!", "New zone unlocked · rarer creatures, bigger sharks", C.gold, 1.8, "Coral")
+		Notify.takeover(zone.name:upper() .. "!", "New zone unlocked · rarer creatures, bigger sharks", C.gold, 1.8, zone.id)
 		Fx.sound("zoneUnlock", 0.8)
 		local pos = myPos()
 		if pos then

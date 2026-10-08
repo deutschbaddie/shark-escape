@@ -24,7 +24,8 @@ export type Profile = {
 	shields: number,
 	grabs: number,
 	starter: boolean,
-	starterTier: number, -- how far up Config.StarterLadder you've bought
+	starterTier: number,
+	dealBought: boolean, -- the one-time 3 R$ x2 Speed deal -- how far up Config.StarterLadder you've bought
 	daily: { day: number, last: number },
 	groupClaim: number,
 	boostUntil: number,
@@ -59,6 +60,7 @@ function Data.default(): Profile
 		grabs = 0,
 		starter = false,
 		starterTier = 0,
+		dealBought = false,
 		daily = { day = 1, last = 0 }, -- next day to claim (1..7), when you last claimed
 		groupClaim = 0, -- last group chest claim (os.time)
 		boostUntil = 0,

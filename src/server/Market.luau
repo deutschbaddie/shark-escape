@@ -85,6 +85,22 @@ local grants: { [string]: (Game.Session) -> boolean } = {
 		s.offline = 0
 		return true
 	end,
+	SpeedDeal = function(s)
+		s.profile.dealBought = true
+		s.profile.boostUntil = math.max(s.profile.boostUntil, os.time()) + 30 * 60
+		return true
+	end,
+	Rescue = function(s)
+		-- the creature the shark ate goes straight into your tank
+		local c = s.lastLost
+		s.lastLost = nil
+		if c then
+			Game.addCreature(s, { r = c.r, z = c.z, m = c.m, s = c.s })
+		else
+			Bubbles.give(s, "Rare") -- paid with nothing to rescue: still deliver something good
+		end
+		return true
+	end,
 	-- the starter ladder (each is offered once, in order; a repeat buy still delivers)
 	StarterPack = function(s)
 		s.profile.starter = true

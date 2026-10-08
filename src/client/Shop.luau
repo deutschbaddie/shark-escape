@@ -336,7 +336,7 @@ local CATEGORIES = {
 	{ id = "Boosts", icon = "Potion", color = T.blue },
 }
 local PASSES = { "AutoCollect", "LuckyNet", "BigTank", "VIP", "GoldDuck", "SharkBoard", "RainbowSki" }
-local BOOSTS = { "Shield", "SpeedBoost", "LuckPotion", "GoldenBubble", "DoubleOffline" }
+local BOOSTS = { "Rescue", "Shield", "SpeedBoost", "LuckPotion", "GoldenBubble", "DoubleOffline" }
 local SPEED_TEXT = UI.light(T.gold, 0.2)
 local MONEY_TEXT = UI.C.money
 
@@ -415,6 +415,10 @@ function Shop.offer(d: any): (string?, string?)
 	if not d or d.playtime < Config.SHOP_UNLOCK_SECONDS then
 		return nil, nil
 	end
+	-- the 3 R$ deal first: the cheapest possible first purchase
+	if not d.dealBought and Config.Products.SpeedDeal.id ~= 0 then
+		return "SpeedDeal", "product"
+	end
 	if d.starterNext and Config.Products[d.starterNext] then
 		return d.starterNext, "product"
 	end
@@ -425,7 +429,7 @@ function Shop.offer(d: any): (string?, string?)
 	end
 	return nil, nil
 end
-local OFFER_TITLE = { TwoXSpeed = "x2 Speed", TwoXCoins = "x2 Cash" }
+local OFFER_TITLE = { TwoXSpeed = "x2 Speed", TwoXCoins = "x2 Cash", SpeedDeal = "x2 Speed" }
 
 -- The HUD promo under the Shop button: the offer's art glowing over a cyan
 -- button, "x2 Speed" and "ONLY 399 R$" on it. A tap prompts the purchase (or
@@ -518,7 +522,7 @@ end
 
 -- what the store shows that can change (rebuild when it does; pack values just update)
 local function storeKey(d: any): string
-	local key = tostring(d.starterNext) .. "|" .. tostring((d.offline or 0) > 0)
+	local key = tostring(d.starterNext) .. "|" .. tostring((d.offline or 0) > 0) .. "|" .. tostring(d.dealBought)
 	for _, k in { "TwoXSpeed", "TwoXCoins", table.unpack(PASSES) } do
 		if d.passes[k] then
 			key ..= "|" .. k
@@ -742,15 +746,22 @@ function Shop.openStore(section: string?)
 					ZIndex = mid.ZIndex })
 			end
 		end
+		if not d.dealBought then
+			local deal = Config.Products.SpeedDeal
+			local mid = banner(T.orange, "ONLY 3 R$ DEAL", art("SpeedDeal", deal), "product", deal, false)
+			UI.label(mid, "hero", "x2 SPEED FOR 30 MIN", { Size = UDim2.new(1, -20, 0, 40), Position = UDim2.fromOffset(10, 10), ZIndex = mid.ZIndex,
+				TextColor3 = T.gold })
+			UI.label(mid, "body", "One time only!", { Size = UDim2.new(1, -20, 0, 26), Position = UDim2.fromOffset(10, 52), ZIndex = mid.ZIndex })
+		end
 		doubling("TwoXSpeed", "DOUBLE YOUR SPEED", T.blue)
 		doubling("TwoXCoins", "DOUBLE YOUR CASH", T.green)
 		codesCard(sc, y, 76)
 		y += 76 + GAP + 8
 
 		header(CATEGORIES[2])
-		grid("SpeedPacks", { { "product", "SpeedPack1" }, { "product", "SpeedPack2" }, { "product", "SpeedPack3" }, { "product", "SpeedPack4" } }, CATEGORIES[2].color)
+		grid("SpeedPacks", { { "product", "SpeedPack0" }, { "product", "SpeedPack1" }, { "product", "SpeedPack2" }, { "product", "SpeedPack3" }, { "product", "SpeedPack4" } }, CATEGORIES[2].color)
 		header(CATEGORIES[3])
-		grid("MoneyPacks", { { "product", "MoneyPack1" }, { "product", "MoneyPack2" }, { "product", "MoneyPack3" }, { "product", "MoneyPack4" } }, CATEGORIES[3].color)
+		grid("MoneyPacks", { { "product", "MoneyPack0" }, { "product", "MoneyPack1" }, { "product", "MoneyPack2" }, { "product", "MoneyPack3" }, { "product", "MoneyPack4" } }, CATEGORIES[3].color)
 		header(CATEGORIES[4])
 		local passes = {}
 		for _, key in PASSES do

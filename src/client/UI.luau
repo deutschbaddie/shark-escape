@@ -398,6 +398,11 @@ end
 
 function UI.icon(parent: Instance, name: string, props: { [string]: any }?): GuiObject
 	local icons = Config.Icons
+	-- an alias uses another icon's art, unless this name has its own image
+	local own = tostring(icons.ids and icons.ids[name] or ""):match("%d+")
+	if not own and icons.alias and icons.alias[name] then
+		name = icons.alias[name]
+	end
 	local single = tostring(icons.ids and icons.ids[name] or ""):match("%d+")
 	local cell = icons.cells[name]
 	local sheet = cell and sheetId(cell[1]) or ""

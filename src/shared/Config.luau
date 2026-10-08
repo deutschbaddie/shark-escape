@@ -497,7 +497,7 @@ Config.Passes = {
 	TwoXCoins = { iconName = "X2Coins", id = 0, price = 199, name = "2x Coins", icon = "", desc = "Double coins from your tank" },
 	AutoCollect = { iconName = "Magnet", id = 0, price = 99, name = "Auto Collect", icon = "", desc = "Coins go straight to you" },
 	LuckyNet = { iconName = "Clover", id = 0, price = 199, name = "Lucky Net", icon = "", desc = "+15% chance to upgrade rarity" },
-	BigTank = { iconName = "BigTank", id = 0, price = 99, name = "+4 Tank Slots", icon = "", desc = "Room for 4 more creatures" },
+	BigTank = { iconName = "TankPlus", id = 0, price = 99, name = "+4 Tank Slots", icon = "", desc = "Room for 4 more creatures" },
 	VIP = { iconName = "Crown", id = 0, price = 399, name = "VIP", icon = "", desc = "Gold wake, VIP tag, +10% coins" },
 	GoldDuck = { iconName = "GoldDuck", id = 0, price = 99, name = "Golden Duck", icon = "", desc = "Ride it - x1.25 speed gain" },
 	SharkBoard = { iconName = "SharkBoard", id = 0, price = 199, name = "Shark Board", icon = "", desc = "Ride it - x1.5 speed gain" },
@@ -505,7 +505,12 @@ Config.Passes = {
 }
 
 Config.Products = {
-	Shield = { iconName = "Shield", id = 0, price = 25, name = "Shark Shield", icon = "", desc = "Survive one bite, keep your creature" },
+	-- tiny-price items: turn non-payers into payers (the first purchase is the hard one)
+	SpeedDeal = { iconName = "X2Speed", id = 0, price = 3, name = "x2 Speed Deal", icon = "", desc = "2x Speed for 30 minutes. One time only!" },
+	Rescue = { iconName = "Shield", id = 0, price = 9, name = "Save Your Creature", icon = "", desc = "Get back the creature the shark just ate" },
+	SpeedPack0 = { iconName = "SpeedPack0", id = 0, price = 9, name = "Mini Speed Pack", icon = "", desc = "3 minutes of your speed gain" },
+	MoneyPack0 = { iconName = "MoneyPack0", id = 0, price = 9, name = "Mini Cash Pack", icon = "", desc = "3 minutes of your tank income" },
+	Shield = { iconName = "Shield", id = 0, price = 9, name = "Shark Shield", icon = "", desc = "Survive one bite, keep your creature" },
 	SpeedBoost = { iconName = "Boost", id = 0, price = 49, name = "2x Speed (15 min)", icon = "", desc = "Double speed gain for 15 minutes" },
 	LuckPotion = { iconName = "Potion", id = 0, price = 49, name = "Luck Potion (10 min)", icon = "", desc = "+15% rarity upgrade chance" },
 	GoldenBubble = { iconName = "GoldBubble", id = 0, price = 99, name = "Golden Bubble", icon = "",
@@ -534,6 +539,8 @@ Config.Products = {
 -- player still gets a good jump). The store shows this live and the server
 -- grants exactly this (Market.luau), both through Config.packAmount.
 Config.Packs = {
+	SpeedPack0 = { kind = "speed", seconds = 180, min = 300 },
+	MoneyPack0 = { kind = "money", seconds = 180, min = 300 },
 	SpeedPack1 = { kind = "speed", seconds = 600, min = 1000 },
 	SpeedPack2 = { kind = "speed", seconds = 2400, min = 4000 },
 	SpeedPack3 = { kind = "speed", seconds = 7200, min = 12000 },
@@ -599,20 +606,64 @@ Config.Images = {
 -- just the number). Order of use: ids[name] > sheet > emoji fallback.
 -- (The two sheets in assets/icons work too; leave them "" when using singles.)
 Config.Icons = {
+	-- one uploaded image per icon (assets/icons/ui/<Name>.png): paste each id
 	ids = {
-		-- HUD (upload these first)
-		Sneaker = "", Cash = "", Shop = "", Index = "", Rides = "", Tank = "", Rebirth = "", Shark = "",
-		-- popups, shop cards, guide
-		Arrow = "", Clock = "", MoneyBag = "", Gift = "", Speed = "", Coins = "",
-		X2Speed = "", X2Coins = "", Magnet = "", Clover = "", BigTank = "", Crown = "",
-		GoldDuck = "", SharkBoard = "", RainbowSki = "", Shield = "", Boost = "", Potion = "", GoldBubble = "",
-		Lock = "", Trophy = "", Sparkle = "", Chest = "", Fin = "", Fish = "", Island = "",
-		-- new HUD icons (upload as single images)
-		Friends = "", Coral = "", Settings = "",
-		StarterPack = "", ProPack = "", MegaPack = "",
-		-- store packs (until uploaded they reuse the Speed / MoneyBag art)
-		SpeedPack1 = "", SpeedPack2 = "", SpeedPack3 = "", SpeedPack4 = "",
-		MoneyPack1 = "", MoneyPack2 = "", MoneyPack3 = "", MoneyPack4 = "",
+		Arrow = "rbxassetid://127210137138387",
+		BigTank = "rbxassetid://137499577493965",
+		Boost = "rbxassetid://140304359429027",
+		Cash = "rbxassetid://80047757989726",
+		Chest = "rbxassetid://101226304202316",
+		Clock = "rbxassetid://112661427822656",
+		Clover = "rbxassetid://132866160212075",
+		Coral = "",
+		Crown = "rbxassetid://114158201413391",
+		Fin = "rbxassetid://131903568679872",
+		Fish = "rbxassetid://98109121245131",
+		Friends = "",
+		Gift = "rbxassetid://93571854934331",
+		GoldBubble = "rbxassetid://134918808113439",
+		GoldDuck = "rbxassetid://110089934254674",
+		Index = "rbxassetid://109491429136095",
+		Island = "rbxassetid://82033413302776",
+		Lock = "rbxassetid://130427183143346",
+		Magnet = "rbxassetid://112194863499072",
+		MegaPack = "",
+		MoneyBag = "rbxassetid://85225249183036",
+		Potion = "rbxassetid://134893559399659",
+		ProPack = "",
+		RainbowSki = "rbxassetid://78188738181886",
+		Rebirth = "rbxassetid://105488271824344",
+		Rides = "rbxassetid://133654937419997",
+		Settings = "",
+		Shark = "rbxassetid://137499338329667",
+		SharkBoard = "rbxassetid://113240957401131",
+		Shield = "rbxassetid://94422263339192",
+		Shop = "rbxassetid://131480020306982",
+		Sneaker = "rbxassetid://116280052524580",
+		Sparkle = "rbxassetid://137983822280456",
+		StarCoin = "",
+		StarterPack = "",
+		StoreX2Coins = "",
+		StoreX2Speed = "",
+		Tank = "rbxassetid://76174517316957",
+		TankPlus = "",
+		Trophy = "rbxassetid://102570098387787",
+		X2Coins = "rbxassetid://90270224920927",
+		X2Speed = "rbxassetid://102805265182525",
+		ZoneAnchor = "",
+		ZoneKelp = "",
+		ZonePalm = "",
+		ZoneSquid = "",
+		ZoneWhale = "",
+		Speed = "rbxassetid://96474412288181",
+		Coins = "rbxassetid://73509864248623",
+	},
+	-- names the game asks for that share another icon's art
+	alias = {
+		BigTankPass = "TankPlus",
+		SpeedPack0 = "Sneaker", SpeedPack1 = "Sneaker", SpeedPack2 = "Sneaker", SpeedPack3 = "Sneaker", SpeedPack4 = "Sneaker",
+		MoneyPack0 = "Cash", MoneyPack1 = "Cash", MoneyPack2 = "MoneyBag", MoneyPack3 = "MoneyBag", MoneyPack4 = "Chest",
+		Lagoon = "ZonePalm", Reef = "Coral", Kelp = "ZoneKelp", Shipwreck = "ZoneAnchor", Deep = "ZoneWhale", Abyss = "ZoneSquid",
 	},
 	SheetA = "",
 	SheetB = "",

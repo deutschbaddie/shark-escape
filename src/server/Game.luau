@@ -31,6 +31,7 @@ export type Session = {
 	joinedAt: number,
 	eatenUntil: number,
 	fullWarned: number?,
+	lastLost: any?,
 	dirty: boolean,
 	inWater: boolean,
 	leaderSpeed: IntValue?,
@@ -263,6 +264,7 @@ function Game.push(s: Session)
 		playtime = p.playtime,
 		starter = p.starter,
 		starterNext = Config.StarterLadder[p.starterTier + 1], -- next pack to offer (nil = all bought)
+		dealBought = p.dealBought,
 		dailyDay = p.daily.day,
 		dailyWait = math.max(0, p.daily.last + Config.DAILY_GAP_HOURS * 3600 - now),
 		groupWait = math.max(0, p.groupClaim + Config.GroupChest.cooldownHours * 3600 - now),
@@ -553,7 +555,8 @@ function Game.bite(s: Session, sharkPos: Vector3): string
 		return "shield"
 	end
 	if s.carrying then
-		Game.notify(s.player, "lost", { r = s.carrying.r, m = s.carrying.m })
+		Game.notify(s.player, "lost", { r = s.carrying.r, m = s.carrying.m, z = s.carrying.z, s = s.carrying.s })
+		s.lastLost = s.carrying -- the 9 R$ "Save Your Creature" offer can return it
 		Game.setCarry(s, nil)
 	end
 	s.eatenUntil = os.clock() + Config.Shark.eatenTime + 2.5
