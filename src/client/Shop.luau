@@ -150,7 +150,7 @@ function Shop.openRides()
 				else
 					btnText, btnColor = "RIDE", C.sky
 					onClick = function()
-						State.action("equip", ride.id)
+						State.action("equipRide", ride.id)
 					end
 				end
 			elseif ride.robux then

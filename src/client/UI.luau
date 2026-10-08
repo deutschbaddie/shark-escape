@@ -61,7 +61,10 @@ function UI.autoScale(gui: ScreenGui): UIScale
 	end
 	rescale()
 	gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(rescale)
-	workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(rescale)
+	local cam = workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(rescale)
+	gui.Destroying:Connect(function()
+		cam:Disconnect()
+	end)
 	return scale
 end
 

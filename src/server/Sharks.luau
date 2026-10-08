@@ -30,7 +30,7 @@ for i, v in VARIANTS do
 end
 
 -- wire codes (SharkView.STATE_NAMES must match)
-local STATE = { charge = 1, circle = 2, leave = 3, bite = 4, stalk = 5, overshoot = 1 }
+local STATE = { charge = 1, circle = 2, leave = 3, bite = 4, stalk = 5, overshoot = 6 }
 
 type Hunter = {
 	id: number,

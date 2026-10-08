@@ -25,7 +25,7 @@ local SharkView = {}
 local player = Players.LocalPlayer
 local VARIANTS = { "Baby", "Hammerhead", "Tiger", "GreatWhite", "Mecha", "Megalodon" }
 -- wire codes from server Sharks.luau ("chase" = the charge)
-local STATE_NAMES = { "chase", "circle", "leave", "bite", "stalk" }
+local STATE_NAMES = { "chase", "circle", "leave", "bite", "stalk", "overshoot" }
 local BONES = { "Root", "Head", "Jaw", "Spine2", "Spine3", "Spine4", "Tail", "PecL", "PecR" }
 
 local folder = Instance.new("Folder")
@@ -332,7 +332,7 @@ end
 
 function SharkView.myHunter(): any
 	for id, sh in sharks do
-		if id > 0 and sh.victim == player.UserId and (sh.state == "stalk" or sh.state == "chase") then
+		if id > 0 and sh.victim == player.UserId and (sh.state == "stalk" or sh.state == "chase" or sh.state == "overshoot") then
 			return sh
 		end
 	end

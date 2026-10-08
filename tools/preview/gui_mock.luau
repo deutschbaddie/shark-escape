@@ -39,7 +39,7 @@ Color3.fromHSV = function(h, s, v) return Color3.new(v, v, v) end
 GUI_ROOTS = {}
 local G = {}
 local SIGNALS = { Activated = true, MouseButton1Down = true, MouseButton1Up = true, MouseEnter = true, MouseLeave = true,
-	InputBegan = true, InputEnded = true, InputChanged = true, Changed = true, AncestryChanged = true, DescendantAdded = true }
+	InputBegan = true, InputEnded = true, InputChanged = true, Changed = true, AncestryChanged = true, DescendantAdded = true, Destroying = true }
 G.__index = function(t, k)
 	local p = rawget(t, "_p")
 	if p[k] ~= nil then

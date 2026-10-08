@@ -463,6 +463,8 @@ local function sharkLine(pos: Vector3)
 		local mine = SharkView.myHunter()
 		if mine and mine.state == "chase" then
 			text, sub, color = "🦈 IT'S CHARGING!", "Swerve at the last second, or reach sand!", C.red
+		elseif mine and mine.state == "overshoot" then
+			text, sub, color = "🦈 IT MISSED! IT'S TURNING BACK", "Now's your chance: get to sand or an island", C.gold
 		elseif mine and mine.state == "stalk" then
 			text, sub, color = "🦈 A SHARK IS CIRCLING YOU!", "Follow the arrow to safety", C.red
 		elseif safe then

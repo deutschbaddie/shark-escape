@@ -573,7 +573,7 @@ actions.buyRide = function(s, id)
 	s.dirty = true
 end
 
-actions.equip = function(s, id)
+actions.equipRide = function(s, id)
 	if typeof(id) == "string" and Game.ownsRide(s, id) then
 		s.profile.ride = id
 		Game.attachRide(s)
@@ -928,7 +928,7 @@ local function fastTick()
 				if Layout.segmentDist(tank, from, pos) < Config.DEPOSIT_RADIUS then
 					local c = s.carrying :: Data.Creature
 					Game.setCarry(s, nil)
-					Game.addCreature(s, { r = c.r, z = c.z, m = c.m })
+					Game.addCreature(s, { r = c.r, z = c.z, m = c.m, s = c.s })
 				end
 			end
 		end
