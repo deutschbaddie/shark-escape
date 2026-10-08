@@ -30,7 +30,7 @@ Licenses are as the source listings give them (checked by the developer when dow
 | `mixkit-explainer-video-pops-whoosh-light-pop-3005` | Mixkit #3005 | uiOpen; uiClose (same pop, pitched down) | `rbxassetid://132051161428247` |
 | `mixkit-boing-hit-sound-2894` | Mixkit #2894 | uiError (first 0.5 s) | `rbxassetid://81137746729164` |
 | `mixkit-dry-pop-up-notification-alert-2356` | Mixkit #2356 | uiToast | `rbxassetid://130268760790939` |
-| `mixkit-movie-whoosh-impact-presentation-2903` | Mixkit #2903 | uiTakeover; under rebirth | `rbxassetid://93945704934482` |
+| `mixkit-movie-whoosh-impact-presentation-2903` | Mixkit #2903 | under rebirth | `rbxassetid://93945704934482` |
 | `mixkit-water-bubble-1317` | Mixkit #1317 | grab (with a splash layered under) | `rbxassetid://109536715402499` |
 | `mixkit-sea-water-splash-1198` | Mixkit #1198 | splash (water entry, 3D for other riders); under grab and the shark charge | `rbxassetid://78768880176281` |
 | `mixkit-fairy-magic-sparkle-871` | Mixkit #871 | grabRare | `rbxassetid://124096247708665` |
@@ -47,7 +47,7 @@ Licenses are as the source listings give them (checked by the developer when dow
 | `mixkit-aggressive-beast-roar-13` | Mixkit #13 | sharkCharge (3D at the shark; deeper, darker EQ, splash under) | `rbxassetid://133338904418165` |
 | `528962__steenish__crunch` | [Freesound 528962](https://freesound.org/s/528962/), CC0 | chomp (3D; deeper, splat under) | `rbxassetid://114947460738011` |
 | `445118__breviceps__cartoon-splat` | [Freesound 445118](https://freesound.org/s/445118/), CC0 | spat; under chomp | `rbxassetid://87181834248801` |
-| `mixkit-arrow-whoosh-1491` | Mixkit #1491 | dodge | `rbxassetid://97268804826952` |
+| `mixkit-arrow-whoosh-1491` | Mixkit #1491 | dodge; uiTakeover (pitched down) | `rbxassetid://97268804826952` |
 | `350917__csaszi__rubber-duck-csg` | [Freesound 350917](https://freesound.org/s/350917/), CC0 | duckSqueak (one squeak; also now and then while riding a duck) | `rbxassetid://105370668810111` |
 | `456151__jfournier18__dolphin-noise` | [Freesound 456151](https://freesound.org/s/456151/), CC0 | dolphin calls now and then while riding the Dolphin | `rbxassetid://96059363771818` |
 | `mixkit-sea-swimming-loop-1181` | Mixkit #1181 | rideSplash, rideKick, rideDolphin (different loops) | `rbxassetid://131576493971250` |

@@ -650,7 +650,7 @@ Config.SoundSlots = {
 	uiClose = { file = F.pop, pitch = 0.8, gain = 0.4 }, -- the open pop, lower
 	uiError = { file = F.boing, from = 0, to = 0.5, gain = 0.21, fade = 0.1 },
 	uiToast = { file = F.dryPop, gain = 0.81 },
-	uiTakeover = { file = F.whoosh, from = 0.1, to = 2.6, gain = 0.46, fade = 0.5 },
+	uiTakeover = { file = F.arrow, from = 0.1, to = 0.5, pitch = 0.85, gain = 0.44 }, -- a quick swoosh
 	-- catching + money
 	grab = { file = F.bubble, gain = 1.06, layers = { "grabSplash" } },
 	grabSplash = { file = F.splash, from = 0.45, to = 1.0, gain = 0.46, fade = 0.15 },
