@@ -57,7 +57,7 @@ local function render()
 	local f, body = UI.window(gui :: ScreenGui, "Sell Fish", C.green, Vector2.new(520, 470), close, "Cash")
 	window = f
 	local full = #list >= (d.maxDead or Config.Tank.maxDead)
-	UI.outlined(body, ("💀 Dead fish: %d/%d"):format(#list, d.maxDead or Config.Tank.maxDead), {
+	UI.outlined(body, ("Dead fish: %d/%d"):format(#list, d.maxDead or Config.Tank.maxDead), {
 		Size = UDim2.new(1, -20, 0, 30), Position = UDim2.fromOffset(10, 4), TextXAlignment = Enum.TextXAlignment.Left,
 		TextColor3 = full and C.red or C.white })
 	UI.outlined(body, "Unequipped catches don't earn. Sell them to make room for better ones!", {

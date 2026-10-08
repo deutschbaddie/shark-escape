@@ -133,7 +133,7 @@ local function drillStart(pos: Vector3)
 	drill.state = "chase"
 	drill.t = os.clock()
 	Water.setSafeGlow(true)
-	Fx.bigWord("🦈 SHARK DRILL!", C.red, 1.2)
+	Fx.bigWord("SHARK DRILL!", C.red, 1.2)
 	Fx.shake(1)
 	drill.shark = SharkView.spawnLocal(zone.shark, zone.sharkLength, from, yaw, function(sh, dt)
 		if sh.state == "leave" then
@@ -296,7 +296,7 @@ local function update()
 			advance(5)
 		elseif d.coins >= nxt.price then
 			at, label = Layout.RideShopPad + Vector3.new(0, 1, 0), "Ride Shop"
-			title, sub = ("Get the %s %s"):format(nxt.icon, nxt.name), ("Walk onto the Ride Shop pad · +%d speed every second!"):format(nxt.gain or 0)
+			title, sub = ("Get the %s"):format(nxt.name), ("Walk onto the Ride Shop pad · +%d speed every second!"):format(nxt.gain or 0)
 			HUD.pulseRide(true)
 		else
 			-- not enough yet: keep them on the loop that earns cash
@@ -307,7 +307,7 @@ local function update()
 			else
 				at, label = nearestBubble(pos), "Grab it!"
 			end
-			title = ("Save up for the %s %s"):format(nxt.icon, nxt.name)
+			title = ("Save up for the %s"):format(nxt.name)
 			sub = ("$%s / $%s · grab creatures, collect cash"):format(UI.short(d.coins), UI.short(nxt.price))
 		end
 	end

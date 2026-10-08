@@ -443,7 +443,7 @@ function Game.updateTankSign(s: Session)
 	end
 	local inc = Game.income(s)
 	plot.tankIncome.Text = ("$%s/s  ·  %d/%d Active"):format(formatShort(inc), Game.activeCount(s), tankSlots(s))
-	plot.tankOffline.Text = ("💤 $%s / day offline"):format(formatShort(Config.offlinePerDay(inc)))
+	plot.tankOffline.Text = ("$%s / day offline"):format(formatShort(Config.offlinePerDay(inc)))
 end
 
 -- a new catch arrives at the dock

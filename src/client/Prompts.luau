@@ -175,7 +175,7 @@ local function build(prompt: ProximityPrompt, inputType: Enum.ProximityPromptInp
 	key.TextScaled = true
 	key.ZIndex = circle.ZIndex + 2
 	if touch then
-		key.Text = "👆"
+		key.Text = "TAP"
 	elseif inputType == Enum.ProximityPromptInputType.Gamepad then
 		key.Text = GAMEPAD[prompt.GamepadKeyCode.Name] or prompt.GamepadKeyCode.Name
 	else

@@ -725,7 +725,7 @@ Remotes.get("SharkEvent").OnClientEvent:Connect(function(kind, data)
 		Fx.splash(at, sh and math.clamp(sh.L / 10, 0.8, 3) or 1.2)
 		Fx.sound("chomp", 0.8, 1.2, at)
 		if data.victim == player.UserId then
-			Fx.bigWord("🛡️ SHIELD!", UI.C.sky, 1)
+			Fx.bigWord("SHIELD!", UI.C.sky, 1)
 			Fx.ring(at, UI.C.sky, 30)
 			if hrp then
 				local away = (hrp.Position - at) * Vector3.new(1, 0, 1)

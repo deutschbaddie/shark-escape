@@ -85,7 +85,7 @@ function Index.open()
 				render()
 			end, { Size = UDim2.new(1, -12, 0, 52), LayoutOrder = i })
 			if zone.gate > d.speed then
-				UI.setText(b, "🔒 " .. zone.name)
+				UI.setText(b, "" .. zone.name)
 			end
 		end
 
@@ -169,7 +169,7 @@ function Index.open()
 			UI.icon(chip, spec[1], { Size = UDim2.fromOffset(36, 36), Position = UDim2.fromOffset(2, 5) })
 			UI.outlined(chip, spec[2], { Size = UDim2.new(1, -40, 0, 26), Position = UDim2.fromOffset(36, 10), TextColor3 = spec[3] })
 		end
-		local btnText = claimed and "CLAIMED ✅" or (found and "CLAIM!" or "🔒 FIND IT")
+		local btnText = claimed and "CLAIMED " or (found and "CLAIM!" or "FIND IT")
 		UI.button(rewards, btnText, (found and not claimed) and C.green or C.panel, function()
 			if found and not claimed then
 				State.action("claimIndex", key)
@@ -177,7 +177,7 @@ function Index.open()
 		end, { Size = UDim2.new(1, -20, 0, 50), Position = UDim2.new(0.5, 0, 1, -8), AnchorPoint = Vector2.new(0.5, 1) })
 
 		local all = unclaimedCount(d)
-		UI.setText(claimAll, all > 0 and ("📖 CLAIM ALL (%d)!"):format(all) or "📖 Find creatures to fill your Index!")
+		UI.setText(claimAll, all > 0 and ("CLAIM ALL (%d)!"):format(all) or "Find creatures to fill your Index!")
 		claimAll.BackgroundColor3 = all > 0 and C.blue or C.panel
 	end
 

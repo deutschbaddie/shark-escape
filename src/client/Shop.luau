@@ -140,13 +140,13 @@ function Shop.openRides()
 			local owned = d.rides[ride.id] == true
 			local f = item(scroll, ride.order, ride.robux and C.pink or (owned and C.green or C.sky))
 			viewport(f, Rides.build(ride.id))
-			UI.outlined(f, ride.icon .. " " .. ride.name, { Size = UDim2.new(1, -12, 0, 24), Position = UDim2.fromOffset(6, 112) })
+			UI.outlined(f, ride.name, { Size = UDim2.new(1, -12, 0, 24), Position = UDim2.fromOffset(6, 112) })
 			local perk = ride.robux and ("x%s speed gain"):format(tostring(ride.mult)) or ("+%d speed / sec"):format(ride.gain or 0)
 			UI.outlined(f, perk, { Size = UDim2.new(1, -12, 0, 20), Position = UDim2.fromOffset(6, 138), TextColor3 = C.gold })
 			local btnText, btnColor, onClick = "", C.panel, function() end
 			if owned then
 				if d.ride == ride.id then
-					btnText, btnColor = "RIDING ✅", C.panel
+					btnText, btnColor = "RIDING ", C.panel
 				else
 					btnText, btnColor = "RIDE", C.sky
 					onClick = function()
@@ -167,7 +167,7 @@ function Shop.openRides()
 				foundNext = true
 				local can = d.coins >= ride.price
 				if can and not Shop.atRideShop() then
-					btnText, btnColor = "📍 GO TO SHOP", C.sky
+					btnText, btnColor = "GO TO SHOP", C.sky
 					onClick = function()
 						Shop.goToRideShop()
 					end
@@ -179,7 +179,7 @@ function Shop.openRides()
 					end
 				end
 			else
-				btnText = "🔒 $" .. UI.short(ride.price)
+				btnText = "$" .. UI.short(ride.price)
 			end
 			UI.button(f, btnText, btnColor, onClick, { Size = UDim2.new(1, -16, 0, 44), Position = UDim2.new(0, 8, 1, -52) })
 		end
@@ -227,7 +227,7 @@ function Shop.openStore()
 		UI.outlined(f, def.name, { Size = UDim2.new(1, -12, 0, 26), Position = UDim2.fromOffset(6, 92) })
 		UI.outlined(f, def.desc, { Size = UDim2.new(1, -16, 0, 40), Position = UDim2.fromOffset(8, 122), TextWrapped = true, TextColor3 = Color3.fromRGB(230, 236, 255) })
 		if owned then
-			UI.button(f, "OWNED ✅", C.panel, function() end, { Size = UDim2.new(1, -16, 0, 44), Position = UDim2.new(0, 8, 1, -52) })
+			UI.button(f, "OWNED ", C.panel, function() end, { Size = UDim2.new(1, -16, 0, 44), Position = UDim2.new(0, 8, 1, -52) })
 		else
 			priceButton(f, kind, key, def)
 		end

@@ -40,7 +40,7 @@ function Travel.go(kind: string)
 	local pos = hrp.Position
 	if Layout.inWater(pos) and not Layout.islandAt(pos, 0) then
 		Guide.set("shop", pad + Vector3.new(0, 1, 0), LABELS[kind])
-		Fx.bigWord("🏝️ GET TO LAND FIRST!", UI.C.sky, 1.1)
+		Fx.bigWord("GET TO LAND FIRST!", UI.C.sky, 1.1)
 		return
 	end
 	Fx.splash(pos, 0.8)

@@ -364,12 +364,12 @@ local function render(d: any)
 				prevGate = z.gate
 			end
 		end
-		goalText.Text = ("🔒 %s   %s / %s"):format(gate.name, UI.short(d.speed), UI.short(gate.gate))
+		goalText.Text = ("%s   %s / %s"):format(gate.name, UI.short(d.speed), UI.short(gate.gate))
 		goalFill.Size = UDim2.fromScale(math.clamp((d.speed - prevGate) / (gate.gate - prevGate), 0.02, 1), 1)
 		goalFill.BackgroundColor3 = C.blue
 	else
 		local ready = d.speed >= Config.Rebirth.speed
-		goalText.Text = ready and "🔁 REBIRTH READY!" or ("🔁 Rebirth at %s speed"):format(UI.short(Config.Rebirth.speed))
+		goalText.Text = ready and "REBIRTH READY!" or ("Rebirth at %s speed"):format(UI.short(Config.Rebirth.speed))
 		goalFill.Size = UDim2.fromScale(math.clamp(d.speed / Config.Rebirth.speed, 0.02, 1), 1)
 		goalFill.BackgroundColor3 = C.green
 	end
@@ -395,7 +395,7 @@ local function render(d: any)
 	if nxt then
 		local afford = d.coins >= nxt.price
 		local here = HUD.atRideShop and HUD.atRideShop()
-		UI.setText(rideBtn, afford and (here and ("%s BUY %s!"):format(nxt.icon, nxt.name:upper()) or ("%s GET %s!"):format(nxt.icon, nxt.name:upper())) or ("%s %s"):format(nxt.icon, nxt.name))
+		UI.setText(rideBtn, afford and (here and ("BUY %s!"):format(nxt.name:upper()) or ("GET %s!"):format(nxt.name:upper())) or nxt.name)
 		ridePrice.Text = ("+%d speed/s  ·  $%s"):format(nxt.gain or 0, UI.short(nxt.price))
 		rideFill.Size = UDim2.fromScale(math.clamp(d.coins / nxt.price, 0, 1), 1)
 		rideBtn.BackgroundColor3 = afford and C.green or C.gold
@@ -413,7 +413,7 @@ local function render(d: any)
 		local sp = Config.species(d.carrying.z, d.carrying.r)
 		carryChip.Visible = true
 		carryChip.TextColor3 = r.color
-		carryChip.Text = ("%s %s → bring it home to your tank!"):format(sp.icon, Config.fullName(d.carrying.z, d.carrying.r, d.carrying.m, d.carrying.s))
+		carryChip.Text = ("%s → bring it home to your tank!"):format(Config.fullName(d.carrying.z, d.carrying.r, d.carrying.m, d.carrying.s))
 	else
 		carryChip.Visible = false
 	end
@@ -428,7 +428,7 @@ local quietTitlesUntil = 0 -- no "Shark Beach" title right after you wash up
 local menuOpen = false
 
 -- one emoji either side of each zone's title (all widely supported)
-local ZONE_EMOJI = { Lagoon = "🌴", Reef = "🐠", Kelp = "🌿", Shipwreck = "⚓", Deep = "🐋", Abyss = "🦑" }
+local ZONE_EMOJI = { Lagoon = "", Reef = "", Kelp = "", Shipwreck = "", Deep = "", Abyss = "" }
 
 local function myPos(): Vector3?
 	local char = player.Character
@@ -453,8 +453,8 @@ local function statusLine(pos: Vector3?)
 	end
 	if menuOpen or atMyDock(pos) then
 		-- what the tank earns while you're away (shown when you open the menu to leave)
-		Notify.status(d.income > 0 and ("💤 Your tank earns $%s / day while you're offline"):format(UI.short(Config.offlinePerDay(d.income)))
-			or "💤 Put creatures in your tank to earn while you're offline", Color3.fromRGB(190, 225, 255))
+		Notify.status(d.income > 0 and ("Your tank earns $%s / day while you're offline"):format(UI.short(Config.offlinePerDay(d.income)))
+			or "Put creatures in your tank to earn while you're offline", Color3.fromRGB(190, 225, 255))
 	elseif Layout.inWater(pos) then
 		local zone = Config.zoneAt(pos.Z)
 		Notify.status(("%s · %d m"):format(zone and zone.name or "Lagoon", math.floor((pos.Z - Config.SHORE_Z) / 3.5)), C.white)
@@ -469,22 +469,22 @@ local function sharkLine(pos: Vector3)
 	local text, sub, color
 	if phase == "warning" then
 		if safe then
-			text, sub, color = ("🦈 Shark attack in %d"):format(left), "You're safe here", C.green
+			text, sub, color = ("Shark attack in %d"):format(left), "You're safe here", C.green
 		else
-			text, sub, color = ("🦈 SHARK ATTACK IN %d!"):format(left), "Get to sand or an island", C.red
+			text, sub, color = ("SHARK ATTACK IN %d!"):format(left), "Get to sand or an island", C.red
 		end
 	else
 		local mine = SharkView.myHunter()
 		if mine and mine.state == "chase" then
-			text, sub, color = "🦈 IT'S CHARGING!", "Swerve at the last second, or reach sand!", C.red
+			text, sub, color = "IT'S CHARGING!", "Swerve at the last second, or reach sand!", C.red
 		elseif mine and mine.state == "overshoot" then
-			text, sub, color = "🦈 IT MISSED! IT'S TURNING BACK", "Now's your chance: get to sand or an island", C.gold
+			text, sub, color = "IT MISSED! IT'S TURNING BACK", "Now's your chance: get to sand or an island", C.gold
 		elseif mine and mine.state == "stalk" then
-			text, sub, color = "🦈 A SHARK IS CIRCLING YOU!", "Follow the arrow to safety", C.red
+			text, sub, color = "A SHARK IS CIRCLING YOU!", "Follow the arrow to safety", C.red
 		elseif safe then
-			text, sub, color = ("🏝️ Safe here · sharks leave in %d"):format(left), nil, C.green
+			text, sub, color = ("Safe here · sharks leave in %d"):format(left), nil, C.green
 		else
-			text, sub, color = "🦈 SHARKS ARE HUNTING!", "Catches are luckier right now... if you dare", C.gold
+			text, sub, color = "SHARKS ARE HUNTING!", "Catches are luckier right now... if you dare", C.gold
 		end
 	end
 	Notify.banner(text, { key = "shark", sticky = true, priority = 5, sub = sub, color = color })
@@ -500,11 +500,11 @@ local function frame()
 		if id ~= lastZone then
 			if lastZone ~= nil and os.clock() > quietTitlesUntil then
 				if zone then
-					local e = ZONE_EMOJI[zone.id] or "🌴"
+					local e = ZONE_EMOJI[zone.id] or ""
 					Notify.banner(("%s %s %s"):format(e, zone.name, e), { key = "zone", priority = 2, time = 2.4, big = true,
 						color = zone.water:Lerp(Color3.new(1, 1, 1), 0.35), sub = ("%s waters"):format((zone.shark:gsub("(%l)(%u)", "%1 %2"))) })
 				else
-					Notify.banner("🏖️ Shark Beach 🏖️", { key = "zone", priority = 2, time = 2, big = true, color = Color3.fromRGB(255, 220, 120), sub = "Sand is always safe" })
+					Notify.banner("Shark Beach ", { key = "zone", priority = 2, time = 2, big = true, color = Color3.fromRGB(255, 220, 120), sub = "Sand is always safe" })
 				end
 			end
 			lastZone = id
@@ -542,11 +542,11 @@ handlers.grab = function(d)
 	Fx.sound("grab", 0.6, 1 + r.index * 0.05)
 	-- the bigger the catch, the bigger the moment
 	if r.index >= 5 then
-		Notify.takeover("LEGENDARY!", ("%s %s"):format(sp.icon, name), r.color, 1.8)
+		Notify.takeover("LEGENDARY!", name, r.color, 1.8)
 		Fx.shake(1.5)
 		Fx.sound("legendary", 0.8)
 	elseif d.lucky then
-		Notify.word("🍀 LUCKY " .. d.r:upper() .. "!", C.green, 1)
+		Notify.word("LUCKY " .. d.r:upper() .. "!", C.green, 1)
 		Fx.sound("lucky", 0.7)
 	elseif d.pity or r.index >= 3 then
 		Notify.word(d.r:upper() .. "!", r.color, 1)
@@ -554,7 +554,7 @@ handlers.grab = function(d)
 	end
 	local note = newDiscovery and "  · NEW!" or ""
 	newDiscovery = false
-	Notify.toast(("%s %s  +$%s/s%s"):format(sp.icon, name, UI.short(d.v), note), r.color)
+	Notify.toast(("%s  +$%s/s%s"):format(name, UI.short(d.v), note), r.color)
 end
 
 handlers.discover = function()
@@ -564,7 +564,7 @@ handlers.discover = function()
 end
 
 handlers.indexClaim = function(d)
-	Notify.word("📖 CLAIMED!", C.orange, 0.9)
+	Notify.word("CLAIMED!", C.orange, 0.9)
 	Notify.toast(("+$%s  +%s speed"):format(UI.short(d.coins), UI.short(d.speed)), C.green)
 	UI.pop(coinsLabel, 1.3)
 	UI.pop(speedLabel, 1.3)
@@ -584,7 +584,7 @@ handlers.deposit = function(d)
 	if d.active then
 		Fx.popup3D(tank + Vector3.new(0, 11, 0), ("+$%s/s"):format(UI.short(d.v)), C.money, true)
 	else
-		Fx.popup3D(tank + Vector3.new(0, 11, 0), "💤 Not equipped", Color3.fromRGB(170, 170, 180), true)
+		Fx.popup3D(tank + Vector3.new(0, 11, 0), "Not equipped", Color3.fromRGB(170, 170, 180), true)
 	end
 end
 
@@ -600,11 +600,11 @@ handlers.code = function(d)
 		if d.shields then
 			table.insert(bits, ("+%d shield"):format(d.shields))
 		end
-		Notify.word("🎟️ CODE REDEEMED!", C.green, 1)
+		Notify.word("CODE REDEEMED!", C.green, 1)
 		Notify.toast(table.concat(bits, "  "), C.green)
 		Fx.sound("coin", 0.7)
 	else
-		Notify.toast("❌ " .. tostring(d.text), C.red)
+		Notify.toast("" .. tostring(d.text), C.red)
 		Fx.sound("uiError", 0.6)
 	end
 end
@@ -620,7 +620,7 @@ handlers.tankFull = function(d)
 end
 
 handlers.sold = function(d)
-	Notify.word(("💰 SOLD %d!"):format(d.count), C.green, 0.9)
+	Notify.word(("SOLD %d!"):format(d.count), C.green, 0.9)
 	Notify.toast("+$" .. UI.short(d.coins), C.money)
 	Fx.sound("buy", 0.7)
 	UI.pop(coinsLabel, 1.3)
@@ -645,7 +645,7 @@ handlers.ride = function(d)
 	end
 	Fx.sound("buy", 0.8)
 	Fx.sound("rideNew", 0.8)
-	Notify.takeover("NEW RIDE!", ("%s %s · +%s speed every second"):format(ride and ride.icon or "", ride and ride.name or "", UI.short(d.gain)), C.gold, 1.6)
+	Notify.takeover("NEW RIDE!", ("%s · +%s speed every second"):format(ride and ride.name or "", UI.short(d.gain)), C.gold, 1.6)
 	UI.pop(gainLabel, 1.5)
 end
 
@@ -654,7 +654,7 @@ handlers.rideShop = function()
 end
 
 handlers.slot = function(d)
-	Notify.toast(("🐟 Your tank now holds %d!"):format(d.slots), C.green)
+	Notify.toast(("Your tank now holds %d!"):format(d.slots), C.green)
 end
 
 handlers.unlock = function(d)
@@ -670,7 +670,7 @@ handlers.unlock = function(d)
 end
 
 handlers.gate = function(d)
-	Notify.word(("🔒 NEED %s SPEED"):format(UI.short(d.need)), C.red, 1)
+	Notify.word(("NEED %s SPEED"):format(UI.short(d.need)), C.red, 1)
 	Fx.sound("uiError", 0.6)
 	Fx.shake(1)
 end
@@ -695,7 +695,7 @@ handlers.spat = function()
 	Fx.sound("spat", 0.8)
 	local d = State.data
 	if d and d.playtime >= Config.SHOP_UNLOCK_SECONDS and Config.Products.Shield.id ~= 0 then
-		local b = UI.button(gui, "🛡️ Shield next time  R$" .. Config.Products.Shield.price, C.sky, function()
+		local b = UI.button(gui, "Shield next time  R$" .. Config.Products.Shield.price, C.sky, function()
 			MarketplaceService:PromptProductPurchase(player, Config.Products.Shield.id)
 		end, { Size = UDim2.fromOffset(260, 44), Position = UDim2.new(0.5, 0, 1, -168), AnchorPoint = Vector2.new(0.5, 1) })
 		task.delay(6, function()
@@ -705,7 +705,7 @@ handlers.spat = function()
 end
 
 handlers.shield = function()
-	Notify.toast("🛡️ Your shield blocked the bite!", C.sky)
+	Notify.toast("Your shield blocked the bite!", C.sky)
 end
 
 handlers.rebirth = function(d)
@@ -770,7 +770,7 @@ local function onPhase(kind: string, data: any)
 		Water.setSafeGlow(false)
 		Notify.clear("shark")
 		if was then
-			Notify.toast("✅ The sharks are gone. Back to the water!", C.green)
+			Notify.toast("The sharks are gone. Back to the water!", C.green)
 		end
 	end
 end

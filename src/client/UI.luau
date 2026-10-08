@@ -363,12 +363,10 @@ function UI.icon(parent: Instance, name: string, props: { [string]: any }?): Gui
 		table.insert(sheetImages[cell[1]], img)
 		obj = img
 	else
-		local t = Instance.new("TextLabel")
-		t.BackgroundTransparency = 1
-		t.TextScaled = true
-		t.Font = UI.FONT
-		t.Text = icons.emoji[name] or name
-		obj = t
+		-- no image yet (upload the icon sheets): leave the spot empty, never an emoji
+		local f = Instance.new("Frame")
+		f.BackgroundTransparency = 1
+		obj = f
 	end
 	obj.Name = "Icon"
 	obj.Size = UDim2.fromScale(1, 1)

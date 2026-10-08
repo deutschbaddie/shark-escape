@@ -98,8 +98,8 @@ function Hub.confirmRebirth()
 	UI.outlined(body, ("Speed gain  x%s  →  x%s  forever!"):format(string.format("%g", math.floor(now * 100) / 100), string.format("%g", math.floor(nextMult * 100) / 100)),
 		{ Size = UDim2.new(1, -20, 0, 44), Position = UDim2.fromOffset(10, 6), TextColor3 = C.money })
 	local lines = UI.inset(body, { Size = UDim2.new(1, -20, 0, 130), Position = UDim2.fromOffset(10, 60) })
-	UI.outlined(lines, "❌ Resets: speed, coins and rides", { Size = UDim2.new(1, -24, 0, 34), Position = UDim2.fromOffset(12, 14), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = Color3.fromRGB(255, 140, 140) })
-	UI.outlined(lines, "✅ Keeps: your tank, Index, shields and Robux items", { Size = UDim2.new(1, -24, 0, 34), Position = UDim2.fromOffset(12, 64), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = C.money })
+	UI.outlined(lines, "Resets: speed, coins and rides", { Size = UDim2.new(1, -24, 0, 34), Position = UDim2.fromOffset(12, 14), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = Color3.fromRGB(255, 140, 140) })
+	UI.outlined(lines, "Keeps: your tank, Index, shields and Robux items", { Size = UDim2.new(1, -24, 0, 34), Position = UDim2.fromOffset(12, 64), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = C.money })
 	UI.button(body, "Not yet", C.panel, function()
 		Shop.close()
 	end, { Size = UDim2.fromOffset(190, 62), Position = UDim2.new(0.27, 0, 1, -4), AnchorPoint = Vector2.new(0.5, 1) })
@@ -226,13 +226,13 @@ local function updateShowcase()
 	end
 	local label, sub = showcaseLabel :: TextLabel, showcaseSub :: TextLabel
 	if nxt then
-		label.Text = ("%s %s"):format(nxt.icon, nxt.name)
+		label.Text = nxt.name
 		local can = d.coins >= nxt.price
 		sub.Text = can and ("$%s  ·  +%d/s  ·  STEP ON THE PAD!"):format(UI.short(nxt.price), nxt.gain or 0)
 			or ("$%s  ·  +%d speed/sec"):format(UI.short(nxt.price), nxt.gain or 0)
 		sub.TextColor3 = can and C.money or C.gold
 	else
-		label.Text = "🏆 Every ride owned!"
+		label.Text = "Every ride owned!"
 		sub.Text = "Rebirth for a permanent boost"
 	end
 end
@@ -260,11 +260,11 @@ local function gateTick()
 					local t = sg:FindFirstChild("Text") :: TextLabel?
 					local sub = sg:FindFirstChild("Sub") :: TextLabel?
 					if t then
-						t.Text = (open and "🔓 %s" or "🔒 %s"):format(g:GetAttribute("ZoneName"))
+						t.Text = (open and "%s" or "%s"):format(g:GetAttribute("ZoneName"))
 						t.TextColor3 = open and C.money or C.white
 					end
 					if sub then
-						sub.Text = open and "Unlocked!" or ("Need ⚡%s speed · you have %s"):format(UI.short(need), UI.short(d.speed))
+						sub.Text = open and "Unlocked!" or ("Need %s speed · you have %s"):format(UI.short(need), UI.short(d.speed))
 						sub.TextColor3 = open and C.money or C.gold
 					end
 				end

@@ -125,7 +125,7 @@ local function show(m: Model)
 	local sizeLabel = Config.sizeLabel(s)
 	line(box, (sizeLabel and (sizeLabel .. " ") or "") .. Config.species(z, r).name, 22, C.white, 1)
 	line(box, (mut and (mut .. " · ") or "") .. r, 16, mut and (Config.mutation(mut) :: any).color or rarity.color, 2)
-	line(box, "⚖️ " .. Config.formatKg(Config.creatureKg(z, r, s)), 16, Color3.fromRGB(180, 220, 255), 3)
+	line(box, "" .. Config.formatKg(Config.creatureKg(z, r, s)), 16, Color3.fromRGB(180, 220, 255), 3)
 	if m:GetAttribute("Dead") then
 		-- not earning: dimmed $/s
 		line(box, ("$%s/s  ·  not equipped"):format(UI.short(perSecond)), 18, Color3.fromRGB(120, 130, 120), 4)
