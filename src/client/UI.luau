@@ -1,6 +1,18 @@
--- Cartoon UI kit in the classic simulator look: studded, gradient-lit buttons
--- with a thick dark outline, bold outlined text, dark panels with a bright
--- studded header bar and a red X.
+-- The game's design system. Every screen builds from these tokens and
+-- components, so the whole UI reads as one game:
+--   colors   by meaning (UI.T.role): blue = progression / places / Index,
+--            orange = rides + speed upgrades, green = money / success,
+--            pink = rewards + gifts, red = danger / sharks, gold = rare /
+--            premium, navy = panels. Each has a darker shade for depth.
+--   shape    rounded everything (UI.R), chunky buttons with a darker base
+--            under the face (depth instead of heavy black outlines),
+--            strokes only where they help (UI.S)
+--   space    4 / 8 / 12 / 16 / 24 / 32 (UI.SP)
+--   type     4 levels (UI.TYPE): hero, value, body, meta
+--   motion   hover 1.04, press 0.95, 0.08 to 0.18 s; bars tween; pops spring
+-- Components: button, iconButton, wideButton, navButton, pill, card, window
+-- (with a dimmed backdrop), popup (title / text / primary + secondary),
+-- bar + setBar, lockedState, badge, toggle, chip.
 
 local TweenService = game:GetService("TweenService")
 
@@ -11,24 +23,66 @@ local UI = {}
 UI.onClick = nil :: (() -> ())?
 UI.onOpen = nil :: (() -> ())?
 UI.onClose = nil :: (() -> ())?
+UI.onHover = nil :: (() -> ())?
 
+local RGB = Color3.fromRGB
+-- design tokens: change these and the whole game follows
+UI.T = {
+	navy = RGB(24, 34, 74), -- panels
+	navyDark = RGB(14, 20, 48), -- panel depth / tracks / text outline
+	navyLight = RGB(40, 56, 112), -- cards on panels
+	line = RGB(70, 100, 190), -- subtle panel border
+	blue = RGB(36, 140, 255),
+	orange = RGB(255, 150, 30),
+	green = RGB(70, 200, 60),
+	pink = RGB(240, 70, 170),
+	red = RGB(235, 50, 60),
+	gold = RGB(255, 200, 40),
+	purple = RGB(150, 85, 255),
+	white = RGB(255, 255, 255),
+	mute = RGB(150, 165, 205),
+	shadow = 0.55, -- drop shadow transparency
+}
+-- radius: large panels, cards, buttons, small chips
+UI.R = { panel = 18, card = 14, button = 12, chip = 8 }
+-- strokes: big CTAs, cards, subtle containers, text
+UI.S = { cta = 3, card = 2, subtle = 1.5, text = 2 }
+UI.SP = { 4, 8, 12, 16, 24, 32 }
+-- type levels: { size, font }
+UI.TYPE = {
+	hero = { 34, Enum.Font.FredokaOne },
+	value = { 28, Enum.Font.FredokaOne },
+	body = { 20, Enum.Font.FredokaOne },
+	meta = { 15, Enum.Font.FredokaOne },
+}
+
+-- darker / lighter shade of a color (for depth, borders, gradients)
+function UI.dark(c: Color3, k: number?): Color3
+	local h, s, v = c:ToHSV()
+	return Color3.fromHSV(h, math.min(s * 1.05, 1), v * (1 - (k or 0.32)))
+end
+function UI.light(c: Color3, k: number?): Color3
+	return c:Lerp(Color3.new(1, 1, 1), k or 0.25)
+end
+
+-- legacy names used around the game, mapped onto the tokens
 UI.C = {
-	ink = Color3.fromRGB(22, 22, 34),
-	white = Color3.fromRGB(255, 255, 255),
-	pink = Color3.fromRGB(255, 70, 170),
-	blue = Color3.fromRGB(30, 120, 255),
-	sky = Color3.fromRGB(40, 200, 255),
-	index = Color3.fromRGB(35, 165, 255),
-	green = Color3.fromRGB(78, 206, 48),
-	money = Color3.fromRGB(120, 255, 70),
-	gold = Color3.fromRGB(255, 196, 30),
-	orange = Color3.fromRGB(255, 130, 30),
-	red = Color3.fromRGB(235, 40, 40),
-	purple = Color3.fromRGB(160, 80, 255),
-	panel = Color3.fromRGB(48, 50, 60),
-	panel2 = Color3.fromRGB(32, 34, 42),
-	card = Color3.fromRGB(255, 255, 255),
-	mute = Color3.fromRGB(130, 136, 150),
+	ink = UI.T.navyDark,
+	white = UI.T.white,
+	pink = UI.T.pink,
+	blue = UI.T.blue,
+	sky = RGB(40, 200, 255),
+	index = UI.T.blue,
+	green = UI.T.green,
+	money = RGB(120, 255, 90),
+	gold = UI.T.gold,
+	orange = UI.T.orange,
+	red = UI.T.red,
+	purple = UI.T.purple,
+	panel = UI.T.navy,
+	panel2 = UI.T.navyDark,
+	card = UI.T.white,
+	mute = UI.T.mute,
 }
 UI.FONT = Enum.Font.FredokaOne
 UI.NUMFONT = Enum.Font.LuckiestGuy
@@ -110,69 +164,14 @@ end
 -- Stud overlay. Uses a tiled image if Config.Images.Studs is set, otherwise
 -- draws soft circles (capped so big panels stay cheap).
 function UI.studs(parent: GuiObject, opts: { size: number?, alpha: number?, z: number? }?)
-	local o = opts or {}
-	local size = o.size or 22
-	local alpha = o.alpha or 0.78
+	-- the redesign dropped stud textures from the UI (cleaner, less noise);
+	-- kept as a no-op so older calls still work
 	local holder = Instance.new("Frame")
 	holder.Name = "Studs"
 	holder.BackgroundTransparency = 1
 	holder.Size = UDim2.fromScale(1, 1)
-	holder.ClipsDescendants = true
-	holder.ZIndex = o.z or parent.ZIndex
+	holder.ZIndex = (opts and opts.z) or parent.ZIndex
 	holder.Parent = parent
-	if Config.Images.Studs ~= "" then
-		local img = Instance.new("ImageLabel")
-		img.BackgroundTransparency = 1
-		img.Size = UDim2.fromScale(1, 1)
-		img.Image = Config.Images.Studs
-		img.ScaleType = Enum.ScaleType.Tile
-		img.TileSize = UDim2.fromOffset(size * 4, size * 4) -- the image is a 4x4 grid of studs
-		img.ImageTransparency = alpha
-		img.ZIndex = holder.ZIndex
-		img.Parent = holder
-		return holder
-	end
-	local function draw()
-		holder:ClearAllChildren()
-		local abs = parent.AbsoluteSize
-		if abs.X < 4 or abs.Y < 4 then
-			return
-		end
-		local step = size
-		while (abs.X / step) * (abs.Y / step) > 90 do
-			step *= 1.25
-		end
-		local d = step * 0.5
-		for y = step / 2, abs.Y, step do
-			for x = step / 2, abs.X, step do
-				local s = Instance.new("Frame")
-				s.BorderSizePixel = 0
-				s.Size = UDim2.fromOffset(d, d)
-				s.AnchorPoint = Vector2.new(0.5, 0.5)
-				s.Position = UDim2.fromOffset(x, y)
-				s.BackgroundColor3 = Color3.new(1, 1, 1)
-				s.BackgroundTransparency = alpha
-				s.ZIndex = holder.ZIndex
-				local c = Instance.new("UICorner")
-				c.CornerRadius = UDim.new(0.5, 0)
-				c.Parent = s
-				local g = Instance.new("UIGradient")
-				g.Rotation = 90
-				g.Transparency = NumberSequence.new(0, 0.7)
-				g.Parent = s
-				s.Parent = holder
-			end
-		end
-	end
-	local last = Vector2.zero
-	parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
-		local now = parent.AbsoluteSize
-		if (now - last).Magnitude > 6 then
-			last = now
-			draw()
-		end
-	end)
-	task.defer(draw)
 	return holder
 end
 
@@ -186,6 +185,11 @@ function UI.frame(parent: Instance, props: { [string]: any }?): Frame
 end
 
 function UI.text(parent: Instance, text: string, props: { [string]: any }?): TextLabel
+	if props and (props.StrokeColor or props.StrokeThickness) then
+		props = table.clone(props)
+		props.StrokeColor = nil
+		props.StrokeThickness = nil
+	end
 	local t = Instance.new("TextLabel")
 	t.BackgroundTransparency = 1
 	t.Font = UI.FONT
@@ -203,50 +207,109 @@ function UI.outlined(parent: Instance, text: string, props: { [string]: any }?):
 	local t = UI.text(parent, text, props)
 	t.TextColor3 = (props and props.TextColor3) or UI.C.white
 	local s = Instance.new("UIStroke")
-	s.Color = UI.C.ink
-	s.Thickness = (props and props.TextSize and props.TextSize > 30) and 4 or 3
+	s.Color = (props and props.StrokeColor) or UI.T.navyDark
+	s.Thickness = (props and props.StrokeThickness) or UI.S.text
 	s.LineJoinMode = Enum.LineJoinMode.Round
 	s.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
 	s.Parent = t
 	return t
 end
 
--- press feedback for anything clickable
+-- text at one of the 4 type levels (UI.TYPE): hero, value, body, meta
+function UI.label(parent: Instance, level: string, text: string, props: { [string]: any }?): TextLabel
+	local ty = UI.TYPE[level] or UI.TYPE.body
+	local t = UI.outlined(parent, text, props)
+	t.Font = ty[2]
+	if not (props and props.TextScaled ~= nil) then
+		t.TextScaled = true
+		local c = Instance.new("UITextSizeConstraint")
+		c.MaxTextSize = ty[1]
+		c.MinTextSize = 9
+		c.Parent = t
+	end
+	return t
+end
+
+-- press feedback for anything clickable: hover 1.04, press 0.95, quick spring
 local function squish(b: GuiButton)
-	local scale = Instance.new("UIScale")
+	local scale = b:FindFirstChildOfClass("UIScale") or Instance.new("UIScale")
 	scale.Parent = b
+	local hover = false
 	b.MouseButton1Down:Connect(function()
-		TweenService:Create(scale, TweenInfo.new(0.06), { Scale = 0.92 }):Play()
+		TweenService:Create(scale, TweenInfo.new(0.07, Enum.EasingStyle.Quad), { Scale = 0.95 }):Play()
 	end)
 	b.MouseButton1Up:Connect(function()
-		TweenService:Create(scale, TweenInfo.new(0.2, Enum.EasingStyle.Back), { Scale = 1 }):Play()
+		TweenService:Create(scale, TweenInfo.new(0.16, Enum.EasingStyle.Back), { Scale = hover and 1.04 or 1 }):Play()
 	end)
 	b.MouseEnter:Connect(function()
-		TweenService:Create(scale, TweenInfo.new(0.12), { Scale = 1.05 }):Play()
+		hover = true
+		if not UI.TOUCH then
+			TweenService:Create(scale, TweenInfo.new(0.1), { Scale = 1.04 }):Play()
+			if UI.onHover then
+				UI.onHover()
+			end
+		end
 	end)
 	b.MouseLeave:Connect(function()
-		TweenService:Create(scale, TweenInfo.new(0.12), { Scale = 1 }):Play()
+		hover = false
+		TweenService:Create(scale, TweenInfo.new(0.1), { Scale = 1 }):Play()
 	end)
 end
+UI.squish = squish
 
 -- The chunky studded button. Text lives in a child "Label" (UI.setText).
 function UI.button(parent: Instance, text: string, color: Color3, onClick: () -> (), props: { [string]: any }?): TextButton
+	-- the button is its darker base; the "Face" sits on top, leaving a depth
+	-- lip at the bottom. Setting b.BackgroundColor3 recolors the whole thing.
 	local b = Instance.new("TextButton")
 	b.AutoButtonColor = false
-	b.BackgroundColor3 = color
 	b.BorderSizePixel = 0
 	b.Text = ""
 	b.Size = UDim2.fromOffset(160, 50)
 	apply(b, props)
-	UI.corner(b, 10)
-	UI.stroke(b, UI.C.ink, 3)
-	UI.shade(b)
-	UI.studs(b, { size = 20, alpha = 0.82 })
-	-- bottom lip
-	local lip = UI.frame(b, { Name = "Lip", Size = UDim2.new(1, 0, 0, 6), Position = UDim2.fromScale(0, 1), AnchorPoint = Vector2.new(0, 1),
-		BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.72 })
-	UI.corner(lip, 10)
-	UI.outlined(b, text, { Name = "Label", Size = UDim2.new(1, -14, 1, -14), Position = UDim2.new(0.5, 0, 0.5, -2), AnchorPoint = Vector2.new(0.5, 0.5), ZIndex = b.ZIndex + 1 })
+	UI.corner(b, UI.R.button)
+	local face = Instance.new("Frame")
+	face.Name = "Face"
+	face.BorderSizePixel = 0
+	face.Size = UDim2.new(1, 0, 1, -5)
+	face.ZIndex = b.ZIndex
+	face.Parent = b
+	UI.corner(face, UI.R.button)
+	local g = Instance.new("UIGradient")
+	g.Rotation = 90
+	g.Color = ColorSequence.new(RGB(255, 255, 255), RGB(214, 214, 214))
+	g.Parent = face
+	-- soft top shine
+	local shine = UI.frame(face, { Name = "Shine", Size = UDim2.new(1, -10, 0.38, 0), Position = UDim2.fromOffset(5, 3),
+		BackgroundColor3 = RGB(255, 255, 255), BackgroundTransparency = 0.82, ZIndex = b.ZIndex })
+	UI.corner(shine, UI.R.button - 4)
+	local stroke = UI.stroke(b, color, UI.S.cta)
+	stroke.Name = "Edge"
+	local busy = false
+	local function paint(c: Color3)
+		busy = true
+		face.BackgroundColor3 = c
+		b.BackgroundColor3 = UI.dark(c, 0.38)
+		stroke.Color = UI.dark(c, 0.5)
+		busy = false
+	end
+	paint(color)
+	b:GetPropertyChangedSignal("BackgroundColor3"):Connect(function()
+		if not busy then
+			paint(b.BackgroundColor3)
+		end
+	end)
+	UI.outlined(b, text, { Name = "Label", Size = UDim2.new(1, -16, 1, -17), Position = UDim2.new(0.5, 0, 0.5, -3), AnchorPoint = Vector2.new(0.5, 0.5),
+		ZIndex = b.ZIndex + 1, StrokeColor = UI.dark(color, 0.55) })
+	-- press: the face sinks onto its base
+	b.MouseButton1Down:Connect(function()
+		TweenService:Create(face, TweenInfo.new(0.06), { Position = UDim2.fromOffset(0, 3) }):Play()
+	end)
+	local function up()
+		TweenService:Create(face, TweenInfo.new(0.12, Enum.EasingStyle.Back), { Position = UDim2.fromOffset(0, 0) }):Play()
+	end
+	b.MouseButton1Up:Connect(up)
+	b.MouseLeave:Connect(up)
 	squish(b)
 	b.Activated:Connect(function(...)
 		if UI.onClick then
@@ -266,7 +329,7 @@ function UI.setText(b: GuiObject, text: string)
 end
 
 function UI.recolor(b: GuiObject, color: Color3)
-	b.BackgroundColor3 = color
+	b.BackgroundColor3 = color -- buttons repaint face, base and edge from this
 end
 
 -- One of the game's icons by name (Config.Icons). Draws from the uploaded
@@ -378,57 +441,70 @@ end
 -- square icon button with a caption (left-side menu); icon is an icon name
 function UI.iconButton(parent: Instance, icon: string, caption: string, color: Color3, onClick: () -> (), props: { [string]: any }?): TextButton
 	local b = UI.button(parent, "", color, onClick, props)
+	local face = b:FindFirstChild("Face") :: Frame
 	if caption == "" then
-		-- icon only (the small Steal-an-Egg squares)
-		UI.icon(b, icon, { Size = UDim2.fromScale(0.74, 0.74), Position = UDim2.fromScale(0.5, 0.47), AnchorPoint = Vector2.new(0.5, 0.5), ZIndex = b.ZIndex + 1 })
+		-- icon-only square (Gift, Tank...)
+		UI.icon(face, icon, { Size = UDim2.fromScale(0.78, 0.78), Position = UDim2.fromScale(0.5, 0.5), AnchorPoint = Vector2.new(0.5, 0.5), ZIndex = b.ZIndex + 1 })
 		return b
 	end
-	UI.icon(b, icon, { Size = UDim2.fromScale(0.74, 0.62), Position = UDim2.fromScale(0.5, 0.02), AnchorPoint = Vector2.new(0.5, 0), ZIndex = b.ZIndex + 1 })
+	UI.icon(face, icon, { Size = UDim2.fromScale(0.72, 0.6), Position = UDim2.fromScale(0.5, 0.04), AnchorPoint = Vector2.new(0.5, 0), ZIndex = b.ZIndex + 1 })
 	local l = b:FindFirstChild("Label") :: TextLabel
 	l.Text = caption
-	l.Size = UDim2.new(1, -6, 0.3, 0)
-	l.Position = UDim2.new(0.5, 0, 1, -6)
+	l.Size = UDim2.new(1, -6, 0.28, 0)
+	l.Position = UDim2.new(0.5, 0, 1, -8)
 	l.AnchorPoint = Vector2.new(0.5, 1)
 	return b
 end
 
 -- wide menu button: icon on the left, big label (the "🛒 Shop" style)
 function UI.wideButton(parent: Instance, icon: string, caption: string, color: Color3, onClick: () -> (), props: { [string]: any }?): TextButton
+	-- navigation button: big icon breaking out on the left, bold label
 	local b = UI.button(parent, caption, color, onClick, props)
-	UI.icon(b, icon, { Size = UDim2.new(0.3, 0, 1, -12), Position = UDim2.new(0, 8, 0.5, -2), AnchorPoint = Vector2.new(0, 0.5), ZIndex = b.ZIndex + 1 })
+	UI.icon(b, icon, { Size = UDim2.new(0, 0, 1, 6), Position = UDim2.new(0, 6, 0.5, -4), AnchorPoint = Vector2.new(0, 0.5), ZIndex = b.ZIndex + 2,
+		SizeConstraint = Enum.SizeConstraint.RelativeYY })
+	local ic = b:FindFirstChild("Icon") :: GuiObject
+	ic.Size = UDim2.fromScale(1.05, 1.05)
 	local l = b:FindFirstChild("Label") :: TextLabel
-	l.Size = UDim2.new(0.66, -14, 0.56, 0)
-	l.Position = UDim2.new(0.34, 6, 0.5, -2)
+	l.Size = UDim2.new(1, -86, 0.58, 0)
+	l.Position = UDim2.new(0, 78, 0.5, -3)
 	l.AnchorPoint = Vector2.new(0, 0.5)
 	l.TextXAlignment = Enum.TextXAlignment.Left
 	return b
 end
+UI.navButton = UI.wideButton
 
 -- square on/off box with a caption to its right (Slow Mode). returns setter
 function UI.toggle(parent: Instance, caption: string, on: boolean, onChange: (boolean) -> (), props: { [string]: any }?): (Frame, (boolean) -> ())
-	local holder = UI.frame(parent, { Size = UDim2.fromOffset(172, 40), BackgroundTransparency = 1 })
+	-- a pill switch with its caption (settings rows)
+	local holder = UI.frame(parent, { Size = UDim2.fromOffset(260, 44), BackgroundTransparency = 1 })
 	apply(holder, props)
-	local box = Instance.new("TextButton")
-	box.AutoButtonColor = false
-	box.Text = ""
-	box.Size = UDim2.fromOffset(40, 40)
-	box.BorderSizePixel = 0
-	box.Parent = holder
-	UI.corner(box, 8)
-	UI.stroke(box, UI.C.ink, 3)
-	UI.shade(box)
-	local tick = UI.outlined(box, "✓", { Size = UDim2.new(1, -8, 1, -8), Position = UDim2.fromOffset(4, 3) })
-	local label = UI.outlined(holder, caption, { Size = UDim2.new(1, -48, 0, 24), Position = UDim2.new(0, 48, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), TextXAlignment = Enum.TextXAlignment.Left })
+	local label = UI.label(holder, "body", caption, { Size = UDim2.new(1, -92, 0, 26), Position = UDim2.new(0, 0, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5),
+		TextXAlignment = Enum.TextXAlignment.Left })
+	local track = Instance.new("TextButton")
+	track.AutoButtonColor = false
+	track.Text = ""
+	track.Size = UDim2.fromOffset(76, 40)
+	track.Position = UDim2.new(1, 0, 0.5, 0)
+	track.AnchorPoint = Vector2.new(1, 0.5)
+	track.BorderSizePixel = 0
+	track.Parent = holder
+	UI.corner(track, 20)
+	UI.stroke(track, UI.T.navyDark, UI.S.card)
+	local knob = UI.frame(track, { Size = UDim2.fromOffset(32, 32), Position = UDim2.new(0, 4, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), BackgroundColor3 = UI.T.white })
+	UI.corner(knob, 16)
 	local state = on
 	local function set(v: boolean)
 		state = v
-		box.BackgroundColor3 = v and UI.C.green or Color3.fromRGB(150, 156, 166)
-		tick.Visible = v
-		label.TextColor3 = v and UI.C.white or Color3.fromRGB(225, 228, 235)
+		track.BackgroundColor3 = v and UI.T.green or UI.T.navyLight
+		TweenService:Create(knob, TweenInfo.new(0.12), { Position = v and UDim2.new(1, -36, 0.5, 0) or UDim2.new(0, 4, 0.5, 0) }):Play()
+		label.TextColor3 = v and UI.T.white or UI.T.mute
 	end
 	set(on)
-	squish(box)
-	box.Activated:Connect(function()
+	squish(track)
+	track.Activated:Connect(function()
+		if UI.onClick then
+			UI.onClick()
+		end
 		set(not state)
 		onChange(state)
 	end)
@@ -445,12 +521,12 @@ function UI.badge(b: GuiObject, text: string?): Frame
 		end
 		old:Destroy()
 	end
-	local f = UI.frame(b, { Name = "Badge", Size = UDim2.fromOffset(24, 24), Position = UDim2.new(1, 6, 0, -7), AnchorPoint = Vector2.new(1, 0),
-		BackgroundColor3 = UI.C.red, ZIndex = b.ZIndex + 3 })
-	UI.corner(f, 12)
-	UI.stroke(f, UI.C.white, 2.5)
-	UI.outlined(f, text or "!", { Size = UDim2.new(1, -6, 1, -6), Position = UDim2.fromOffset(3, 3), ZIndex = f.ZIndex + 1 })
-	UI.pop(f, 1.5)
+	local f = UI.frame(b, { Name = "Badge", Size = UDim2.fromOffset(26, 26), Position = UDim2.new(1, 8, 0, -8), AnchorPoint = Vector2.new(1, 0),
+		BackgroundColor3 = UI.T.red, ZIndex = b.ZIndex + 4 })
+	UI.corner(f, 13)
+	UI.stroke(f, UI.T.white, 2)
+	UI.outlined(f, text or "!", { Size = UDim2.new(1, -8, 1, -8), Position = UDim2.fromOffset(4, 4), ZIndex = f.ZIndex + 1, StrokeColor = UI.dark(UI.T.red, 0.5) })
+	UI.pop(f, 1.5) -- one pop when it appears, no endless bounce
 	return f
 end
 
@@ -464,62 +540,200 @@ end
 -- dark panel with a studded color header, title and red X.
 -- returns (frame, body, closeButton)
 function UI.window(parent: Instance, title: string, color: Color3, size: Vector2, onClose: () -> (), iconName: string?): (Frame, Frame, TextButton)
-	local f = UI.frame(parent, { Name = "Window", Size = UDim2.fromOffset(size.X, size.Y), Position = UDim2.fromScale(0.5, 0.52),
-		AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = UI.C.panel })
-	UI.corner(f, 12)
-	UI.stroke(f, UI.C.ink, 5)
-	UI.studs(f, { size = 26, alpha = 0.94 })
-	local head = UI.frame(f, { Name = "Head", Size = UDim2.new(1, -12, 0, 62), Position = UDim2.fromOffset(6, 6), BackgroundColor3 = color, ClipsDescendants = true })
-	UI.corner(head, 8)
-	UI.stroke(head, UI.C.ink, 3)
-	UI.shade(head)
-	UI.studs(head, { size = 18, alpha = 0.8 })
-	-- diagonal shine stripes
-	for i, x in { 0.55, 0.64 } do
-		UI.frame(head, { Size = UDim2.new(0, i == 1 and 46 or 22, 2.4, 0), Position = UDim2.fromScale(x, -0.7), Rotation = 35,
-			BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0.72 })
-	end
-	local tx = 18
-	if iconName then
-		UI.icon(head, iconName, { Size = UDim2.fromOffset(58, 58), Position = UDim2.fromOffset(10, 2), ZIndex = head.ZIndex + 2 })
-		tx = 74
-	end
-	UI.outlined(head, title, { Name = "Title", Size = UDim2.new(1, -96 - tx, 0, 46), Position = UDim2.fromOffset(tx, 8), TextXAlignment = Enum.TextXAlignment.Left })
-	local x = UI.button(f, "X", UI.C.red, function()
+	-- dimmed backdrop: focus on the menu, tap outside to close
+	local dim = Instance.new("TextButton")
+	dim.Name = "Backdrop"
+	dim.Text = ""
+	dim.AutoButtonColor = false
+	dim.BorderSizePixel = 0
+	dim.BackgroundColor3 = RGB(0, 0, 0)
+	dim.BackgroundTransparency = 1
+	dim.Size = UDim2.fromScale(4, 4)
+	dim.Position = UDim2.fromScale(0.5, 0.5)
+	dim.AnchorPoint = Vector2.new(0.5, 0.5)
+	dim.ZIndex = 0
+	dim.Parent = parent
+	TweenService:Create(dim, TweenInfo.new(0.18), { BackgroundTransparency = 0.5 }):Play()
+	local function close()
 		if UI.onClose then
 			UI.onClose()
 		end
 		onClose()
-	end, { Name = "Close", Size = UDim2.fromOffset(62, 62), Position = UDim2.new(1, -6, 0, 6), AnchorPoint = Vector2.new(1, 0) })
+	end
+	dim.Activated:Connect(close)
+
+	local f = UI.frame(parent, { Name = "Window", Size = UDim2.fromOffset(size.X, size.Y), Position = UDim2.fromScale(0.5, 0.52),
+		AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = UI.T.navy })
+	f.Destroying:Connect(function()
+		dim:Destroy()
+	end)
+	UI.corner(f, UI.R.panel)
+	UI.stroke(f, UI.dark(color, 0.35), UI.S.cta)
+	local g = Instance.new("UIGradient")
+	g.Rotation = 90
+	g.Color = ColorSequence.new(RGB(255, 255, 255), RGB(200, 205, 225))
+	g.Parent = f
+	-- header band in the menu's color
+	local head = UI.frame(f, { Name = "Head", Size = UDim2.new(1, 0, 0, 66), BackgroundColor3 = color })
+	UI.corner(head, UI.R.panel)
+	UI.frame(head, { Name = "Square", Size = UDim2.new(1, 0, 0, 18), Position = UDim2.new(0, 0, 1, -18), BackgroundColor3 = color, BorderSizePixel = 0 })
+	local hg = Instance.new("UIGradient")
+	hg.Rotation = 90
+	hg.Color = ColorSequence.new(UI.light(color, 0.18), UI.dark(color, 0.12))
+	hg.Parent = head
+	local tx = 20
+	if iconName then
+		UI.icon(head, iconName, { Size = UDim2.fromOffset(64, 64), Position = UDim2.fromOffset(8, -6), ZIndex = head.ZIndex + 2 })
+		tx = 80
+	end
+	UI.label(head, "hero", title:upper(), { Name = "Title", Size = UDim2.new(1, -90 - tx, 0, 40), Position = UDim2.fromOffset(tx, 13),
+		TextXAlignment = Enum.TextXAlignment.Left, StrokeColor = UI.dark(color, 0.55) })
+	local x = UI.button(f, "X", UI.T.red, close, { Name = "Close", Size = UDim2.fromOffset(52, 52), Position = UDim2.new(1, -10, 0, 7),
+		AnchorPoint = Vector2.new(1, 0), ZIndex = head.ZIndex + 3 })
 	if UI.onOpen then
 		UI.onOpen()
 	end
-	local body = UI.frame(f, { Name = "Body", Size = UDim2.new(1, -24, 1, -86), Position = UDim2.fromOffset(12, 76), BackgroundTransparency = 1 })
-	UI.pop(f, 0.85)
+	local body = UI.frame(f, { Name = "Body", Size = UDim2.new(1, -32, 1, -98), Position = UDim2.fromOffset(16, 82), BackgroundTransparency = 1 })
+	UI.pop(f, 0.9)
 	return f, body, x
 end
 
 -- inset darker panel inside a window
 function UI.inset(parent: Instance, props: { [string]: any }?): Frame
-	local f = UI.frame(parent, { BackgroundColor3 = UI.C.panel2 })
+	-- a recessed area inside a panel (lists, stats)
+	local f = UI.frame(parent, { BackgroundColor3 = UI.T.navyDark, BackgroundTransparency = 0.25 })
 	apply(f, props)
-	UI.corner(f, 8)
-	UI.stroke(f, UI.C.ink, 3)
+	UI.corner(f, UI.R.card)
+	return f
+end
+
+-- a raised card on a panel; accent colors its edge (rarity, equipped...)
+function UI.card(parent: Instance, accent: Color3?, props: { [string]: any }?): Frame
+	local f = UI.frame(parent, { BackgroundColor3 = UI.T.navyLight })
+	apply(f, props)
+	UI.corner(f, UI.R.card)
+	local st = UI.stroke(f, accent or UI.T.line, accent and UI.S.cta or UI.S.subtle)
+	st.Name = "Accent"
+	local g = Instance.new("UIGradient")
+	g.Rotation = 90
+	g.Color = ColorSequence.new(RGB(255, 255, 255), RGB(190, 196, 220))
+	g.Parent = f
+	return f
+end
+
+-- compact resource pill: [icon] value  (speed, cash, friend boost)
+function UI.pill(parent: Instance, icon: string, color: Color3, props: { [string]: any }?): (Frame, TextLabel)
+	local f = UI.frame(parent, { Size = UDim2.fromOffset(190, 46), BackgroundColor3 = UI.dark(color, 0.45) })
+	apply(f, props)
+	UI.corner(f, 23)
+	UI.stroke(f, UI.dark(color, 0.6), UI.S.card)
+	local face = UI.frame(f, { Name = "Face", Size = UDim2.new(1, 0, 1, -4), BackgroundColor3 = color })
+	UI.corner(face, 23)
+	local g = Instance.new("UIGradient")
+	g.Rotation = 90
+	g.Color = ColorSequence.new(UI.light(color, 0.2), UI.dark(color, 0.1))
+	g.Parent = face
+	UI.icon(f, icon, { Size = UDim2.new(0, 0, 1, 14), SizeConstraint = Enum.SizeConstraint.RelativeYY, Position = UDim2.new(0, -10, 0.5, -2),
+		AnchorPoint = Vector2.new(0, 0.5), ZIndex = f.ZIndex + 2 })
+	local ic = f:FindFirstChild("Icon") :: GuiObject
+	ic.Size = UDim2.fromScale(1.3, 1.3)
+	local value = UI.label(f, "value", "", { Name = "Value", Size = UDim2.new(1, -66, 1, -12), Position = UDim2.new(0, 54, 0.5, -2),
+		AnchorPoint = Vector2.new(0, 0.5), TextXAlignment = Enum.TextXAlignment.Left, ZIndex = f.ZIndex + 2, StrokeColor = UI.dark(color, 0.6) })
+	return f, value
+end
+
+-- small rounded tag ("RARE", "EQUIPPED", "NEW!")
+function UI.chip(parent: Instance, text: string, color: Color3, props: { [string]: any }?): Frame
+	local f = UI.frame(parent, { Size = UDim2.fromOffset(96, 24), BackgroundColor3 = color })
+	apply(f, props)
+	UI.corner(f, 12)
+	UI.label(f, "meta", text, { Size = UDim2.new(1, -12, 1, -6), Position = UDim2.fromOffset(6, 3), StrokeColor = UI.dark(color, 0.55) })
+	return f
+end
+
+-- standard confirmation popup: TITLE / text / [PRIMARY] [secondary]
+-- opts = { title, text, value?, color, primary = { text, color, fn }, secondary = { text, fn }? }
+function UI.popup(parent: Instance, opts: { [string]: any }): Frame
+	local f: Frame
+	local function close()
+		if f and f.Parent then
+			f:Destroy()
+		end
+	end
+	local color = opts.color or UI.T.blue
+	local body
+	f, body = UI.window(parent, opts.title or "", color, Vector2.new(460, opts.value and 330 or 290), close, opts.icon)
+	UI.label(body, "body", opts.text or "", { Size = UDim2.new(1, 0, 0, 56), TextWrapped = true, TextColor3 = UI.T.white })
+	if opts.value then
+		UI.label(body, "value", opts.value, { Size = UDim2.new(1, 0, 0, 40), Position = UDim2.fromOffset(0, 62), TextColor3 = opts.valueColor or UI.C.money })
+	end
+	local p = opts.primary or {}
+	UI.button(body, p.text or "OK", p.color or UI.T.green, function()
+		close()
+		if p.fn then
+			p.fn()
+		end
+	end, { Size = UDim2.new(0.62, -6, 0, 62), Position = UDim2.new(0, 0, 1, 0), AnchorPoint = Vector2.new(0, 1) })
+	local sec = opts.secondary or { text = "Cancel" }
+	UI.button(body, sec.text or "Cancel", UI.T.navyLight, function()
+		close()
+		if sec.fn then
+			sec.fn()
+		end
+	end, { Size = UDim2.new(0.38, -6, 0, 54), Position = UDim2.new(1, 0, 1, -4), AnchorPoint = Vector2.new(1, 1) })
 	return f
 end
 
 -- studded progress bar; returns (back, fill, label)
 function UI.bar(parent: Instance, color: Color3, props: { [string]: any }?): (Frame, Frame, TextLabel)
-	local back = UI.frame(parent, { BackgroundColor3 = Color3.fromRGB(20, 22, 30) })
+	-- track, fill (gradient + shine), centered label; move it with UI.setBar
+	local back = UI.frame(parent, { BackgroundColor3 = UI.T.navyDark })
 	apply(back, props)
-	UI.corner(back, 8)
-	UI.stroke(back, UI.C.ink, 3)
+	UI.corner(back, 100)
+	UI.stroke(back, UI.T.navyDark, UI.S.card)
 	local fill = UI.frame(back, { Name = "Fill", Size = UDim2.fromScale(0, 1), BackgroundColor3 = color })
-	UI.corner(fill, 8)
-	UI.shade(fill)
-	UI.studs(fill, { size = 16, alpha = 0.8 })
-	local label = UI.outlined(back, "", { Size = UDim2.new(1, -16, 1, -8), Position = UDim2.fromOffset(8, 4), ZIndex = back.ZIndex + 2 })
+	UI.corner(fill, 100)
+	local g = Instance.new("UIGradient")
+	g.Rotation = 90
+	g.Color = ColorSequence.new(UI.light(color, 0.3), UI.dark(color, 0.08))
+	g.Parent = fill
+	local shine = UI.frame(fill, { Name = "Shine", Size = UDim2.new(1, -8, 0.34, 0), Position = UDim2.fromOffset(4, 2), BackgroundColor3 = RGB(255, 255, 255),
+		BackgroundTransparency = 0.7 })
+	UI.corner(shine, 100)
+	local label = UI.label(back, "body", "", { Size = UDim2.new(1, -16, 1, -6), Position = UDim2.fromOffset(8, 3), ZIndex = back.ZIndex + 2 })
 	return back, fill, label
+end
+
+-- tween a bar's fill (never snaps); a quick flash when it grows
+function UI.setBar(fill: Frame, frac: number, instant: boolean?)
+	frac = math.clamp(frac, 0, 1)
+	local goal = UDim2.fromScale(frac, 1)
+	if instant then
+		fill.Size = goal
+		return
+	end
+	local grew = frac > fill.Size.X.Scale + 0.001
+	TweenService:Create(fill, TweenInfo.new(0.35, Enum.EasingStyle.Quad), { Size = goal }):Play()
+	local shine = fill:FindFirstChild("Shine") :: Frame?
+	if grew and shine then
+		shine.BackgroundTransparency = 0.25
+		TweenService:Create(shine, TweenInfo.new(0.4), { BackgroundTransparency = 0.7 }):Play()
+	end
+end
+
+-- locked content that still looks worth reaching: name, goal, progress
+-- returns (frame, setProgress(current, need))
+function UI.lockedState(parent: Instance, title: string, goal: string, color: Color3, props: { [string]: any }?): (Frame, (number, number) -> ())
+	local f = UI.card(parent, UI.dark(color, 0.1), props)
+	UI.icon(f, "Lock", { Size = UDim2.fromOffset(38, 38), Position = UDim2.fromOffset(10, 8), ZIndex = f.ZIndex + 1 })
+	UI.label(f, "body", title, { Size = UDim2.new(1, -64, 0, 24), Position = UDim2.fromOffset(56, 8), TextXAlignment = Enum.TextXAlignment.Left })
+	UI.label(f, "meta", goal, { Size = UDim2.new(1, -64, 0, 18), Position = UDim2.fromOffset(56, 32), TextXAlignment = Enum.TextXAlignment.Left,
+		TextColor3 = UI.T.mute })
+	local _, fill, label = UI.bar(f, color, { Size = UDim2.new(1, -20, 0, 22), Position = UDim2.new(0, 10, 1, -30) })
+	return f, function(cur: number, need: number)
+		UI.setBar(fill, need > 0 and cur / need or 1)
+		label.Text = ("%s / %s"):format(UI.short(cur), UI.short(need))
+	end
 end
 
 function UI.pop(gui: GuiObject, amount: number?)

@@ -75,7 +75,26 @@ local Col = {}
 Col.__index = Col
 local function col(r, g, b) return setmetatable({ R = r, G = g, B = b }, Col) end
 function Col:Lerp(o, t) return col(self.R + (o.R - self.R) * t, self.G + (o.G - self.G) * t, self.B + (o.B - self.B) * t) end
-Color3 = { new = col, fromRGB = function(r, g, b) return col(r / 255, g / 255, b / 255) end, fromHSV = function() return col(1, 1, 1) end }
+function Col:ToHSV()
+	local r, g, b = self.R, self.G, self.B
+	local mx, mn = math.max(r, g, b), math.min(r, g, b)
+	local d = mx - mn
+	local h = 0
+	if d > 0 then
+		if mx == r then h = ((g - b) / d) % 6 elseif mx == g then h = (b - r) / d + 2 else h = (r - g) / d + 4 end
+		h /= 6
+	end
+	return h, mx > 0 and d / mx or 0, mx
+end
+local function hsv(h, s, v)
+	local i = math.floor(h * 6) % 6
+	local f = h * 6 - math.floor(h * 6)
+	local p, q, t = v * (1 - s), v * (1 - f * s), v * (1 - (1 - f) * s)
+	local m = { { v, t, p }, { q, v, p }, { p, v, t }, { p, q, v }, { t, p, v }, { v, p, q } }
+	local c = m[i + 1]
+	return col(c[1], c[2], c[3])
+end
+Color3 = { new = col, fromRGB = function(r, g, b) return col(r / 255, g / 255, b / 255) end, fromHSV = hsv }
 
 local function enumProxy(name)
 	return setmetatable({}, { __index = function(_, k) return { Name = k, EnumType = name, Value = 0 } end })
@@ -86,9 +105,14 @@ ColorSequence = { new = function() return {} end }
 
 PARTS = {}
 local Inst = {}
+local DUMMY_SIGNAL = { Connect = function() return { Disconnect = function() end } end, Once = function() return { Disconnect = function() end } end }
 Inst.__index = function(t, k)
 	if Inst[k] then return Inst[k] end
-	return rawget(t, "_p")[k]
+	local v = rawget(t, "_p")[k]
+	if v == nil and (k == "Ended" or k == "Destroying" or k == "Changed") then
+		return DUMMY_SIGNAL
+	end
+	return v
 end
 Inst.__newindex = function(t, k, v)
 	local p = rawget(t, "_p")
@@ -101,6 +125,10 @@ Inst.__newindex = function(t, k, v)
 	end
 	p[k] = v
 end
+function Inst:Play() end
+function Inst:Stop() end
+function Inst:Pause() end
+function Inst:Resume() end
 function Inst:SetAttribute(k, v) rawget(self, "_p")._attr[k] = v end
 function Inst:GetAttribute(k) return rawget(self, "_p")._attr[k] end
 function Inst:GetDescendants()

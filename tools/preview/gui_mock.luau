@@ -33,13 +33,16 @@ NumberSequence = { new = function(...) return { ... } end }
 ColorSequence = { new = function(...) return { ... } end }
 TweenInfo = { new = function() return {} end }
 NumberRange = { new = function() return {} end }
-Color3.fromHSV = function(h, s, v) return Color3.new(v, v, v) end
 
 -- generic GUI instance: any property can be set; signals on demand
 GUI_ROOTS = {}
 local G = {}
 local SIGNALS = { Activated = true, MouseButton1Down = true, MouseButton1Up = true, MouseEnter = true, MouseLeave = true,
-	InputBegan = true, InputEnded = true, InputChanged = true, Changed = true, AncestryChanged = true, DescendantAdded = true, Destroying = true }
+	InputBegan = true, InputEnded = true, InputChanged = true, Changed = true, AncestryChanged = true, DescendantAdded = true, Destroying = true, Ended = true, Event = true }
+function G:Play() end
+function G:Stop() end
+function G:Pause() end
+function G:Resume() end
 G.__index = function(t, k)
 	local p = rawget(t, "_p")
 	if p[k] ~= nil then
@@ -122,7 +125,7 @@ end
 local oldNew = Instance.new
 Instance.new = function(class)
 	if class:match("^UI") or class:match("Gui$") or class:match("Label$") or class:match("Button$") or class == "Frame"
-		or class == "ScrollingFrame" or class == "ViewportFrame" or class == "Folder" or class == "Highlight" then
+		or class == "ScrollingFrame" or class == "ViewportFrame" or class == "Folder" or class == "Highlight" or class == "BindableEvent" or class == "Sound" or class:match("SoundEffect$") or class == "SoundGroup" then
 		local g = newGui(class)
 		if class == "ScreenGui" then
 			table.insert(GUI_ROOTS, g)
@@ -161,7 +164,7 @@ local services = {
 	Workspace = workspace,
 	MarketplaceService = {},
 	GuiService = { MenuOpened = signal(), MenuClosed = signal(), GetGuiInset = function() return Vector2.new(0, 36) end },
-	SoundService = {},
+	SoundService = Instance.new("Folder"),
 	Debris = { AddItem = function() end },
 	Lighting = { FindFirstChild = function() return nil end, FindFirstChildOfClass = function() return nil end },
 	CollectionService = { AddTag = function() end, GetTagged = function() return {} end, GetInstanceAddedSignal = function() return signal() end,

@@ -62,7 +62,7 @@ task = {{
 """
     for m in ("Config", "Build", "Layout"):
         s += module(m, "shared", "mod:")
-    for m in ("UI", "Fx", "Notify", "HUD", "Rewards"):
+    for m in ("UI", "Sounds", "Fx", "Notify", "Guide", "Travel", "Prompts", "HUD", "Rewards"):
         s += module(m, "client", "cmod:")
     s += """
 local sig = function() return { Connect = function() end } end
