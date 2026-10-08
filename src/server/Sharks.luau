@@ -1,4 +1,4 @@
--- Server-side shark AI. Every ~80s: a 6s warning, then a hunt. Each player
+-- Server-side shark AI. Every ~80s: a 5s warning, then a hunt. Each player
 -- still in open water gets their own shark (the variant of their zone),
 -- which hunts like a real one:
 --   stalk     - circles you once in a tightening spiral (get to sand!)
@@ -197,20 +197,24 @@ local function update(dt: number)
 				local p = (hrp :: BasePart).Position
 				local to = flat(p - h.pos)
 				local dist = to.Magnitude
-				-- full speed, slow to turn: a late swerve makes it miss
-				h.yaw = turnToward(h.yaw, yawOf(to), (dist > 30 and 4 or cfg.chargeTurn) * dt)
+				-- full speed with a wide turning circle: a late swerve makes it miss
+				local spd = chargeSpeed(h, victim)
+				local turn = spd / cfg.chargeRadius
+				local headBefore = h.pos + forward(h.yaw) * h.length * 0.38
+				h.yaw = turnToward(h.yaw, yawOf(to), (dist > 40 and turn * 2 or turn) * dt)
 				local fwd = forward(h.yaw)
-				h.pos = clampLane(h.pos + fwd * chargeSpeed(h, victim) * dt)
+				h.pos = clampLane(h.pos + fwd * spd * dt)
 				pushOutOfIslands(h)
 				local head = h.pos + fwd * h.length * 0.38
-				local hd = Vector2.new(p.X - head.X, p.Z - head.Z).Magnitude
+				-- swept: at full speed the jaws cover several studs per tick
+				local hd = Layout.segmentDist(p, headBefore, head)
 				local ahead = flat(p - head):Dot(fwd)
 				if hd < math.max(4, h.length * 0.2) or dist < h.length * 0.3 then
 					local carried = victim.carrying
 					local result = Game.bite(victim, h.pos)
 					EventRemote:FireAllClients("bite", {
 						id = h.id, victim = victim.player.UserId, result = result, px = p.X, pz = p.Z,
-						r = carried and carried.r, m = carried and carried.m, cz = carried and carried.z,
+						r = carried and carried.r, m = carried and carried.m, cz = carried and carried.z, cs = carried and carried.s,
 					})
 					h.state, h.timer = "bite", 0
 					h.holdFor = result == "eaten" and cfg.eatenTime or 0.8

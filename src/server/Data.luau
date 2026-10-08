@@ -9,7 +9,7 @@ local Config = require(game.ReplicatedStorage.Shared.Config)
 local Data = {}
 
 -- a caught creature; e = Active (in the tank, earning). id is per profile.
-export type Creature = { r: string, z: string, m: string?, id: number?, e: boolean? }
+export type Creature = { r: string, z: string, m: string?, id: number?, e: boolean?, s: number? } -- s = size (weight x)
 export type Profile = {
 	speed: number,
 	coins: number,

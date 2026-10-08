@@ -305,10 +305,70 @@ function Config.mutation(id: string?): Mutation?
 end
 
 -- coins per second for one creature
-function Config.creatureValue(rarityId: string, zoneId: string, mutationId: string?): number
+function Config.creatureValue(rarityId: string, zoneId: string, mutationId: string?, size: number?): number
 	local zone = Config.zoneById(zoneId)
 	local m = Config.mutation(mutationId)
-	return (zone and zone.value or 1) * Config.rarity(rarityId).mult * (m and m.mult or 1)
+	return (zone and zone.value or 1) * Config.rarity(rarityId).mult * (m and m.mult or 1) * Config.sizeValue(size)
+end
+
+----------------------------------------------------------------- size + weight
+-- Every catch has a size: most are close to 1x, some are Big, a rare few are
+-- Huge. Weight = the species' usual weight x size. Bigger ones earn a bit
+-- more (x size^0.5) and look bigger in your tank.
+Config.KIND_KG = {
+	fish = 2, puffer = 1.6, crab = 3, turtle = 48, whale = 900, seahorse = 0.4,
+	ceph = 14, ray = 36, serpent = 180, jelly = 0.8,
+}
+
+function Config.rollSize(rng: Random): number
+	local x = rng:NextNumber()
+	local s
+	if x < 0.008 then
+		s = rng:NextNumber(2.0, 3.0) -- Huge
+	elseif x < 0.05 then
+		s = rng:NextNumber(1.4, 1.9) -- Big
+	else
+		s = 0.75 + (rng:NextNumber() + rng:NextNumber()) / 2 * 0.55 -- 0.75..1.3, mostly ~1
+	end
+	return math.floor(s * 100 + 0.5) / 100
+end
+
+function Config.sizeLabel(size: number?): string?
+	local s = size or 1
+	return s >= 2 and "Huge" or s >= 1.4 and "Big" or nil
+end
+
+function Config.sizeValue(size: number?): number
+	return math.sqrt(size or 1)
+end
+
+-- how much bigger it looks (volume grows with weight)
+function Config.sizeScale(size: number?): number
+	return (size or 1) ^ (1 / 3)
+end
+
+function Config.creatureKg(zoneId: string?, rarityId: string, size: number?): number
+	local sp = Config.species(zoneId, rarityId)
+	local zone = Config.zoneById(zoneId or "Lagoon")
+	local base = (Config.KIND_KG[sp.kind] or 2) * (sp.size or 1)
+	base *= 1 + ((zone and zone.index or 1) - 1) * 0.6
+	base *= 1 + (Config.rarity(rarityId).index - 1) * 0.25
+	return base * (size or 1)
+end
+
+function Config.formatKg(kg: number): string
+	if kg >= 1000 then
+		return ("%.1f t"):format(kg / 1000)
+	elseif kg >= 100 then
+		return ("%d kg"):format(math.floor(kg + 0.5))
+	end
+	return ("%.1f kg"):format(kg)
+end
+
+-- "Huge Gold Octopus"
+function Config.fullName(zoneId: string?, rarityId: string, mutationId: string?, size: number?): string
+	local label = Config.sizeLabel(size)
+	return (label and (label .. " ") or "") .. Config.creatureName(zoneId, rarityId, mutationId)
 end
 
 Config.Luck = {
@@ -357,7 +417,7 @@ Config.Codes = {
 Config.Shark = {
 	cycle = 80, -- seconds between attacks (calm time is most of it)
 	firstAttack = 70,
-	warning = 6, -- "SHARK INCOMING" countdown: time to get to sand
+	warning = 5, -- "SHARK INCOMING" countdown: time to get to sand
 	hunt = 22,
 	spawnDistance = 46,
 	-- a hunting shark circles you once (a tightening spiral), then charges.
@@ -369,7 +429,7 @@ Config.Shark = {
 	stalkEnd = 13,
 	chargeMult = 1.35, -- charge speed vs the zone's shark speed...
 	chargeVsPlayer = 1.22, -- ...and never slower than this x your top speed
-	chargeTurn = 2.3, -- rad/s while charging
+	chargeRadius = 26, -- turning circle while charging (studs): same feel at any speed
 	chargeGiveUp = 4,
 	maxHunters = 24,
 	newPlayerGrace = 150, -- seconds before a brand-new player can be hunted

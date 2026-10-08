@@ -148,8 +148,10 @@ local function build()
 		pcall(function()
 			game:GetService("SocialService"):PromptGameInvite(player)
 		end)
-	end, { Size = UDim2.fromOffset(26, 26), Position = UDim2.fromOffset(178, 96) })
+	end, { Size = UDim2.fromOffset(28, 28), Position = UDim2.fromOffset(178, 95) })
 	invite.Name = "Invite"
+	local il = invite:FindFirstChild("Label") :: TextLabel
+	il.Size = UDim2.new(1, -4, 1, -4)
 
 	-- bottom-center: gain line, goal bar, next ride
 	local bottom = UI.frame(gui, { Name = "Bottom", Size = UDim2.fromOffset(380, 120), Position = UDim2.new(0.5, 0, 1, -8), AnchorPoint = Vector2.new(0.5, 1), BackgroundTransparency = 1 })
@@ -168,10 +170,10 @@ local function build()
 		end
 	end, { Size = UDim2.new(1, 0, 0, 56), Position = UDim2.fromOffset(0, 64) })
 	local rlab = rideBtn:FindFirstChild("Label") :: TextLabel
-	rlab.Size = UDim2.new(1, -16, 0, 26)
-	rlab.Position = UDim2.new(0.5, 0, 0, 5)
+	rlab.Size = UDim2.new(1, -16, 0, 25)
+	rlab.Position = UDim2.new(0.5, 0, 0, 4)
 	rlab.AnchorPoint = Vector2.new(0.5, 0)
-	ridePrice = UI.outlined(rideBtn, "", { Size = UDim2.new(1, -16, 0, 15), Position = UDim2.new(0.5, 0, 0, 31), AnchorPoint = Vector2.new(0.5, 0), ZIndex = rideBtn.ZIndex + 1 })
+	ridePrice = UI.outlined(rideBtn, "", { Size = UDim2.new(1, -16, 0, 18), Position = UDim2.new(0.5, 0, 0, 29), AnchorPoint = Vector2.new(0.5, 0), ZIndex = rideBtn.ZIndex + 1 })
 	local rb = UI.frame(rideBtn, { Size = UDim2.new(1, -20, 0, 4), Position = UDim2.new(0, 10, 1, -8), BackgroundColor3 = Color3.fromRGB(0, 0, 0), BackgroundTransparency = 0.5, ZIndex = rideBtn.ZIndex + 1 })
 	UI.corner(rb, 2)
 	rideFill = UI.frame(rb, { Size = UDim2.fromScale(0, 1), BackgroundColor3 = C.white, ZIndex = rb.ZIndex + 1 })
@@ -399,7 +401,7 @@ local function render(d: any)
 		local sp = Config.species(d.carrying.z, d.carrying.r)
 		carryChip.Visible = true
 		carryChip.TextColor3 = r.color
-		carryChip.Text = ("%s %s → bring it home to your tank!"):format(sp.icon, Config.creatureName(d.carrying.z, d.carrying.r, d.carrying.m))
+		carryChip.Text = ("%s %s → bring it home to your tank!"):format(sp.icon, Config.fullName(d.carrying.z, d.carrying.r, d.carrying.m, d.carrying.s))
 	else
 		carryChip.Visible = false
 	end
@@ -513,7 +515,7 @@ local newDiscovery = false -- "discover" arrives just before "grab"; one toast s
 handlers.grab = function(d)
 	local r = Config.rarity(d.r)
 	local sp = Config.species(d.z, d.r)
-	local name = Config.creatureName(d.z, d.r, d.m)
+	local name = Config.fullName(d.z, d.r, d.m, d.s)
 	local pos = myPos()
 	if pos then
 		Fx.sparkle(pos + Vector3.new(0, 3, 0), r.color, 20 + r.index * 12)

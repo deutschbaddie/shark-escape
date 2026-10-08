@@ -13,8 +13,9 @@ Rojo project. Untested in Studio so far.
    It builds the whole map (walls, plaza, shops, gates, islands, lighting, water) into Workspace so you
    can look around. Running it again rebuilds it. On Play, the server rebuilds the map fresh anyway.
    If you've changed code since opening Studio, close and reopen the place first (Studio caches modules).
-3. Game Settings: **Avatar = R15**, **Max Players = 8** (there are 8 docks), and turn on
-   **Studio access to API services** so saving works while testing.
+3. Game Settings: **Max Players = 8** (there are 8 docks), and turn on **Studio access to API
+   services** so saving works while testing. Avatars are set to **R15** by the Rojo project
+   (`StarterPlayer.GameSettingsAvatar`); ride poses need R15.
 
 ## Uploads (one time)
 - **Icons, one by one:** Studio > Asset Manager > Import each PNG in `assets/icons/single/`, right-click >
@@ -26,6 +27,12 @@ Rojo project. Untested in Studio so far.
   Creator Hub > your experience > Places / Thumbnails.
 - Regenerate art with `tools/icons/render.sh`. Preview all 30 creatures with
   `tools/preview/dump.py <path-to-luau>` then `tools/preview/render.py`.
+
+## Offline checks (no Studio needed, just the Luau CLI)
+- `python3 tools/preview/fit.py <path-to-luau>`: every ride against a stand-in R15 body at three
+  sizes; prints any overlap and draws `tools/preview/rides.png`.
+- `python3 tools/preview/ui.py <path-to-luau>`: lays out the real HUD + notifications at desktop,
+  Studio, phone and tablet sizes (`tools/preview/ui_*.png`) and flags tiny text or anything off-screen.
 
 ## Sharks (rigged, hand-built)
 - `python3 tools/shark_gen.py` writes `assets/sharks/Shark*.glb` (6 variants, 9 bones each).

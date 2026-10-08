@@ -245,6 +245,11 @@ local function gateTick()
 		if typeof(need) == "number" and wall then
 			local open = d.speed >= need
 			wall.LocalTransparencyModifier = open and 1 or 0
+			for _, tex in wall:GetChildren() do
+				if tex:IsA("Texture") then
+					tex.Transparency = open and 1 or 0
+				end
+			end
 			local banner = g:FindFirstChild("Banner")
 			if banner then
 				for _, sg in banner:GetChildren() do

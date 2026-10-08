@@ -110,7 +110,7 @@ function Game.coinMult(s: Session): number
 end
 
 local function baseValue(c: Data.Creature): number
-	return Config.creatureValue(c.r, c.z, c.m)
+	return Config.creatureValue(c.r, c.z, c.m, c.s)
 end
 
 function Game.income(s: Session): number
@@ -210,7 +210,7 @@ function Game.push(s: Session)
 	local mult = Game.coinMult(s)
 	local list = table.create(#p.creatures)
 	for _, c in p.creatures do
-		table.insert(list, { id = c.id, r = c.r, z = c.z, m = c.m, e = c.e == true, v = baseValue(c) * mult })
+		table.insert(list, { id = c.id, r = c.r, z = c.z, m = c.m, s = c.s, e = c.e == true, v = baseValue(c) * mult })
 	end
 	local rides = {}
 	for _, ride in Config.Rides do
@@ -297,11 +297,13 @@ function Game.setRideVisible(s: Session, visible: boolean)
 		return
 	end
 	for _, d in m:GetDescendants() do
-		if d:IsA("BasePart") and d.Name ~= "Root" then
+		-- stud Textures/Decals draw even on an invisible part, so they hide too
+		-- (otherwise the deck's studs float under you on land)
+		if (d:IsA("BasePart") and d.Name ~= "Root") or d:IsA("Texture") or d:IsA("Decal") then
 			if d:GetAttribute("BaseT") == nil then
-				d:SetAttribute("BaseT", d.Transparency)
+				d:SetAttribute("BaseT", (d :: any).Transparency)
 			end
-			d.Transparency = visible and d:GetAttribute("BaseT") or 1
+			(d :: any).Transparency = visible and d:GetAttribute("BaseT") or 1
 		elseif d:IsA("Fire") or d:IsA("Sparkles") then
 			d.Enabled = visible
 		end
@@ -318,7 +320,7 @@ function Game.setCarry(s: Session, c: Data.Creature?)
 	local char = s.player.Character
 	local head = char and char:FindFirstChild("Head") :: BasePart?
 	if c and head then
-		local m = Creatures.build(c.r, c.m, 0.85, c.z)
+		local m = Creatures.build(c.r, c.m, 0.85 * math.min(Config.sizeScale(c.s), 1.3), c.z)
 		m:PivotTo(head.CFrame * CFrame.new(0, 2.6, 0))
 		Build.weldToRoot(m)
 		local w = Instance.new("WeldConstraint")
@@ -382,10 +384,17 @@ function Game.refreshTank(s: Session)
 	local base = CFrame.new(Layout.tankPos(plot.cf))
 	for _, c in s.profile.creatures do
 		if c.e then
-			local m = Creatures.build(c.r, c.m, 0.72, c.z)
+			local m = Creatures.build(c.r, c.m, 0.72 * math.min(Config.sizeScale(c.s), 1.35), c.z)
 			m:SetAttribute("Seed", (c.id or 1) * 7.7)
+			-- what the hover card shows (TankView)
+			m:SetAttribute("R", c.r)
+			m:SetAttribute("Z", c.z)
+			m:SetAttribute("M", c.m)
+			m:SetAttribute("S", c.s or 1)
+			m:SetAttribute("PerSecond", baseValue(c) * mult)
 			m:PivotTo(base + Vector3.new(0, 5, 0))
-			NameTag.attach(m.PrimaryPart :: BasePart, c, baseValue(c) * mult, { height = 1.7, maxDist = 50, width = 3.2 })
+			-- $/s always shows, through the glass; name + weight on hover
+			NameTag.attach(m.PrimaryPart :: BasePart, c, baseValue(c) * mult, { height = 1.5, maxDist = 55, width = 2.6, moneyOnly = true, top = true })
 			m.Parent = plot.slots
 		end
 	end
@@ -410,7 +419,7 @@ function Game.addCreature(s: Session, c: Data.Creature)
 	p.nextId += 1
 	local value = baseValue(c)
 	local mult = Game.coinMult(s)
-	local info: { [string]: any } = { r = c.r, m = c.m, z = c.z, v = value * mult }
+	local info: { [string]: any } = { r = c.r, m = c.m, z = c.z, s = c.s, v = value * mult }
 	if Game.activeCount(s) < tankSlots(s) then
 		c.e = true
 	else
@@ -418,7 +427,7 @@ function Game.addCreature(s: Session, c: Data.Creature)
 		if weak and value > baseValue(weak) then
 			weak.e = false
 			c.e = true
-			info.swapped = Config.creatureName(weak.z, weak.r, weak.m)
+			info.swapped = Config.fullName(weak.z, weak.r, weak.m, weak.s)
 		else
 			c.e = false
 		end
@@ -433,7 +442,7 @@ function Game.addCreature(s: Session, c: Data.Creature)
 			p.coins += sold
 			table.remove(p.creatures, idx)
 			info.sold = sold
-			info.soldName = Config.creatureName(worst.z, worst.r, worst.m)
+			info.soldName = Config.fullName(worst.z, worst.r, worst.m, worst.s)
 		end
 	end
 	Game.notify(s.player, "deposit", info)
@@ -715,6 +724,7 @@ local function claimPlot(s: Session)
 			plot.owner = s.player
 			s.plot = plot
 			plot.signLabel.Text = s.player.DisplayName .. "'s Dock"
+			plot.viewPrompt.ObjectText = s.player.DisplayName .. "'s Tank"
 			plot.model:SetAttribute("Owner", s.player.UserId)
 			return
 		end
@@ -821,6 +831,7 @@ function Game.leave(player: Player)
 	if s.plot then
 		s.plot.owner = nil
 		s.plot.signLabel.Text = "Empty Dock"
+		s.plot.viewPrompt.ObjectText = "Empty Dock"
 		s.plot.padLabel.Text = "$0"
 		s.plot.tankIncome.Text = ""
 		s.plot.tankOffline.Text = ""

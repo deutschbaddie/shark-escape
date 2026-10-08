@@ -98,11 +98,11 @@ local function renderList(d: any)
 		UI.corner(row, 8)
 		UI.stroke(row, C.ink, 2)
 		thumb(row, c)
-		local name = UI.outlined(row, Config.creatureName(c.z, c.r, c.m), {
+		local name = UI.outlined(row, Config.fullName(c.z, c.r, c.m, c.s), {
 			Size = UDim2.new(1, -200, 0, 30), Position = UDim2.fromOffset(78, 9), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = rarity.color,
 		})
 		name.TextScaled = true
-		UI.outlined(row, ("($%s/s)"):format(UI.short(c.v)), {
+		UI.outlined(row, ("($%s/s)  ·  %s"):format(UI.short(c.v), Config.formatKg(Config.creatureKg(c.z, c.r, c.s))), {
 			Size = UDim2.new(1, -200, 0, 24), Position = UDim2.fromOffset(78, 40), TextXAlignment = Enum.TextXAlignment.Left,
 			TextColor3 = c.e and C.money or Color3.fromRGB(190, 190, 200),
 		})

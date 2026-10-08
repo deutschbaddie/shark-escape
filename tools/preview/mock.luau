@@ -60,6 +60,15 @@ CFrame = {
 	end,
 	Angles = function(a, b, c) return cf(vec(0, 0, 0), mm(mm(rx(a), ry(b)), rz(c))) end,
 	identity = cf(vec(0, 0, 0)),
+	lookAt = function(at, target)
+		local f = (target - at).Unit
+		local r = vec(-f.Z, 0, f.X) -- right = forward x up
+		local rm = r.Magnitude
+		r = rm > 1e-6 and r / rm or vec(1, 0, 0)
+		local u = vec(r.Y * f.Z - r.Z * f.Y, r.Z * f.X - r.X * f.Z, r.X * f.Y - r.Y * f.X)
+		-- columns: right, up, back (-forward)
+		return cf(at, { { r.X, u.X, -f.X }, { r.Y, u.Y, -f.Y }, { r.Z, u.Z, -f.Z } })
+	end,
 }
 
 local Col = {}
@@ -69,7 +78,7 @@ function Col:Lerp(o, t) return col(self.R + (o.R - self.R) * t, self.G + (o.G - 
 Color3 = { new = col, fromRGB = function(r, g, b) return col(r / 255, g / 255, b / 255) end, fromHSV = function() return col(1, 1, 1) end }
 
 local function enumProxy(name)
-	return setmetatable({}, { __index = function(_, k) return { Name = k, EnumType = name } end })
+	return setmetatable({}, { __index = function(_, k) return { Name = k, EnumType = name, Value = 0 } end })
 end
 Enum = setmetatable({}, { __index = function(_, k) return enumProxy(k) end })
 NumberSequence = { new = function() return {} end }

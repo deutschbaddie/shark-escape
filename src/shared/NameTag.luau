@@ -1,8 +1,9 @@
 -- The little floating tag over a creature (Steal-a-Brainrot style):
---   Octopus          (white)
+--   Huge Octopus     (white)
 --   Gold · Rare      (rarity color)
 --   $120/s           (green, optional)
 -- Sized in studs so it shrinks with distance; hidden when far away.
+-- moneyOnly = just the $/s line (tank creatures: name + weight show on hover).
 
 local Config = require(script.Parent.Config)
 
@@ -38,9 +39,23 @@ local function line(parent: Instance, text: string, color: Color3, order: number
 end
 
 -- c = { r, z, m }; perSecond = income to show (nil = no money line)
-function NameTag.attach(part: BasePart, c: { r: string, z: string?, m: string? }, perSecond: number?, opts: { height: number?, maxDist: number?, width: number? }?): BillboardGui
+function NameTag.attach(part: BasePart, c: { r: string, z: string?, m: string?, s: number? }, perSecond: number?,
+	opts: { height: number?, maxDist: number?, width: number?, moneyOnly: boolean?, top: boolean? }?): BillboardGui
 	local o = opts or {}
 	local rarity = Config.rarity(c.r)
+	if o.moneyOnly and perSecond then
+		local w = o.width or 3.2
+		local bb = Instance.new("BillboardGui")
+		bb.Name = "NameTag"
+		bb.Size = UDim2.fromScale(w, w * 0.24)
+		bb.StudsOffsetWorldSpace = Vector3.new(0, o.height or 1.6, 0)
+		bb.MaxDistance = o.maxDist or 60
+		bb.LightInfluence = 0
+		bb.AlwaysOnTop = o.top == true
+		bb.Parent = part
+		line(bb, "$" .. short(perSecond) .. "/s", Color3.fromRGB(130, 255, 90), 1, 1)
+		return bb
+	end
 	local lines = perSecond and 3 or 2
 	local w = o.width or 3.6
 	local bb = Instance.new("BillboardGui")
@@ -49,6 +64,7 @@ function NameTag.attach(part: BasePart, c: { r: string, z: string?, m: string? }
 	bb.StudsOffsetWorldSpace = Vector3.new(0, o.height or 1.6, 0)
 	bb.MaxDistance = o.maxDist or 60
 	bb.LightInfluence = 0
+	bb.AlwaysOnTop = o.top == true
 	bb.Parent = part
 	local list = Instance.new("UIListLayout")
 	list.SortOrder = Enum.SortOrder.LayoutOrder
@@ -56,7 +72,8 @@ function NameTag.attach(part: BasePart, c: { r: string, z: string?, m: string? }
 	list.VerticalAlignment = Enum.VerticalAlignment.Bottom
 	list.Parent = bb
 	local each = 1 / lines
-	line(bb, Config.species(c.z, c.r).name, Color3.new(1, 1, 1), 1, each * 1.08)
+	local size = Config.sizeLabel(c.s)
+	line(bb, (size and (size .. " ") or "") .. Config.species(c.z, c.r).name, Color3.new(1, 1, 1), 1, each * 1.08)
 	line(bb, (c.m and (c.m .. " · ") or "") .. rarity.id, c.m and (Config.mutation(c.m) :: any).color or rarity.color, 2, each * 0.86)
 	if perSecond then
 		line(bb, "$" .. short(perSecond) .. "/s", Color3.fromRGB(130, 255, 90), 3, each * 1.0)

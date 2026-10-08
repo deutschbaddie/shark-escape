@@ -55,7 +55,7 @@ function UI.autoScale(gui: ScreenGui): UIScale
 		end
 		local k = math.min(v.X / UI.BASE.X, v.Y / UI.BASE.Y)
 		if UI.TOUCH and v.Y < 600 then
-			k *= 1.18 -- small phone screens: bigger touch targets (the layout leaves room)
+			k *= 1.3 -- phones: bigger touch targets and readable text (the layout leaves room)
 		end
 		scale.Scale = math.clamp(k, 0.4, 1.6)
 	end

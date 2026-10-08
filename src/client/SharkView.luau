@@ -532,7 +532,7 @@ local function fade(to: number, time: number)
 	TweenService:Create(black :: Frame, TweenInfo.new(time), { BackgroundTransparency = to }):Play()
 end
 
-local function eatenCinematic(sh: Shark?, at: Vector3, carried: { r: string, m: string?, z: string? }?)
+local function eatenCinematic(sh: Shark?, at: Vector3, carried: { r: string, m: string?, z: string?, s: number? }?)
 	if cine then
 		return
 	end
@@ -621,7 +621,7 @@ local function eatenCinematic(sh: Shark?, at: Vector3, carried: { r: string, m: 
 		tint.TintColor = Color3.fromRGB(255, 190, 195)
 		Fx.bigWord("CHOMP!", UI.C.red, 0.9)
 		if caption then
-			caption.Text = carried and ("The shark ate your %s!"):format(Config.creatureName(carried.z, carried.r, carried.m)) or "The shark got you!"
+			caption.Text = carried and ("The shark ate your %s!"):format(Config.fullName(carried.z, carried.r, carried.m, carried.s)) or "The shark got you!"
 		end
 	end)
 	task.delay(total - 0.35, function()
@@ -714,7 +714,7 @@ Remotes.get("SharkEvent").OnClientEvent:Connect(function(kind, data)
 		if data.victim == player.UserId then
 			-- frame it where you actually are (you're held in place under the water)
 			local here = hrp and Vector3.new(hrp.Position.X, 0.5, hrp.Position.Z) or at
-			eatenCinematic(sh, here, data.r and { r = data.r, m = data.m, z = data.cz } or nil)
+			eatenCinematic(sh, here, data.r and { r = data.r, m = data.m, z = data.cz, s = data.cs } or nil)
 		end
 	elseif data.result == "shield" then
 		if sh then

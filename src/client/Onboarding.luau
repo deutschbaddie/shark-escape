@@ -22,15 +22,27 @@ local Water = require(script.Parent.Water)
 local HUD = require(script.Parent.HUD)
 local SharkView = require(script.Parent.SharkView)
 local Guide = require(script.Parent.Guide)
+local Notify = require(script.Parent.Notify)
 
 local Onboarding = {}
 local C = UI.C
 local player = Players.LocalPlayer
 
 local DONE = 5
-local HOLD_HINT = game:GetService("UserInputService").TouchEnabled and "🐠 Swim to a bubble and HOLD the button to grab it!"
-	or "🐠 Swim to a bubble and HOLD E to grab it!"
+local HOLD_HINT = UI.TOUCH and "Swim to a bubble and HOLD the button" or "Swim to a bubble and HOLD E"
 local step = -1 -- local copy, never behind the server
+
+-- the tutorial banner: "STEP 2 of 5 · Bring it home" + what to do
+local function tutBanner(title: string?, sub: string?, color: Color3?)
+	if not title then
+		Notify.clear("tut")
+		return
+	end
+	Notify.banner(("STEP %d of %d · %s"):format(math.clamp(step + 1, 1, DONE), DONE, title), { key = "tut", sticky = true, priority = 3, sub = sub, color = color })
+end
+
+-- a quick "nice!" between steps
+local CHEERS = { [1] = "NICE CATCH!", [2] = "IN THE TANK!", [3] = "CHA-CHING!", [4] = "SAFE!", [5] = "NEW RIDE!" }
 
 local function point(at: Vector3?, label: string?)
 	Guide.set("tut", at, label)
@@ -65,8 +77,13 @@ end
 
 local function advance(to: number)
 	if to > step then
+		local cheer = CHEERS[to]
 		step = to
 		State.action("tut", to)
+		if cheer and to < DONE then
+			Notify.word(cheer, C.green, 0.8)
+			Fx.sound("coin", 0.5, 1.2)
+		end
 	end
 end
 
@@ -119,7 +136,7 @@ local function drillStart(pos: Vector3)
 		end
 		local p = hrp.Position
 		local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-		local speed = math.max((hum and hum.WalkSpeed or 16) * 0.6, 9)
+		local speed = math.max((hum and hum.WalkSpeed or 16) * 0.9, 12)
 		local t = os.clock() - drill.t
 		local to
 		if t < 3.5 then
@@ -130,25 +147,28 @@ local function drillStart(pos: Vector3)
 			to = Vector3.new(goal.X - sh.pos.X, 0, goal.Z - sh.pos.Z)
 			sh.state = "stalk"
 		else
-			-- ...then charge (always slower than you: escaping is about reacting)
+			-- ...then charge: a touch slower than you and slow to turn, so
+			-- heading for sand or swerving late both work (like the real one)
 			to = Vector3.new(p.X - sh.pos.X, 0, p.Z - sh.pos.Z)
 			sh.state = "chase"
 		end
 		if to.Magnitude > 0.1 then
 			local want = math.atan2(-to.X, -to.Z)
 			local d = (want - sh.yaw + math.pi) % (2 * math.pi) - math.pi
-			sh.yaw += math.clamp(d, -5 * dt, 5 * dt)
+			local turn = sh.state == "chase" and 2.3 or 5
+			sh.yaw += math.clamp(d, -turn * dt, turn * dt)
 		end
-		sh.pos += Vector3.new(-math.sin(sh.yaw), 0, -math.cos(sh.yaw)) * math.min(speed * 1.3 * dt, math.max(to.Magnitude - 1, 0))
+		local pace = sh.state == "chase" and speed or speed * 1.3
+		sh.pos += Vector3.new(-math.sin(sh.yaw), 0, -math.cos(sh.yaw)) * math.min(pace * dt, math.max(to.Magnitude - 1, 0))
 	end)
 end
 
-local function drillTick(pos: Vector3): (Vector3?, string?, string?)
+local function drillTick(pos: Vector3): (Vector3?, string?, string?, string?)
 	if drill.realAttack then
 		if drill.shark then
 			drillEnd("abort")
 		end
-		return nil, nil, nil
+		return nil, nil, "Shark drill", "Wait for the real sharks to leave..."
 	end
 	local safe = Layout.isSafe(pos)
 	if drill.state == "idle" then
@@ -158,38 +178,40 @@ local function drillTick(pos: Vector3): (Vector3?, string?, string?)
 			-- lead them a little way into the water
 			local plot = myPlot()
 			local x = plot and plot.Position.X or pos.X
-			return Vector3.new(x, 1, Config.SHORE_Z + 30), "Swim out!", "🦈 Shark drill! Swim out into the water..."
+			return Vector3.new(x, 1, Config.SHORE_Z + 30), "Swim out!", "Shark drill!", "Swim out into the water... (it's just practice)"
 		end
 	end
 	if drill.state == "chase" then
 		local sh = drill.shark
 		if safe then
 			drillEnd("safe")
-			Fx.bigWord("✅ SAFE!", C.green, 1.2)
-			HUD.toast("Sharks attack every minute. Sand and islands are always safe!", C.green, 4.5)
+			Notify.toast("Sharks attack every minute or so. Sand and islands are always safe!", C.green)
 			advance(4)
-			return nil, nil, nil
+			return nil, nil, nil, nil
 		end
 		if sh then
 			local head = sh.pos + Vector3.new(-math.sin(sh.yaw), 0, -math.cos(sh.yaw)) * sh.L * 0.38
 			if Vector2.new(pos.X - head.X, pos.Z - head.Z).Magnitude < 3.5 then
 				SharkView.biteLocal(sh)
-				Fx.bigWord("CHOMP! (just practice)", C.red, 1.1)
+				Notify.word("CHOMP! (just practice)", C.red, 1)
 				Fx.shake(3)
-				HUD.toast("In a real attack you'd lose what you're carrying. Try again!", C.red, 3.5)
+				Notify.toast("A real shark eats what you're carrying. Try again!", C.red)
 				drillEnd("caught")
 				drill.state = "pause"
-				return nil, nil, nil
+				return nil, nil, "Shark drill", "Try again in a moment..."
 			end
 		end
 		local safeAt = Layout.nearestSafe(pos)
 		local circling = drill.shark and drill.shark.state == "stalk"
-		return safeAt + Vector3.new(0, 2, 0), "SAFE!", circling and "🦈 It's circling you... get to SAND or an ISLAND!" or "🦈 IT'S CHARGING! GET TO SAND!"
+		if circling then
+			return safeAt + Vector3.new(0, 2, 0), "SAFE!", "It's circling you!", "Get to SAND or an ISLAND (follow the arrow)"
+		end
+		return safeAt + Vector3.new(0, 2, 0), "SAFE!", "IT'S CHARGING!", "Keep going, or swerve at the last second!", C.red
 	end
 	if drill.state == "pause" and os.clock() - drill.t > 3 then
 		drill.state = "idle"
 	end
-	return nil, nil, nil
+	return nil, nil, "Shark drill", "Try again in a moment..."
 end
 
 Remotes.get("SharkEvent").OnClientEvent:Connect(function(kind)
@@ -206,19 +228,19 @@ local function update()
 	local hrp = myRoot()
 	if not d or step >= DONE or not hrp then
 		point(nil)
-		HUD.hint(nil)
+		tutBanner(nil)
 		return
 	end
 	local pos = hrp.Position
 	local plot = myPlot()
-	local at, label, hint = nil, nil, nil
+	local at, label, title, sub, color = nil, nil, nil, nil, nil
 
 	if step == 0 then
 		if d.carrying then
 			advance(1)
 		else
 			at, label = nearestBubble(pos), "Grab it!"
-			hint = HOLD_HINT
+			title, sub = "Grab a sea creature", HOLD_HINT
 		end
 	end
 	if step == 1 then
@@ -227,18 +249,18 @@ local function update()
 		elseif not d.carrying then
 			-- a shark ate it on the way back: go grab another
 			at, label = nearestBubble(pos), "Grab it!"
-			hint = HOLD_HINT
+			title, sub = "Grab a sea creature", HOLD_HINT
 		elseif plot then
-			at, label = Layout.tankPos(plot) + Vector3.new(0, 4, 0), "Your dock"
-			hint = "🏠 Bring it back to your dock! It goes in your tank"
+			at, label = Layout.tankPos(plot) + Vector3.new(0, 4, 0), "Your tank"
+			title, sub = "Bring it home", "Follow the arrow to your tank. It earns cash every second!"
 		end
 	end
 	if step == 2 and plot then
 		at, label = Layout.padPos(plot), "Collect!"
-		hint = "Your tank makes cash. Step on the green pad!"
+		title, sub = "Collect your cash", "Step on the green pad next to your tank"
 	end
 	if step == 3 then
-		at, label, hint = drillTick(pos)
+		at, label, title, sub, color = drillTick(pos)
 	end
 	if step == 4 then
 		local nxt = HUD.nextRide(d)
@@ -246,22 +268,24 @@ local function update()
 			advance(5)
 		elseif d.coins >= nxt.price then
 			at, label = Layout.RideShopPad + Vector3.new(0, 1, 0), "Ride Shop"
-			hint = ("%s Buy the %s at the Ride Shop!"):format(nxt.icon, nxt.name)
+			title, sub = ("Get the %s %s"):format(nxt.icon, nxt.name), ("Walk onto the Ride Shop pad · +%d speed every second!"):format(nxt.gain or 0)
+			HUD.pulseRide(true)
 		else
-			-- not enough yet: keep them on the loop that earns coins
+			-- not enough yet: keep them on the loop that earns cash
 			if d.carrying then
-				at, label = plot and Layout.tankPos(plot) + Vector3.new(0, 4, 0), "Your dock"
+				at, label = plot and Layout.tankPos(plot) + Vector3.new(0, 4, 0), "Your tank"
 			elseif d.pending >= 1 and plot then
 				at, label = Layout.padPos(plot), "Collect!"
 			else
 				at, label = nearestBubble(pos), "Grab it!"
 			end
-			hint = ("$%s / $%s for the %s"):format(UI.short(d.coins), UI.short(nxt.price), nxt.name)
+			title = ("Save up for the %s %s"):format(nxt.icon, nxt.name)
+			sub = ("$%s / $%s · grab creatures, collect cash"):format(UI.short(d.coins), UI.short(nxt.price))
 		end
 	end
 
 	point(at, label)
-	HUD.hint(hint)
+	tutBanner(title, sub, color)
 end
 
 ----------------------------------------------------------------- start
@@ -289,18 +313,22 @@ function Onboarding.start()
 		end
 	end)
 
+	-- first time here: one big hello, then step 1
+	if step == 0 and #d.creatures == 0 then
+		Notify.takeover("+1 SPEED TO ESCAPE THE SHARK", "Catch sea creatures · get faster · don't get eaten", C.gold, 2.2)
+	end
+
 	local conn
 	conn = RunService.Heartbeat:Connect(function()
 		update()
 		if step >= DONE then
 			conn:Disconnect()
 			point(nil)
-			HUD.hint(nil)
+			tutBanner(nil)
 			if drill.shark then
 				drillEnd("abort")
 			end
-			Fx.bigWord("🎉 YOU'RE READY!", C.gold, 1.4)
-			HUD.toast("Unlock deeper zones for better creatures. Watch for sharks!", C.blue, 5)
+			Notify.takeover("YOU'RE READY!", "Faster rides → deeper zones → rarer creatures", C.gold, 2)
 			Fx.confetti(myRoot() and (myRoot() :: BasePart).Position or Vector3.zero)
 		end
 	end)

@@ -14,7 +14,7 @@ local Game = require(script.Parent.Game)
 
 local Bubbles = {}
 
-type Bubble = { model: Model, pos: Vector3, r: string, m: string?, zone: Config.Zone, taken: boolean? }
+type Bubble = { model: Model, pos: Vector3, r: string, m: string?, s: number, zone: Config.Zone, taken: boolean? }
 
 local live: { Bubble } = {}
 local tryGrab: (Player, Bubble) -> ()
@@ -63,6 +63,7 @@ end
 local function spawnBubble(zone: Config.Zone)
 	local r = Bubbles.rollRarity()
 	local m = Bubbles.rollMutation()
+	local size = Config.rollSize(rng)
 	local rarity = Config.rarity(r)
 	local pos = spot(zone)
 
@@ -71,7 +72,7 @@ local function spawnBubble(zone: Config.Zone)
 		Name = "Shell", Material = Enum.Material.ForceField, CanCollide = false, CanQuery = false, CastShadow = false,
 	})
 	model.PrimaryPart = shell
-	local creature = Creatures.build(r, m, 1, zone.id)
+	local creature = Creatures.build(r, m, math.min(Config.sizeScale(size), 1.3), zone.id)
 	creature:PivotTo(CFrame.new(pos))
 	creature.Parent = model
 	if rarity.index >= 4 then -- Epic+ gets a sky beam you can see from the shore
@@ -80,18 +81,18 @@ local function spawnBubble(zone: Config.Zone)
 		})
 	end
 	-- name + rarity tag (rare ones can be seen from further away)
-	NameTag.attach(shell, { r = r, z = zone.id, m = m }, nil, { height = 4.4, maxDist = rarity.index >= 3 and 260 or 90, width = 6 })
+	NameTag.attach(shell, { r = r, z = zone.id, m = m, s = size }, nil, { height = 4.4, maxDist = (rarity.index >= 3 or size >= 2) and 260 or 90, width = 6 })
 	model:SetAttribute("Rarity", r)
 	model:SetAttribute("Zone", zone.id)
 	model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
 	CollectionService:AddTag(model, "Bubble")
-	local entry: Bubble = { model = model, pos = pos, r = r, m = m, zone = zone }
+	local entry: Bubble = { model = model, pos = pos, r = r, m = m, s = size, zone = zone }
 	table.insert(live, entry)
 	-- hold to grab: rarer = longer hold (more risk with sharks around)
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.Name = "GrabPrompt"
 	prompt.ActionText = "Grab"
-	prompt.ObjectText = Config.creatureName(zone.id, r, m)
+	prompt.ObjectText = Config.fullName(zone.id, r, m, size)
 	prompt.HoldDuration = Config.GrabHold[r] or 0.5
 	prompt.MaxActivationDistance = 12
 	prompt.RequiresLineOfSight = false
@@ -102,7 +103,7 @@ local function spawnBubble(zone: Config.Zone)
 		tryGrab(player, entry)
 	end)
 	if r == "Legendary" then
-		Game.notifyAll("announce", { text = ("A LEGENDARY %s appeared in %s!"):format(Config.creatureName(zone.id, r, m), zone.name), color = rarity.color })
+		Game.notifyAll("announce", { text = ("A LEGENDARY %s appeared in %s!"):format(Config.fullName(zone.id, r, m, size), zone.name), color = rarity.color })
 	end
 end
 
@@ -141,11 +142,11 @@ local function grab(s: Game.Session, b: Bubble)
 			pity = true
 		end
 	end
-	local c = { r = r, z = b.zone.id, m = b.m }
+	local c = { r = r, z = b.zone.id, m = b.m, s = b.s }
 	Game.setCarry(s, c)
 	Game.discover(s, c)
-	Game.notify(s.player, "grab", { r = r, m = b.m, z = b.zone.id, lucky = lucky, pity = pity,
-		v = Config.creatureValue(r, b.zone.id, b.m) * Game.coinMult(s) })
+	Game.notify(s.player, "grab", { r = r, m = b.m, z = b.zone.id, s = b.s, lucky = lucky, pity = pity,
+		v = Config.creatureValue(r, b.zone.id, b.m, b.s) * Game.coinMult(s) })
 end
 
 -- hold the prompt to grab (server checks you're really there)
@@ -177,13 +178,13 @@ end
 -- Golden Bubble / Starter Pack: straight into your hands (or your tank)
 function Bubbles.give(s: Game.Session, r: string, zoneId: string?)
 	local zone = Config.zoneForSpeed(s.profile.speed)
-	local c = { r = r, z = zoneId or zone.id, m = Bubbles.rollMutation() }
+	local c = { r = r, z = zoneId or zone.id, m = Bubbles.rollMutation(), s = Config.rollSize(rng) }
 	Game.discover(s, c)
 	if s.carrying then
 		Game.addCreature(s, c)
 	else
 		Game.setCarry(s, c)
-		Game.notify(s.player, "grab", { r = c.r, m = c.m, z = c.z, gift = true, v = Config.creatureValue(c.r, c.z, c.m) * Game.coinMult(s) })
+		Game.notify(s.player, "grab", { r = c.r, m = c.m, z = c.z, s = c.s, gift = true, v = Config.creatureValue(c.r, c.z, c.m, c.s) * Game.coinMult(s) })
 	end
 end
 
