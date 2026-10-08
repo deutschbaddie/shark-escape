@@ -737,6 +737,10 @@ Config.SoundSlots = {
 	rideDuck = { file = F.paddle, loop = { 40.008, 43.98 }, gain = 0.73, every = { "duckSqueak", 5, 10, 0.3 } },
 	rideSurf = { file = F.flow, loop = { 9.95, 14.215 }, eq = { -6, 0, 2 }, gain = 0.36 },
 	rideBubbles = { file = F.deep, loop = { 0, 1.12 }, gain = 0.33 },
+	-- the Bathtub: a soft paddling loop with a quiet bubble now and then (the
+	-- bubble loop on its own was a constant glug)
+	rideTub = { file = F.swim, loop = { 2.782, 8.443 }, pitch = 0.88, gain = 0.5, every = { "tubBubble", 6, 11, 0.22 } },
+	tubBubble = { file = F.deep, from = 0, to = 0.6, pitch = 1.25, gain = 0.3, fade = 0.2 },
 	rideMotor = { file = F.boat, loop = { 2.015, 4.801 }, pitch = 0.82, gain = 0.48 },
 	rideJetSki = { file = F.jetski, loop = { 7.476, 9.306 }, gain = 0.74 },
 	rideBoat = { file = F.boat, loop = { 5.548, 8.76 }, gain = 0.42 },
@@ -755,7 +759,7 @@ Config.RideSound = {
 	Duck = { "rideDuck", 1.0 }, GoldDuck = { "rideDuck", 1.08 },
 	Boogie = { "rideKick", 1.0 },
 	Surf = { "rideSurf", 1.0 }, SharkBoard = { "rideSurf", 0.92 },
-	Bathtub = { "rideBubbles", 1.0 },
+	Bathtub = { "rideTub", 1.0 },
 	Banana = { "rideMotor", 1.0 },
 	JetSki = { "rideJetSki", 1.0 }, RainbowSki = { "rideJetSki", 1.12 },
 	Speedboat = { "rideBoat", 1.0 },
