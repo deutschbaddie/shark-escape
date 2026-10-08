@@ -560,15 +560,6 @@ Config.Daily = {
 Config.DAILY_GAP_HOURS, Config.DAILY_RESET_HOURS = 20, 48
 
 Config.Sounds = {
-	-- built-in Roblox client sounds (rbxasset://): used until the uploaded
-	-- files below have ids, so the game is never silent
-	splash = "rbxasset://sounds/impact_water.mp3",
-	swim = "rbxasset://sounds/action_swim.mp3",
-	chomp = "rbxasset://sounds/impact_explosion_03.mp3",
-	coin = "rbxasset://sounds/electronicpingshort.wav",
-	buy = "rbxasset://sounds/electronicpingshort.wav",
-	grab = "rbxasset://sounds/impact_water.mp3",
-
 	-- music (Audio.luau). One track for the whole game; give a place its own
 	-- track by filling its slot (the hunt slot, if empty, ducks the main track)
 	music = "rbxassetid://1846088038",
