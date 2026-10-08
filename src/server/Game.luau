@@ -849,6 +849,28 @@ function Game.leave(player: Player)
 	end
 end
 
+-- wipe a player's progress back to a brand-new save (dev command /reset);
+-- purchase receipts are kept so a product is never granted twice
+function Game.resetProfile(s: Session)
+	local receipts = s.profile.receipts
+	local fresh = Data.default()
+	table.clear(s.profile)
+	for k, v in fresh do
+		(s.profile :: any)[k] = v
+	end
+	s.profile.receipts = receipts
+	s.pending, s.offline = 0, 0
+	Game.setCarry(s, nil)
+	if s.canSave then
+		Data.save(s.player.UserId, s.profile)
+	end
+	s.dirty = true
+	Game.refreshTank(s)
+	Game.push(s)
+	s.player:LoadCharacter() -- respawn at the dock on the starter ride
+	Game.notify(s.player, "announce", { text = "All progress reset" })
+end
+
 function Game.saveAll()
 	for player, s in Game.sessions do
 		if s.canSave then
