@@ -137,10 +137,10 @@ export type Ride = {
 }
 
 Config.Rides = {
-	{ id = "Noodle", name = "Pool Noodle", icon = "🟠", price = 0, gain = 1 },
+	{ id = "Noodle", name = "Pool Noodle", icon = "🏊", price = 0, gain = 1 },
 	{ id = "Duck", name = "Rubber Duck Floatie", icon = "🦆", price = 25, gain = 2 },
-	{ id = "Tube", name = "Inner Tube", icon = "🛟", price = 85, gain = 3 },
-	{ id = "Boogie", name = "Boogie Board", icon = "🟥", price = 300, gain = 4 },
+	{ id = "Tube", name = "Inner Tube", icon = "⭕", price = 85, gain = 3 },
+	{ id = "Boogie", name = "Boogie Board", icon = "🏖️", price = 300, gain = 4 },
 	{ id = "Surf", name = "Surfboard", icon = "🏄", price = 1000, gain = 5 },
 	{ id = "Bathtub", name = "Bathtub", icon = "🛁", price = 3300, gain = 7 },
 	{ id = "Banana", name = "Banana Boat", icon = "🍌", price = 11000, gain = 9 },
@@ -236,13 +236,13 @@ Config.Species = {
 		Common = { name = "Blue Tang", kind = "fish", icon = "🐟", c1 = RGB(40, 110, 230), c2 = RGB(25, 30, 60), c3 = RGB(255, 220, 40) },
 		Uncommon = { name = "Seahorse", kind = "seahorse", icon = "🌀", c1 = RGB(255, 150, 60), c2 = RGB(255, 210, 120) },
 		Rare = { name = "Octopus", kind = "ceph", icon = "🐙", c1 = RGB(235, 80, 120), c2 = RGB(255, 170, 190) },
-		Epic = { name = "Manta Ray", kind = "ray", icon = "🪽", c1 = RGB(40, 60, 100), c2 = RGB(235, 240, 250) },
+		Epic = { name = "Manta Ray", kind = "ray", icon = "🌊", c1 = RGB(40, 60, 100), c2 = RGB(235, 240, 250) },
 		Legendary = { name = "Coral Dragon", kind = "serpent", icon = "🐉", c1 = RGB(255, 110, 150), c2 = RGB(255, 220, 120), horns = true },
 	},
 	Kelp = {
 		Common = { name = "Parrotfish", kind = "fish", icon = "🐠", c1 = RGB(70, 210, 150), c2 = RGB(255, 120, 200), c3 = RGB(255, 230, 90) },
 		Uncommon = { name = "Spider Crab", kind = "crab", icon = "🦀", c1 = RGB(200, 70, 50), c2 = RGB(255, 170, 120), long = true },
-		Rare = { name = "Jellyfish", kind = "jelly", icon = "🪼", c1 = RGB(255, 140, 220), c2 = RGB(255, 220, 245), glow = true },
+		Rare = { name = "Jellyfish", kind = "jelly", icon = "🎐", c1 = RGB(255, 140, 220), c2 = RGB(255, 220, 245), glow = true },
 		Epic = { name = "Squid", kind = "ceph", icon = "🦑", c1 = RGB(240, 150, 120), c2 = RGB(255, 210, 190), long = true },
 		Legendary = { name = "Sea Dragon", kind = "serpent", icon = "🐉", c1 = RGB(90, 180, 70), c2 = RGB(220, 240, 120) },
 	},
@@ -262,7 +262,7 @@ Config.Species = {
 	},
 	Abyss = {
 		Common = { name = "Glowfish", kind = "fish", icon = "✨", c1 = RGB(90, 255, 200), c2 = RGB(20, 40, 60), c3 = RGB(20, 20, 30), glow = true },
-		Uncommon = { name = "Abyss Jelly", kind = "jelly", icon = "🪼", c1 = RGB(140, 90, 255), c2 = RGB(220, 200, 255), glow = true },
+		Uncommon = { name = "Abyss Jelly", kind = "jelly", icon = "🔮", c1 = RGB(140, 90, 255), c2 = RGB(220, 200, 255), glow = true },
 		Rare = { name = "Vampire Squid", kind = "ceph", icon = "🦇", c1 = RGB(90, 20, 40), c2 = RGB(255, 60, 90), glow = true },
 		Epic = { name = "Megalodon Pup", kind = "whale", icon = "🦈", c1 = RGB(110, 130, 160), c2 = RGB(235, 240, 250), fin = true },
 		Legendary = { name = "Kraken", kind = "ceph", icon = "🐙", c1 = RGB(60, 20, 70), c2 = RGB(255, 80, 200), glow = true, size = 1.12 },
@@ -393,7 +393,7 @@ Config.Products = {
 	Shield = { iconName = "Shield", id = 0, price = 25, name = "Shark Shield", icon = "🛡️", desc = "Survive one bite, keep your creature" },
 	SpeedBoost = { iconName = "Boost", id = 0, price = 49, name = "2x Speed (15 min)", icon = "⏩", desc = "Double speed gain for 15 minutes" },
 	LuckPotion = { iconName = "Potion", id = 0, price = 49, name = "Luck Potion (10 min)", icon = "🧪", desc = "+15% rarity upgrade chance" },
-	GoldenBubble = { iconName = "GoldBubble", id = 0, price = 99, name = "Golden Bubble", icon = "🫧",
+	GoldenBubble = { iconName = "GoldBubble", id = 0, price = 99, name = "Golden Bubble", icon = "🌟",
 		desc = "Rare 70% · Epic 25% · Legendary 5%" },
 	StarterPack = { iconName = "Gift", id = 0, price = 49, name = "Starter Pack", icon = "🎁",
 		desc = "Rare Octopus + 30 min 2x Speed + 3 Shields" },
@@ -464,10 +464,10 @@ Config.Icons = {
 	},
 	emoji = {
 		Sneaker = "👟", Cash = "$",
-		Speed = "⚡", Coins = "🪙", Rides = "🛟", Index = "📖", Shop = "🛒", Rebirth = "🔁", Shark = "🦈", Tank = "🐟",
+		Speed = "⚡", Coins = "$", Rides = "🏄", Index = "📖", Shop = "🛒", Rebirth = "🔁", Shark = "🦈", Tank = "🐟",
 		Shield = "🛡️", Boost = "⏩", Potion = "🧪", Lock = "🔒", Gift = "🎁", Clock = "⏰", Trophy = "🏆", Sparkle = "✨",
-		X2Speed = "⚡", X2Coins = "🪙", Magnet = "🧲", Clover = "🍀", BigTank = "🐟", Crown = "👑", GoldDuck = "🦆",
-		SharkBoard = "🏄", RainbowSki = "🌈", GoldBubble = "🫧", Chest = "🧰", Fin = "🦈", Arrow = "⬇️", MoneyBag = "🪙",
+		X2Speed = "⚡", X2Coins = "$", Magnet = "🧲", Clover = "🍀", BigTank = "🐟", Crown = "👑", GoldDuck = "🦆",
+		SharkBoard = "🏄", RainbowSki = "🌈", GoldBubble = "🌟", Chest = "🧰", Fin = "🦈", Arrow = "⬇️", MoneyBag = "🎁",
 		Fish = "🐠", Island = "🏝️",
 	},
 }

@@ -79,14 +79,7 @@ local function build()
 	gui.ResetOnSpawn = false
 	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	gui.Parent = player:WaitForChild("PlayerGui")
-	local scale = Instance.new("UIScale")
-	scale.Parent = gui
-	local function rescale()
-		local v = Workspace.CurrentCamera.ViewportSize
-		scale.Scale = math.clamp(math.min(v.X / 960, v.Y / 560), 0.55, 1.3)
-	end
-	rescale()
-	Workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(rescale)
+	UI.autoScale(gui)
 
 	-- left: wide menu buttons + Slow Mode (the classic simulator column)
 	local menu = UI.frame(gui, { Name = "Menu", Size = UDim2.fromOffset(250, 300), Position = UDim2.new(0, 12, 0.46, 0), AnchorPoint = Vector2.new(0, 0.5), BackgroundTransparency = 1 })
@@ -218,7 +211,7 @@ local function build()
 		stats.Position = UDim2.fromOffset(10, 4)
 		extrasLabel.AnchorPoint = Vector2.new(0, 0)
 		extrasLabel.Position = UDim2.fromOffset(14, 156)
-		menu.Position = UDim2.new(0, 12, 0.6, 0)
+		menu.Position = UDim2.new(0, 12, 0.5, 0)
 		timerPill.AnchorPoint = Vector2.new(1, 0)
 		timerPill.Position = UDim2.new(1, 0, 0, 60)
 	end

@@ -9,6 +9,7 @@ local Config = require(Shared.Config)
 local Layout = require(Shared.Layout)
 local Build = require(Shared.Build)
 local Creatures = require(Shared.Creatures)
+local NameTag = require(Shared.NameTag)
 local Game = require(script.Parent.Game)
 
 local Bubbles = {}
@@ -78,24 +79,8 @@ local function spawnBubble(zone: Config.Zone)
 			Name = "Beam", Material = Enum.Material.Neon, Transparency = 0.55, CanCollide = false, CanQuery = false, CastShadow = false,
 		})
 	end
-	local bb = Instance.new("BillboardGui")
-	bb.Size = UDim2.fromScale(7, 1.6) -- in studs, so it shrinks with distance
-	bb.StudsOffset = Vector3.new(0, 4.4, 0)
-	bb.MaxDistance = rarity.index >= 3 and 260 or 90
-	bb.LightInfluence = 0
-	bb.Parent = shell
-	local t = Instance.new("TextLabel")
-	t.Size = UDim2.fromScale(1, 1)
-	t.BackgroundTransparency = 1
-	t.Font = Enum.Font.FredokaOne
-	t.TextScaled = true
-	t.TextColor3 = rarity.color
-	local st = Instance.new("UIStroke")
-	st.Color = Color3.fromRGB(22, 22, 34)
-	st.Thickness = 2.5
-	st.Parent = t
-	t.Text = (m and (m .. " ") or "") .. r
-	t.Parent = bb
+	-- name + rarity tag (rare ones can be seen from further away)
+	NameTag.attach(shell, { r = r, z = zone.id, m = m }, nil, { height = 4.4, maxDist = rarity.index >= 3 and 260 or 90, width = 6 })
 	model:SetAttribute("Rarity", r)
 	model:SetAttribute("Zone", zone.id)
 	model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic

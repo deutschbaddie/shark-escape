@@ -41,6 +41,10 @@ C.__mul = function(a, b)
 	return a.p + mv(a.r, b)
 end
 C.__add = function(a, v) return cf(a.p + v, a.r) end
+function C.Inverse(a)
+	local t = { { a.r[1][1], a.r[2][1], a.r[3][1] }, { a.r[1][2], a.r[2][2], a.r[3][2] }, { a.r[1][3], a.r[2][3], a.r[3][3] } }
+	return cf(-mv(t, a.p), t)
+end
 C.__index = function(t, k)
 	if k == "Position" then return t.p end
 	if k == "Rotation" then return cf(vec(0, 0, 0), t.r) end
@@ -97,6 +101,8 @@ function Inst:GetDescendants()
 	return out
 end
 function Inst:GetChildren() return table.clone(self._kids) end
+function Inst:FindFirstChildWhichIsA(c) for _, k in self._kids do if k:IsA(c) then return k end end return nil end
+function Inst:FindFirstChild(n) for _, k in self._kids do if k.Name == n then return k end end return nil end
 function Inst:IsA(c) return self.ClassName == c or (c == "BasePart" and (self.ClassName == "Part" or self.ClassName == "WedgePart")) end
 Instance = {
 	new = function(class)
@@ -111,3 +117,13 @@ Inst._kids = nil
 setmetatable(Inst, nil)
 
 game = { GetService = function(_, name) return { AddTag = function() end, GetTagged = function() return {} end } end }
+Random = {
+	new = function(seed)
+		local x = (seed or 1) * 7919 % 2147483647
+		local function nxt() x = x * 48271 % 2147483647 return x / 2147483647 end
+		return {
+			NextNumber = function(_, a, b) return (a or 0) + nxt() * ((b or 1) - (a or 0)) end,
+			NextInteger = function(_, a, b) return a + math.floor(nxt() * (b - a + 1)) end,
+		}
+	end,
+}

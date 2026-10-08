@@ -28,8 +28,8 @@ local C = UI.C
 local player = Players.LocalPlayer
 
 local DONE = 5
-local HOLD_HINT = game:GetService("UserInputService").TouchEnabled and "🫧 Swim to a bubble and HOLD the button to grab it!"
-	or "🫧 Swim to a bubble and HOLD E to grab it!"
+local HOLD_HINT = game:GetService("UserInputService").TouchEnabled and "🐠 Swim to a bubble and HOLD the button to grab it!"
+	or "🐠 Swim to a bubble and HOLD E to grab it!"
 local step = -1 -- local copy, never behind the server
 
 local function point(at: Vector3?, label: string?)

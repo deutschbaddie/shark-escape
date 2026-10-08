@@ -9,7 +9,9 @@ local Layout = require(Shared.Layout)
 local Build = require(Shared.Build)
 local Creatures = require(Shared.Creatures)
 local Rides = require(Shared.Rides)
+local Rig = require(Shared.Rig)
 local Remotes = require(Shared.Remotes)
+local NameTag = require(Shared.NameTag)
 local Data = require(script.Parent.Data)
 local World = require(script.Parent.World)
 
@@ -260,6 +262,19 @@ function Game.attachRide(s: Session)
 	local id = Game.ownsRide(s, s.profile.ride) and s.profile.ride or "Noodle"
 	char:SetAttribute("Ride", id) -- clients pick the pose + handling from this
 	local model = Rides.build(id)
+	-- size the ride to the body (rides are modelled for the default R15 legs)
+	local joints = {}
+	for _, d in char:GetDescendants() do
+		if d:IsA("Motor6D") and d.Part0 and d.Part1 then
+			table.insert(joints, d)
+		end
+	end
+	local leg = Rig.legLength(joints :: any, hrp)
+	local k = leg and math.clamp(leg / Rig.REF_LEG, 0.8, 1.35) or 1
+	char:SetAttribute("RideScale", k)
+	if math.abs(k - 1) > 0.02 then
+		model:ScaleTo(k)
+	end
 	local feet = hrp.CFrame * CFrame.new(0, -(hum.HipHeight + hrp.Size.Y / 2), 0)
 	model:PivotTo(feet)
 	Build.weldToRoot(model)
@@ -307,6 +322,7 @@ function Game.setCarry(s: Session, c: Data.Creature?)
 		w.Part1 = m.PrimaryPart
 		w.Parent = m.PrimaryPart
 		m.Name = "Carried"
+		NameTag.attach(m.PrimaryPart :: BasePart, c, nil, { height = 1.9, maxDist = 90, width = 3.4 })
 		m.Parent = char
 		s.carryModel = m
 	end
@@ -351,27 +367,6 @@ local function findCreature(s: Session, id: any): Data.Creature?
 	return nil
 end
 
-local function makeLabel(parent: Instance, size: UDim2, offset: Vector3, maxDist: number): (TextLabel, BillboardGui)
-	local bb = Instance.new("BillboardGui")
-	bb.Size = size
-	bb.StudsOffsetWorldSpace = offset
-	bb.MaxDistance = maxDist
-	bb.LightInfluence = 0
-	bb.Parent = parent
-	local t = Instance.new("TextLabel")
-	t.Size = UDim2.fromScale(1, 1)
-	t.BackgroundTransparency = 1
-	t.Font = Enum.Font.FredokaOne
-	t.TextScaled = true
-	t.TextColor3 = Color3.fromRGB(255, 255, 255)
-	t.Parent = bb
-	local st = Instance.new("UIStroke")
-	st.Color = Color3.fromRGB(22, 22, 34)
-	st.Thickness = 2
-	st.Parent = t
-	return t, bb
-end
-
 -- the swimming showcase: Active creatures with their $/s (clients make them swim)
 function Game.refreshTank(s: Session)
 	local plot = s.plot
@@ -386,9 +381,7 @@ function Game.refreshTank(s: Session)
 			local m = Creatures.build(c.r, c.m, 0.72, c.z)
 			m:SetAttribute("Seed", (c.id or 1) * 7.7)
 			m:PivotTo(base + Vector3.new(0, 5, 0))
-			local t = makeLabel(m.PrimaryPart :: BasePart, UDim2.fromScale(2.6, 0.75), Vector3.new(0, 1.35, 0), 55)
-			t.Text = "$" .. formatShort(baseValue(c) * mult) .. "/s"
-			t.TextColor3 = Config.rarity(c.r).color
+			NameTag.attach(m.PrimaryPart :: BasePart, c, baseValue(c) * mult, { height = 1.7, maxDist = 50, width = 3.2 })
 			m.Parent = plot.slots
 		end
 	end
@@ -799,6 +792,9 @@ function Game.join(player: Player)
 
 	player.CharacterAdded:Connect(function(char)
 		onCharacter(s, char)
+	end)
+	player.CharacterAppearanceLoaded:Connect(function()
+		Game.attachRide(s) -- body size may have changed: refit the ride
 	end)
 	if player.Character then
 		task.spawn(onCharacter, s, player.Character)

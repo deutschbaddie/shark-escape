@@ -6,7 +6,6 @@
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
-local Workspace = game:GetService("Workspace")
 
 local Shared = game.ReplicatedStorage.Shared
 local Config = require(Shared.Config)
@@ -144,14 +143,7 @@ local function build()
 	gui.DisplayOrder = 9
 	gui.Enabled = false
 	gui.Parent = player:WaitForChild("PlayerGui")
-	local scale = Instance.new("UIScale")
-	scale.Parent = gui
-	local function rescale()
-		local v = Workspace.CurrentCamera.ViewportSize
-		scale.Scale = math.clamp(math.min(v.X / 960, v.Y / 560), 0.55, 1.3)
-	end
-	rescale()
-	Workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(rescale)
+	UI.autoScale(gui)
 
 	panel = UI.frame(gui, { Size = UDim2.fromOffset(400, 380), Position = UDim2.new(1, -116, 0.46, 0), AnchorPoint = Vector2.new(1, 0.5),
 		BackgroundColor3 = UI.C.panel })

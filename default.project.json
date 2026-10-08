@@ -21,6 +21,9 @@
         "Client": {
           "$path": "src/client"
         }
+      },
+      "$properties": {
+        "GameSettingsAvatar": "R15"
       }
     },
     "Lighting": {

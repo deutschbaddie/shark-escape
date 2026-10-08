@@ -36,6 +36,27 @@ local function apply(inst: Instance, props: { [string]: any }?)
 	end
 end
 
+-- One scale for every screen: everything is designed on a 1200x680 canvas
+-- and scaled so that canvas always fits the device (phone, tablet, PC, TV).
+-- The ScreenGui keeps the notch/topbar-safe area.
+UI.BASE = Vector2.new(1200, 680)
+function UI.autoScale(gui: ScreenGui): UIScale
+	gui.ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets
+	local scale = Instance.new("UIScale")
+	scale.Parent = gui
+	local function rescale()
+		local v = gui.AbsoluteSize
+		if v.X < 2 or v.Y < 2 then
+			v = workspace.CurrentCamera.ViewportSize
+		end
+		scale.Scale = math.clamp(math.min(v.X / UI.BASE.X, v.Y / UI.BASE.Y), 0.4, 1.6)
+	end
+	rescale()
+	gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(rescale)
+	workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(rescale)
+	return scale
+end
+
 function UI.corner(parent: Instance, r: number?)
 	local c = Instance.new("UICorner")
 	c.CornerRadius = UDim.new(0, r or 10)

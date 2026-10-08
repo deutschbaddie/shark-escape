@@ -273,14 +273,7 @@ function Shop.start()
 	gui.ResetOnSpawn = false
 	gui.DisplayOrder = 10
 	gui.Parent = player:WaitForChild("PlayerGui")
-	local scale = Instance.new("UIScale")
-	scale.Parent = gui
-	local function rescale()
-		local v = workspace.CurrentCamera.ViewportSize
-		scale.Scale = math.clamp(math.min(v.X / 780, v.Y / 540), 0.5, 1.2)
-	end
-	rescale()
-	workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(rescale)
+	UI.autoScale(gui)
 	-- the bite cutscene owns the screen
 	player:GetAttributeChangedSignal("Cinematic"):Connect(function()
 		if player:GetAttribute("Cinematic") then
