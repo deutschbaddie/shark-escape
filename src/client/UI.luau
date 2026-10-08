@@ -48,7 +48,9 @@ end
 UI.BASE = Vector2.new(1280, 720)
 local UserInputService = game:GetService("UserInputService")
 UI.TOUCH = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
-function UI.autoScale(gui: ScreenGui): UIScale
+-- `fit` (design units) = the biggest window this gui shows: the scale is
+-- capped so it always fits on screen (phones get the boost only if it fits)
+function UI.autoScale(gui: ScreenGui, fit: Vector2?): UIScale
 	gui.ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets
 	local scale = Instance.new("UIScale")
 	scale.Parent = gui
@@ -59,7 +61,10 @@ function UI.autoScale(gui: ScreenGui): UIScale
 		end
 		local k = math.min(v.X / UI.BASE.X, v.Y / UI.BASE.Y)
 		if UI.TOUCH and v.Y < 600 then
-			k *= 1.3 -- phones: bigger touch targets and readable text (the layout leaves room)
+			k *= 1.4 -- phones: bigger touch targets and readable text (the layout leaves room)
+		end
+		if fit then
+			k = math.min(k, v.X * 0.96 / fit.X, v.Y * 0.94 / fit.Y)
 		end
 		scale.Scale = math.clamp(k, 0.4, 1.6)
 	end

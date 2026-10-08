@@ -52,6 +52,10 @@ G.__index = function(t, k)
 		return signal()
 	end
 	if k == "AbsoluteSize" then
+		-- a ScreenGui with CoreUISafeInsets: the screen minus the Roblox top bar
+		if p.ClassName == "ScreenGui" then
+			return Vector2.new(VIEWPORT.X, VIEWPORT.Y - 58)
+		end
 		return Vector2.new(0, 0)
 	end
 	return nil

@@ -203,6 +203,7 @@ local function formatShort(n: number): string
 	end
 	return (i == 1 and tostring(math.floor(n)) or (string.format("%.1f", n):gsub("%.0$", ""))) .. units[i]
 end
+Game.short = formatShort
 
 ----------------------------------------------------------------- state sync
 function Game.push(s: Session)
@@ -243,6 +244,9 @@ function Game.push(s: Session)
 		luckLeft = math.max(0, p.luckUntil - now),
 		playtime = p.playtime,
 		starter = p.starter,
+		dailyDay = p.daily.day,
+		dailyWait = math.max(0, p.daily.last + Config.DAILY_GAP_HOURS * 3600 - now),
+		groupWait = math.max(0, p.groupClaim + Config.GroupChest.cooldownHours * 3600 - now),
 		plot = s.plot and s.plot.index or 0,
 		index = p.index,
 		claimed = p.claimed,
@@ -541,6 +545,11 @@ end
 
 ----------------------------------------------------------------- actions
 local actions: { [string]: (Session, any) -> () } = {}
+
+-- other server modules add their own actions (Rewards: daily, group chest)
+function Game.action(name: string, fn: (Session, any) -> ())
+	actions[name] = fn
+end
 
 actions.buyRide = function(s, id)
 	local ride = Config.ride(id)

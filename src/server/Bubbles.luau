@@ -176,9 +176,9 @@ tryGrab = function(player: Player, b: Bubble)
 end
 
 -- Golden Bubble / Starter Pack: straight into your hands (or your tank)
-function Bubbles.give(s: Game.Session, r: string, zoneId: string?)
+function Bubbles.give(s: Game.Session, r: string, zoneId: string?, size: number?)
 	local zone = Config.zoneForSpeed(s.profile.speed)
-	local c = { r = r, z = zoneId or zone.id, m = Bubbles.rollMutation(), s = Config.rollSize(rng) }
+	local c = { r = r, z = zoneId or zone.id, m = Bubbles.rollMutation(), s = size or Config.rollSize(rng) }
 	Game.discover(s, c)
 	if s.carrying then
 		Game.addCreature(s, c)

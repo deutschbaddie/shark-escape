@@ -63,6 +63,7 @@ Layout.Huts = {
 	{ kind = "Index", title = "INDEX", color = Color3.fromRGB(255, 150, 30), pos = Vector3.new(66, Config.BEACH_TOP, -96) },
 }
 Layout.Board = Vector3.new(-112, Config.BEACH_TOP, -114)
+Layout.GroupChest = Vector3.new(36, Config.BEACH_TOP, -66) -- "Join Group / Like to Claim!"
 
 function Layout.atRideShop(pos: Vector3): boolean
 	local d = Vector2.new(pos.X - Layout.RideShopPad.X, pos.Z - (Layout.RideShopPad.Z - 8)).Magnitude

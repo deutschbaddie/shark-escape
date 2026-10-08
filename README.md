@@ -43,6 +43,9 @@ Rojo project. Untested in Studio so far.
 
 ## Before publishing
 - Create the gamepasses and dev products and put their ids in `src/shared/Config.luau` (0 means "Soon").
+- Put your group's id in `Config.GroupId`. The CLAIM chest in the plaza then asks players to join it (and like the
+  game) for a reward every 12 h. With 0 it only asks for a like.
+- Pick the sounds listed in ASSETS.md (music, ride loops, UI, shark) and paste their ids into `Config.Sounds`.
 - Choose sounds from the Creator Store and put their ids in `Config.Sounds`. Record every asset id in ASSETS.md.
 
 ## Look

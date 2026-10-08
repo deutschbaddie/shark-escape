@@ -62,7 +62,7 @@ task = {{
 """
     for m in ("Config", "Build", "Layout"):
         s += module(m, "shared", "mod:")
-    for m in ("UI", "Fx", "Notify", "HUD"):
+    for m in ("UI", "Fx", "Notify", "HUD", "Rewards"):
         s += module(m, "client", "cmod:")
     s += """
 local sig = function() return { Connect = function() end } end
@@ -72,6 +72,7 @@ SAMPLE = {
 	creatures = { { e = true, v = 60 }, { e = true, v = 70 }, { e = false, v = 90 } }, shields = 1, boostLeft = 0, luckLeft = 600,
 	index = { a = true }, claimed = {}, rides = { Noodle = true, Duck = true, Tube = true, Boogie = true, Surf = true },
 	playtime = 900, passes = {}, plot = 1, pending = 0, carrying = { r = "Rare", z = "Reef", s = 2.2 },
+	dailyDay = 3, dailyWait = 0, groupWait = 0, tut = 5,
 }
 MODULES["cmod:State"] = function() return { data = SAMPLE, Changed = sig(), action = function() end, wait = function() return SAMPLE end } end
 MODULES["cmod:Water"] = function() return { setSafeGlow = function() end } end
@@ -144,6 +145,11 @@ Notify.status("Coral Reef · 340 m")
 Notify.banner("Coral Reef", { key = "zone", priority = 2, sub = "🦈 Hammerhead waters", color = Color3.fromRGB(150, 230, 240) })
 Notify.toast("🐙 Huge Octopus  +$1.2K/s · NEW!", Color3.fromRGB(64, 156, 255))
 Notify.toast("✅ The sharks are gone. Back to the water!", Color3.fromRGB(78, 206, 48))
+"""
+SCENE_DAILY = """
+local Rewards = require("cmod:Rewards")
+Rewards.start()
+Rewards.openDaily()
 """
 SCENE_TAKEOVER = """
 Notify.status("Coral Reef · 340 m")
@@ -340,4 +346,6 @@ def draw_device(name, w, h, touch, scene, tag):
 for name, w, h, touch in DEVICES:
     draw_device(name, w, h, touch, SCENE_PLAY, "play")
 draw_device("phone_844x390", 844, 390, True, SCENE_TAKEOVER, "takeover")
+draw_device("phone_844x390", 844, 390, True, SCENE_DAILY, "daily")
+draw_device("desktop_1600x900", 1600, 900, False, SCENE_DAILY, "daily")
 draw_device("desktop_1600x900", 1600, 900, False, SCENE_TAKEOVER, "takeover")

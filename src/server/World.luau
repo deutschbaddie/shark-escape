@@ -133,7 +133,7 @@ local function checkerWall(parent: Instance, a: Vector3, b: Vector3, bottom: num
 	end
 end
 
-local WALL_BOTTOM, WALL_TOP = -6, 6 -- low checker walls, a grassy bank with trees on top
+local WALL_BOTTOM, WALL_TOP = -6, 16 -- tall checker walls, terraced grass banks with trees above
 
 ----------------------------------------------------------------- terrain
 local function fill(minV: Vector3, maxV: Vector3, mat: Enum.Material)
@@ -431,47 +431,61 @@ local function buildBoard()
 end
 
 ----------------------------------------------------------------- lane
--- the grassy banks beyond the walls, with trees (like the classic stud
--- obbies): studded grass from the wall's topper out to BANK_W, voxel trees
--- in two staggered rows, palms near the start, darker trees out deep
-local BANK_W = 72
+-- Terraced grass banks beyond the walls (like the classic stud obbies and
+-- the thumbnail): a first grass terrace on top of the lane wall, a second
+-- checker step, a higher terrace, voxel trees on both, palms near the start
+-- and darker trees out deep.
+local TERRACE1 = 34 -- first terrace runs from the wall to W/2 + 34
+local TERRACE2 = 100 -- second terrace out to W/2 + 100
+local BANK_W = TERRACE2
+local STEP_H = 12 -- the second terrace is this much higher
+
+local function grassRun(parent: Instance, side: number, inner: number, outer: number, top: number)
+	local z = PLAZA_BACK - WALL_T
+	while z < Config.OCEAN_END + WALL_T do
+		local len = math.min(400, Config.OCEAN_END + WALL_T - z)
+		local grass = Build.part(parent, Vector3.new(outer - inner, 6, len), CFrame.new(side * (inner + outer) / 2, top - 3, z + len / 2), GRASS, { Name = "Bank" })
+		Build.studs(grass, { Enum.NormalId.Top })
+		z += len
+	end
+end
+
+local function treeRow(parent: Instance, rng: Random, side: number, x: number, y: number, step: number, big: number)
+	local z = PLAZA_BACK + rng:NextNumber(0, step)
+	while z < Config.OCEAN_END do
+		local zone = Config.zoneAt(z)
+		local idx = zone and zone.index or 1
+		local pos = Vector3.new(side * (x + rng:NextNumber(-4, 4)), y, z)
+		local scale = rng:NextNumber(0.85, 1.25) * big
+		if idx <= 2 and rng:NextNumber() < 0.3 then
+			Props.palm(parent, CFrame.new(pos), rng:NextNumber(12, 17) * big)
+		elseif idx >= 5 then
+			Props.blockTree(parent, pos, scale, C(38, 92, 78), C(52, 118, 96)) -- deep water: dark teal
+		elseif idx >= 3 then
+			Props.blockTree(parent, pos, scale, C(46, 140, 56), C(64, 166, 66))
+		else
+			Props.blockTree(parent, pos, scale)
+		end
+		z += step + rng:NextNumber(-5, 5)
+	end
+end
+
 local function buildBanks()
 	local banks = Build.model("Banks", map)
-	local inner = WALL_X + (WALL_T + 1.6) / 2
-	local outer = W / 2 + BANK_W
-	local top = WALL_TOP + 2
-	for _, side in { -1, 1 } do
-		local z = PLAZA_BACK - WALL_T
-		while z < Config.OCEAN_END + WALL_T do
-			local len = math.min(400, Config.OCEAN_END + WALL_T - z)
-			local cx = side * (inner + outer) / 2
-			local grass = Build.part(banks, Vector3.new(outer - inner, 6, len), CFrame.new(cx, top - 3, z + len / 2), GRASS, { Name = "Bank" })
-			Build.studs(grass, { Enum.NormalId.Top })
-			z += len
-		end
-	end
 	local trees = Build.model("Trees", map)
 	local rng = Random.new(7)
+	local top1 = WALL_TOP + 2
+	local stepX = W / 2 + TERRACE1 + WALL_T / 2
+	local top2 = top1 + STEP_H
 	for _, side in { -1, 1 } do
-		for row, spec in { { x = W / 2 + 20, step = 26 }, { x = W / 2 + 44, step = 36 }, { x = W / 2 + 64, step = 48 } } do
-			local z = PLAZA_BACK + rng:NextNumber(0, spec.step)
-			while z < Config.OCEAN_END do
-				local zone = Config.zoneAt(z)
-				local idx = zone and zone.index or 1
-				local pos = Vector3.new(side * (spec.x + rng:NextNumber(-4, 4)), top, z)
-				local scale = rng:NextNumber(0.85, 1.25) * (row == 1 and 0.9 or 1.1)
-				if idx <= 2 and rng:NextNumber() < 0.3 then
-					Props.palm(trees, CFrame.new(pos), rng:NextNumber(12, 17))
-				elseif idx >= 5 then
-					Props.blockTree(trees, pos, scale, C(38, 92, 78), C(52, 118, 96)) -- deep water: dark teal
-				elseif idx >= 3 then
-					Props.blockTree(trees, pos, scale, C(46, 140, 56), C(64, 166, 66))
-				else
-					Props.blockTree(trees, pos, scale)
-				end
-				z += spec.step + rng:NextNumber(-5, 5)
-			end
-		end
+		-- terrace 1, the checker step up, terrace 2
+		grassRun(banks, side, WALL_X + (WALL_T + 1.6) / 2, W / 2 + TERRACE1, top1)
+		checkerWall(banks, Vector3.new(side * stepX, 0, PLAZA_BACK - WALL_T), Vector3.new(side * stepX, 0, Config.OCEAN_END + WALL_T),
+			top1 - 4, top2 - 2, { side < 0 and Enum.NormalId.Right or Enum.NormalId.Left })
+		grassRun(banks, side, stepX + (WALL_T + 1.6) / 2, W / 2 + TERRACE2, top2)
+		treeRow(trees, rng, side, W / 2 + 20, top1, 26, 0.9)
+		treeRow(trees, rng, side, W / 2 + 58, top2, 32, 1.15)
+		treeRow(trees, rng, side, W / 2 + 84, top2, 42, 1.3)
 	end
 	Build.ghost(trees)
 end
@@ -519,7 +533,7 @@ local function buildGates()
 			local z = zone.zStart
 			-- see-through shimmering barrier across the water (visual only: the
 			-- server enforces gates; the client fades the ones you've unlocked)
-			local wall = Build.part(g, Vector3.new(W - 2, 13, 0.6), CFrame.new(0, 5.5, z), C(205, 236, 255), {
+			local wall = Build.part(g, Vector3.new(W - 2, WALL_TOP + 6, 0.6), CFrame.new(0, (WALL_TOP - 6) / 2, z), C(205, 236, 255), {
 				Name = "Wall", Material = Enum.Material.ForceField, Transparency = 0.15, CastShadow = false, CanCollide = false, CanQuery = false,
 			})
 			g.PrimaryPart = wall
@@ -527,12 +541,13 @@ local function buildGates()
 			g:SetAttribute("ZoneName", zone.name)
 			-- the sign: zone name + what it takes to get in, on two posts
 			local tint = zone.water:Lerp(C(255, 255, 255), 0.25)
+			local sy = WALL_TOP + 9 -- sign centre, above the shimmer
 			for _, x in { -14, 14 } do
-				Build.studs(Build.part(g, Vector3.new(1.4, 9, 1.4), CFrame.new(x, 12.5, z), C(250, 250, 255), { CanCollide = false }))
+				Build.studs(Build.part(g, Vector3.new(1.4, 9, 1.4), CFrame.new(x, sy - 8.5, z), C(250, 250, 255), { CanCollide = false }))
 			end
-			local board = Build.part(g, Vector3.new(44, 11, 1.2), CFrame.new(0, 21, z), C(28, 32, 58), { Name = "Banner", CanCollide = false })
-			Build.studs(Build.part(g, Vector3.new(46, 1.2, 1.8), CFrame.new(0, 27.1, z), tint, { CanCollide = false }))
-			Build.studs(Build.part(g, Vector3.new(46, 1.2, 1.8), CFrame.new(0, 14.9, z), tint, { CanCollide = false }))
+			local board = Build.part(g, Vector3.new(44, 11, 1.2), CFrame.new(0, sy, z), C(28, 32, 58), { Name = "Banner", CanCollide = false })
+			Build.studs(Build.part(g, Vector3.new(46, 1.2, 1.8), CFrame.new(0, sy + 6.1, z), tint, { CanCollide = false }))
+			Build.studs(Build.part(g, Vector3.new(46, 1.2, 1.8), CFrame.new(0, sy - 6.1, z), tint, { CanCollide = false }))
 			for _, face in { Enum.NormalId.Front, Enum.NormalId.Back } do
 				local name = surfaceText(board, face, ("🔒 %s"):format(zone.name), C(255, 255, 255), Vector2.new(600, 150))
 				name.Size = UDim2.fromScale(0.94, 0.56)
@@ -721,6 +736,51 @@ local function buildPlot(i: number, cf: CFrame): Plot
 	}
 end
 
+----------------------------------------------------------------- group chest
+-- the CLAIM chest: a red studded chest with gold trim on a glowing ring; the
+-- prompt asks the server (Rewards.luau), the client updates the sign
+local function buildGroupChest()
+	local m = Build.model("GroupChest", map)
+	local base = CFrame.new(Layout.GroupChest) * CFrame.Angles(0, math.pi, 0) -- faces the docks
+	local red, gold = C(220, 36, 44), C(255, 196, 40)
+	Build.cyl(m, 0.2, 13, base * CFrame.new(0, 0.12, 0), C(255, 230, 80), { Material = Enum.Material.Neon, Transparency = 0.35, CastShadow = false, CanCollide = false })
+	Build.cyl(m, 0.22, 10.5, base * CFrame.new(0, 0.13, 0), C(255, 248, 200), { Transparency = 0.2, CastShadow = false, CanCollide = false })
+	local box = studAll(Build.part(m, Vector3.new(7, 3.6, 4.6), base * CFrame.new(0, 2.0, 0), red, { Name = "Box" }))
+	studAll(Build.part(m, Vector3.new(7.2, 1.6, 4.8), base * CFrame.new(0, 4.6, 0), red, { Name = "Lid" }))
+	for _, x in { -2.6, 2.6 } do
+		Build.studs(Build.part(m, Vector3.new(0.8, 5.5, 4.95), base * CFrame.new(x, 2.95, 0), gold))
+	end
+	Build.studs(Build.part(m, Vector3.new(7.4, 0.5, 5.0), base * CFrame.new(0, 3.85, 0), gold))
+	Build.part(m, Vector3.new(1.0, 1.2, 0.3), base * CFrame.new(0, 3.3, -2.45), C(40, 40, 50), { Name = "Lock" })
+	m.PrimaryPart = box
+	-- sign: rainbow CLAIM + what it takes (the client fills in the timer)
+	local anchor = Build.part(m, Vector3.new(0.2, 0.2, 0.2), base * CFrame.new(0, 10.5, 0), C(255, 255, 255),
+		{ Name = "Sign", Transparency = 1, CanCollide = false, CanQuery = false, CanTouch = false })
+	local title = label(anchor, Vector2.new(16, 3.4), Vector3.new(0, 1.2, 0), "CLAIM", C(255, 255, 255), 140)
+	title.Name = "Title"
+	title.Font = Enum.Font.LuckiestGuy
+	local rainbow = Instance.new("UIGradient")
+	local keys = {}
+	for i = 0, 6 do
+		table.insert(keys, ColorSequenceKeypoint.new(i / 6, Color3.fromHSV(i / 6, 0.85, 1)))
+	end
+	rainbow.Color = ColorSequence.new(keys)
+	rainbow.Parent = title
+	local sub = label(anchor, Vector2.new(16, 1.6), Vector3.new(0, -1.3, 0), Config.GroupId ~= 0 and "Join Group & Like To Claim!" or "Like The Game To Claim!", C(255, 214, 60), 140)
+	sub.Name = "Sub"
+	-- prompt (E, like everything)
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "GroupChest"
+	prompt.ActionText = "Claim"
+	prompt.ObjectText = "Group Chest"
+	prompt.HoldDuration = 0.25
+	prompt.MaxActivationDistance = 12
+	prompt.RequiresLineOfSight = false
+	prompt.Style = Enum.ProximityPromptStyle.Custom
+	prompt.KeyboardKeyCode = Enum.KeyCode.E
+	prompt.Parent = box
+end
+
 -- Builds everything. Safe to run again (and from the Studio command bar to
 -- preview the map in edit mode): the old map is removed first.
 function World.build()
@@ -749,6 +809,7 @@ function World.build()
 		hut(h.kind, h.title, h.color, h.pos)
 	end
 	buildBoard()
+	buildGroupChest()
 	buildTerrain()
 	buildLane()
 	buildGates()

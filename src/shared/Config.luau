@@ -541,6 +541,24 @@ Config.Icons = {
 ----------------------------------------------------------------- audio
 -- rbxasset:// sounds ship with every Roblox client. Empty strings are slots
 -- for Creator Store audio you pick and record in ASSETS.md (never invent ids).
+----------------------------------------------------------------- group chest + daily rewards
+-- Your Roblox group's id. 0 = no group yet: the chest then only asks for a
+-- like (favorite) and still pays out, so it works before the group exists.
+Config.GroupId = 0
+Config.GroupChest = { cooldownHours = 12, incomeSeconds = 180, minCoins = 150, boostMinutes = 10 }
+
+-- 7-day streak (claim once every 20h; miss 48h and it starts over at day 1)
+Config.Daily = {
+	{ kind = "coins", seconds = 120, min = 100, label = "Bag of Cash", icon = "Cash" },
+	{ kind = "shield", amount = 1, label = "Shark Shield", icon = "Shield" },
+	{ kind = "boost", minutes = 15, label = "2x Speed", icon = "Boost" },
+	{ kind = "luck", minutes = 15, label = "Luck Potion", icon = "Potion" },
+	{ kind = "coins", seconds = 600, min = 500, label = "Big Cash", icon = "Cash" },
+	{ kind = "creature", rarity = "Epic", label = "Epic Creature", icon = "GoldBubble" },
+	{ kind = "creature", rarity = "Legendary", size = 2.2, label = "Huge Legendary", icon = "Crown", limited = true },
+} :: { { [string]: any } }
+Config.DAILY_GAP_HOURS, Config.DAILY_RESET_HOURS = 20, 48
+
 Config.Sounds = {
 	-- built-in Roblox client sounds (rbxasset://) - no upload needed
 	splash = "rbxasset://sounds/impact_water.mp3",

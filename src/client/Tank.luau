@@ -143,7 +143,7 @@ local function build()
 	gui.DisplayOrder = 9
 	gui.Enabled = false
 	gui.Parent = player:WaitForChild("PlayerGui")
-	UI.autoScale(gui)
+	UI.autoScale(gui, Vector2.new(520, 500))
 
 	panel = UI.frame(gui, { Size = UDim2.fromOffset(400, 380), Position = UDim2.new(1, -116, 0.46, 0), AnchorPoint = Vector2.new(1, 0.5),
 		BackgroundColor3 = UI.C.panel })

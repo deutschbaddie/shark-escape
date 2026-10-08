@@ -273,7 +273,7 @@ function Shop.start()
 	gui.ResetOnSpawn = false
 	gui.DisplayOrder = 10
 	gui.Parent = player:WaitForChild("PlayerGui")
-	UI.autoScale(gui)
+	UI.autoScale(gui, Vector2.new(840, 520)) -- Index is the widest window (820)
 	-- the bite cutscene owns the screen
 	player:GetAttributeChangedSignal("Cinematic"):Connect(function()
 		if player:GetAttribute("Cinematic") then

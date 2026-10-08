@@ -55,6 +55,7 @@ HUD.onIndex = nil :: (() -> ())?
 HUD.atRideShop = nil :: (() -> boolean)?
 HUD.onRebirth = nil :: (() -> ())?
 HUD.onTank = nil :: (() -> ())?
+HUD.onDaily = nil :: (() -> ())?
 HUD.takeover = false
 
 function HUD.goToRideShop()
@@ -121,6 +122,9 @@ local function build()
 	rl.VerticalAlignment = Enum.VerticalAlignment.Center
 	rl.SortOrder = Enum.SortOrder.LayoutOrder
 	rl.Parent = right
+	menuButtons.Daily = square(right, "Gift", C.pink, 0, function()
+		call(HUD.onDaily)
+	end)
 	menuButtons.Tank = square(right, "Tank", C.orange, 1, function()
 		call(HUD.onTank)
 	end)
@@ -329,6 +333,12 @@ local function render(d: any)
 		UI.badge(menuButtons.Tank)
 	else
 		UI.clearBadge(menuButtons.Tank)
+	end
+	-- daily reward waiting
+	if (d.dailyWait or 1) <= 0 then
+		UI.badge(menuButtons.Daily)
+	else
+		UI.clearBadge(menuButtons.Daily)
 	end
 	-- boosts: square + time left
 	local function boost(key: string, on: boolean, timerText: string?, badge: string?)

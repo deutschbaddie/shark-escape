@@ -24,6 +24,8 @@ export type Profile = {
 	shields: number,
 	grabs: number,
 	starter: boolean,
+	daily: { day: number, last: number },
+	groupClaim: number,
 	boostUntil: number,
 	luckUntil: number,
 	receipts: { string },
@@ -55,6 +57,8 @@ function Data.default(): Profile
 		shields = 0,
 		grabs = 0,
 		starter = false,
+		daily = { day = 1, last = 0 }, -- next day to claim (1..7), when you last claimed
+		groupClaim = 0, -- last group chest claim (os.time)
 		boostUntil = 0,
 		luckUntil = 0,
 		receipts = {},

@@ -89,7 +89,12 @@ Honesty rules in code: no Robux prompts or offers in the first 5 minutes, paid r
 - Onboarding: a big welcome, then numbered steps ("STEP 2 of 5 · Bring it home") with a 3D arrow, a short cheer between steps, a practice shark that circles then charges (slow to turn, so you can swerve), and "YOU'RE READY!" at the end.
 - Studded simulator UI kit in the Steal-an-Egg style: small wide buttons on the left, small icon squares on the right (drawn tank icon, boosts with time left above them), one $ (the font's). Scaled for every screen from a 1280x720 canvas (phones get 1.3x for thumbs); `tools/preview/ui.py` lays out the real HUD at desktop, Studio, phone and tablet sizes.
 
-**Cut / not yet:** music and most sound effects (need Creator Store ids), stealing from other players, trading, daily rewards.
+- **Daily Rewards:** 7-day streak calendar (cash, shield, 2x speed, luck, big cash, Epic creature, Huge Legendary on day 7); claim every 20 h, the streak restarts after 48 h. Opens by itself once per session when ready, and from the gift square.
+- **Group chest:** a CLAIM chest in the plaza, "Join Group & Like To Claim!", every 12 h for about 3 minutes of tank income plus 10 minutes of 2x speed. Group membership is checked on the server.
+- **Audio system:** music by situation (beach / ocean / deep / hunt, crossfaded), ambience, a 3D loop per ride that follows speed, UI and event sounds. The slots are wired up and silent until ids are added (ASSETS.md).
+- **World:** tall checker walls with two grass terraces and voxel trees and palms behind them; zone barriers are a shimmer wall with a sign (zone, speed needed, your speed) and a buoy line.
+
+**Cut / not yet:** sound ids (35 to pick, listed in ASSETS.md), stealing from other players, trading. The launch audit (`tools/balance/audit.py`) recommends capping offline cash and adding rebirth-gated content next.
 
 ## 5. Playtest notes (to do in Studio; nothing here has been played yet)
 - Check the ride poses on a few avatars (blocky, Rthro, small). The fit is solved from the real joints, but the stand-in rig in `fit.py` is an approximation; tweak `Rig.POSES` / `Rides.FIT` if anything sinks in.
