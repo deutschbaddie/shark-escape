@@ -549,9 +549,9 @@ Config.GroupChest = { cooldownHours = 12, incomeSeconds = 180, minCoins = 150, b
 
 -- 7-day streak (claim once every 20h; miss 48h and it starts over at day 1)
 Config.Daily = {
-	{ kind = "coins", seconds = 120, min = 100, label = "Bag of Cash", icon = "Cash" },
+	{ kind = "boost", minutes = 10, label = "2x Speed 10 min", icon = "Boost" },
 	{ kind = "shield", amount = 1, label = "Shark Shield", icon = "Shield" },
-	{ kind = "boost", minutes = 15, label = "2x Speed", icon = "Boost" },
+	{ kind = "coins", seconds = 120, min = 100, label = "Bag of Cash", icon = "Cash" },
 	{ kind = "luck", minutes = 15, label = "Luck Potion", icon = "Potion" },
 	{ kind = "coins", seconds = 600, min = 500, label = "Big Cash", icon = "Cash" },
 	{ kind = "creature", rarity = "Epic", label = "Epic Creature", icon = "GoldBubble" },
