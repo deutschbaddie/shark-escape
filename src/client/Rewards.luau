@@ -9,7 +9,6 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
-local ProximityPromptService = game:GetService("ProximityPromptService")
 
 local Shared = game.ReplicatedStorage.Shared
 local Config = require(Shared.Config)
