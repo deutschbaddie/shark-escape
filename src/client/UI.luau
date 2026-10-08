@@ -14,7 +14,8 @@ UI.C = {
 	pink = Color3.fromRGB(255, 70, 170),
 	blue = Color3.fromRGB(30, 120, 255),
 	sky = Color3.fromRGB(40, 200, 255),
-	green = Color3.fromRGB(70, 214, 60),
+	index = Color3.fromRGB(35, 165, 255),
+	green = Color3.fromRGB(78, 206, 48),
 	money = Color3.fromRGB(120, 255, 70),
 	gold = Color3.fromRGB(255, 196, 30),
 	orange = Color3.fromRGB(255, 130, 30),
@@ -36,10 +37,13 @@ local function apply(inst: Instance, props: { [string]: any }?)
 	end
 end
 
--- One scale for every screen: everything is designed on a 1200x680 canvas
+-- One scale for every screen: everything is designed on a 1280x720 canvas
 -- and scaled so that canvas always fits the device (phone, tablet, PC, TV).
--- The ScreenGui keeps the notch/topbar-safe area.
-UI.BASE = Vector2.new(1200, 680)
+-- Phones get a little extra so thumbs can hit things. The ScreenGui keeps
+-- the notch/topbar-safe area.
+UI.BASE = Vector2.new(1280, 720)
+local UserInputService = game:GetService("UserInputService")
+UI.TOUCH = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 function UI.autoScale(gui: ScreenGui): UIScale
 	gui.ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets
 	local scale = Instance.new("UIScale")
@@ -49,7 +53,11 @@ function UI.autoScale(gui: ScreenGui): UIScale
 		if v.X < 2 or v.Y < 2 then
 			v = workspace.CurrentCamera.ViewportSize
 		end
-		scale.Scale = math.clamp(math.min(v.X / UI.BASE.X, v.Y / UI.BASE.Y), 0.4, 1.6)
+		local k = math.min(v.X / UI.BASE.X, v.Y / UI.BASE.Y)
+		if UI.TOUCH and v.Y < 600 then
+			k *= 1.18 -- small phone screens: bigger touch targets (the layout leaves room)
+		end
+		scale.Scale = math.clamp(k, 0.4, 1.6)
 	end
 	rescale()
 	gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(rescale)
@@ -273,6 +281,41 @@ for _, which in { "A", "B" } do
 	end)
 end
 
+-- A fish tank drawn from frames: the Tank icon until an image is uploaded
+local function drawTank(): Frame
+	local f = Instance.new("Frame")
+	f.BackgroundTransparency = 1
+	local box = UI.frame(f, { Size = UDim2.fromScale(0.92, 0.72), Position = UDim2.fromScale(0.5, 0.95), AnchorPoint = Vector2.new(0.5, 1),
+		BackgroundColor3 = Color3.fromRGB(70, 190, 255) })
+	UI.corner(box, 5)
+	UI.stroke(box, UI.C.ink, 2.5)
+	local g = Instance.new("UIGradient")
+	g.Rotation = 90
+	g.Color = ColorSequence.new(Color3.fromRGB(120, 225, 255), Color3.fromRGB(30, 120, 230))
+	g.Parent = box
+	UI.frame(box, { Size = UDim2.new(1, 0, 0.16, 0), Position = UDim2.fromScale(0, 0.84), BackgroundColor3 = Color3.fromRGB(255, 214, 120) })
+	-- fish: body + tail + eye
+	local fish = UI.frame(box, { Size = UDim2.fromScale(0.42, 0.34), Position = UDim2.fromScale(0.44, 0.4), AnchorPoint = Vector2.new(0.5, 0.5),
+		BackgroundColor3 = Color3.fromRGB(255, 140, 30) })
+	UI.corner(fish, 100)
+	UI.stroke(fish, UI.C.ink, 1.5)
+	local tail = UI.frame(box, { Size = UDim2.fromScale(0.16, 0.24), Position = UDim2.fromScale(0.72, 0.4), AnchorPoint = Vector2.new(0.5, 0.5),
+		BackgroundColor3 = Color3.fromRGB(255, 140, 30), Rotation = 45 })
+	UI.stroke(tail, UI.C.ink, 1.5)
+	UI.frame(fish, { Size = UDim2.fromScale(0.16, 0.26), Position = UDim2.fromScale(0.22, 0.3), BackgroundColor3 = UI.C.ink })
+	for i, p in { Vector2.new(0.22, 0.2), Vector2.new(0.3, 0.08) } do
+		local b = UI.frame(box, { Size = UDim2.fromScale(i == 1 and 0.1 or 0.07, i == 1 and 0.13 or 0.09), Position = UDim2.fromScale(p.X, p.Y),
+			BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0.2 })
+		UI.corner(b, 100)
+	end
+	-- lid
+	local lid = UI.frame(f, { Size = UDim2.fromScale(1, 0.14), Position = UDim2.fromScale(0.5, 0.2), AnchorPoint = Vector2.new(0.5, 0.5),
+		BackgroundColor3 = Color3.fromRGB(60, 64, 80) })
+	UI.corner(lid, 4)
+	UI.stroke(lid, UI.C.ink, 2.5)
+	return f
+end
+
 function UI.icon(parent: Instance, name: string, props: { [string]: any }?): GuiObject
 	local icons = Config.Icons
 	local single = tostring(icons.ids and icons.ids[name] or ""):match("%d+")
@@ -291,6 +334,8 @@ function UI.icon(parent: Instance, name: string, props: { [string]: any }?): Gui
 		ReplicatedStorage:GetAttributeChangedSignal("Icon_" .. name):Connect(apply)
 		img.ScaleType = Enum.ScaleType.Fit
 		obj = img
+	elseif name == "Tank" and sheet == "" then
+		obj = drawTank()
 	elseif cell and sheet ~= "" then
 		local img = Instance.new("ImageLabel")
 		img.BackgroundTransparency = 1
@@ -318,6 +363,11 @@ end
 -- square icon button with a caption (left-side menu); icon is an icon name
 function UI.iconButton(parent: Instance, icon: string, caption: string, color: Color3, onClick: () -> (), props: { [string]: any }?): TextButton
 	local b = UI.button(parent, "", color, onClick, props)
+	if caption == "" then
+		-- icon only (the small Steal-an-Egg squares)
+		UI.icon(b, icon, { Size = UDim2.fromScale(0.74, 0.74), Position = UDim2.fromScale(0.5, 0.47), AnchorPoint = Vector2.new(0.5, 0.5), ZIndex = b.ZIndex + 1 })
+		return b
+	end
 	UI.icon(b, icon, { Size = UDim2.fromScale(0.74, 0.62), Position = UDim2.fromScale(0.5, 0.02), AnchorPoint = Vector2.new(0.5, 0), ZIndex = b.ZIndex + 1 })
 	local l = b:FindFirstChild("Label") :: TextLabel
 	l.Text = caption
@@ -330,44 +380,40 @@ end
 -- wide menu button: icon on the left, big label (the "🛒 Shop" style)
 function UI.wideButton(parent: Instance, icon: string, caption: string, color: Color3, onClick: () -> (), props: { [string]: any }?): TextButton
 	local b = UI.button(parent, caption, color, onClick, props)
-	UI.icon(b, icon, { Size = UDim2.new(0, 60, 1, -14), Position = UDim2.new(0, 10, 0.5, -2), AnchorPoint = Vector2.new(0, 0.5), ZIndex = b.ZIndex + 1 })
+	UI.icon(b, icon, { Size = UDim2.new(0.3, 0, 1, -12), Position = UDim2.new(0, 8, 0.5, -2), AnchorPoint = Vector2.new(0, 0.5), ZIndex = b.ZIndex + 1 })
 	local l = b:FindFirstChild("Label") :: TextLabel
-	l.Size = UDim2.new(1, -84, 0.62, 0)
-	l.Position = UDim2.new(0, 76, 0.5, -2)
+	l.Size = UDim2.new(0.66, -14, 0.56, 0)
+	l.Position = UDim2.new(0.34, 6, 0.5, -2)
 	l.AnchorPoint = Vector2.new(0, 0.5)
 	l.TextXAlignment = Enum.TextXAlignment.Left
 	return b
 end
 
--- on/off switch with a caption to its right (Slow Mode). returns setter
+-- square on/off box with a caption to its right (Slow Mode). returns setter
 function UI.toggle(parent: Instance, caption: string, on: boolean, onChange: (boolean) -> (), props: { [string]: any }?): (Frame, (boolean) -> ())
-	local holder = UI.frame(parent, { Size = UDim2.fromOffset(250, 52), BackgroundTransparency = 1 })
+	local holder = UI.frame(parent, { Size = UDim2.fromOffset(172, 40), BackgroundTransparency = 1 })
 	apply(holder, props)
-	local track = Instance.new("TextButton")
-	track.AutoButtonColor = false
-	track.Text = ""
-	track.Size = UDim2.fromOffset(104, 48)
-	track.BackgroundColor3 = Color3.fromRGB(40, 64, 44)
-	track.BorderSizePixel = 0
-	track.Parent = holder
-	UI.corner(track, 10)
-	UI.stroke(track, UI.C.ink, 3)
-	local knob = UI.frame(track, { Size = UDim2.fromOffset(40, 38), Position = UDim2.fromOffset(4, 5), BackgroundColor3 = UI.C.green })
-	UI.corner(knob, 8)
-	UI.stroke(knob, UI.C.ink, 2.5)
-	UI.shade(knob)
-	UI.outlined(holder, caption, { Size = UDim2.new(1, -116, 0, 30), Position = UDim2.fromOffset(114, 11), TextXAlignment = Enum.TextXAlignment.Left })
+	local box = Instance.new("TextButton")
+	box.AutoButtonColor = false
+	box.Text = ""
+	box.Size = UDim2.fromOffset(40, 40)
+	box.BorderSizePixel = 0
+	box.Parent = holder
+	UI.corner(box, 8)
+	UI.stroke(box, UI.C.ink, 3)
+	UI.shade(box)
+	local tick = UI.outlined(box, "✓", { Size = UDim2.new(1, -8, 1, -8), Position = UDim2.fromOffset(4, 3) })
+	local label = UI.outlined(holder, caption, { Size = UDim2.new(1, -48, 0, 24), Position = UDim2.new(0, 48, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), TextXAlignment = Enum.TextXAlignment.Left })
 	local state = on
 	local function set(v: boolean)
 		state = v
-		TweenService:Create(knob, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
-			Position = UDim2.fromOffset(v and 60 or 4, 5),
-			BackgroundColor3 = v and UI.C.green or Color3.fromRGB(150, 160, 150),
-		}):Play()
-		track.BackgroundColor3 = v and Color3.fromRGB(46, 110, 50) or Color3.fromRGB(40, 44, 50)
+		box.BackgroundColor3 = v and UI.C.green or Color3.fromRGB(150, 156, 166)
+		tick.Visible = v
+		label.TextColor3 = v and UI.C.white or Color3.fromRGB(225, 228, 235)
 	end
 	set(on)
-	track.Activated:Connect(function()
+	squish(box)
+	box.Activated:Connect(function()
 		set(not state)
 		onChange(state)
 	end)
@@ -384,11 +430,12 @@ function UI.badge(b: GuiObject, text: string?): Frame
 		end
 		old:Destroy()
 	end
-	local f = UI.frame(b, { Name = "Badge", Size = UDim2.fromOffset(30, 30), Position = UDim2.new(1, 6, 0, -8), AnchorPoint = Vector2.new(1, 0),
+	local f = UI.frame(b, { Name = "Badge", Size = UDim2.fromOffset(24, 24), Position = UDim2.new(1, 6, 0, -7), AnchorPoint = Vector2.new(1, 0),
 		BackgroundColor3 = UI.C.red, ZIndex = b.ZIndex + 3 })
-	UI.corner(f, 15)
+	UI.corner(f, 12)
 	UI.stroke(f, UI.C.white, 2.5)
 	UI.outlined(f, text or "!", { Size = UDim2.new(1, -6, 1, -6), Position = UDim2.fromOffset(3, 3), ZIndex = f.ZIndex + 1 })
+	UI.pop(f, 1.5)
 	return f
 end
 
@@ -457,6 +504,46 @@ function UI.pop(gui: GuiObject, amount: number?)
 	scale.Parent = gui
 	scale.Scale = amount or 1.18
 	TweenService:Create(scale, TweenInfo.new(0.35, Enum.EasingStyle.Back), { Scale = 1 }):Play()
+end
+
+-- Fade a whole piece of UI in or out: text, images, backgrounds AND their
+-- outlines (UIStroke), so nothing lingers. Remembers each part's own look.
+local baseLook: { [Instance]: { [string]: number } } = setmetatable({}, { __mode = "k" }) :: any
+local FADE_PROPS = {
+	TextLabel = { "TextTransparency", "BackgroundTransparency", "TextStrokeTransparency" },
+	TextButton = { "TextTransparency", "BackgroundTransparency", "TextStrokeTransparency" },
+	ImageLabel = { "ImageTransparency", "BackgroundTransparency" },
+	ImageButton = { "ImageTransparency", "BackgroundTransparency" },
+	Frame = { "BackgroundTransparency" },
+	UIStroke = { "Transparency" },
+}
+function UI.fade(root: Instance, visible: boolean, time: number?)
+	local info = TweenInfo.new(time or 0.25, Enum.EasingStyle.Quad)
+	local all = root:GetDescendants()
+	table.insert(all, root)
+	for _, inst in all do
+		local props = FADE_PROPS[inst.ClassName]
+		if props then
+			local base = baseLook[inst]
+			if not base then
+				base = {}
+				for _, k in props do
+					base[k] = (inst :: any)[k]
+				end
+				baseLook[inst] = base
+			end
+			local goal = {}
+			for _, k in props do
+				goal[k] = visible and base[k] or 1
+			end
+			if visible then
+				for _, k in props do
+					(inst :: any)[k] = 1
+				end
+			end
+			TweenService:Create(inst, info, goal):Play()
+		end
+	end
 end
 
 -- endless gentle pulse (for "tap me" moments); returns a stop function

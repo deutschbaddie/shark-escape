@@ -158,7 +158,7 @@ function Fx.popup3D(pos: Vector3, text: string, color: Color3?, big: boolean?)
 	TweenService:Create(scale, TweenInfo.new(0.35, Enum.EasingStyle.Back), { Scale = 1 }):Play()
 	TweenService:Create(bb, TweenInfo.new(1.2, Enum.EasingStyle.Quad), { StudsOffsetWorldSpace = Vector3.new(0, 5, 0) }):Play()
 	task.delay(0.8, function()
-		TweenService:Create(t, TweenInfo.new(0.4), { TextTransparency = 1 }):Play()
+		UI.fade(t, false, 0.4) -- text and its outline together
 	end)
 	Debris:AddItem(a, 1.4)
 end
@@ -215,13 +215,19 @@ local function showWord(text: string, color: Color3, duration: number)
 	scale.Parent = t
 	TweenService:Create(scale, TweenInfo.new(0.3, Enum.EasingStyle.Back), { Scale = 1 }):Play()
 	task.delay(duration, function()
-		TweenService:Create(t, TweenInfo.new(0.3), { TextTransparency = 1 }):Play()
+		UI.fade(t, false, 0.3)
 		TweenService:Create(scale, TweenInfo.new(0.3), { Scale = 0.6 }):Play()
 	end)
 	Debris:AddItem(t, duration + 0.4)
 end
 
+Fx.wordHook = nil :: ((string, Color3?, number?) -> ())?
+
 function Fx.bigWord(text: string, color: Color3, duration: number?)
+	if Fx.wordHook then
+		Fx.wordHook(text, color, duration) -- Notify's center stage (one at a time)
+		return
+	end
 	local d = duration or 1
 	local now = os.clock()
 	if now >= wordBusyUntil then

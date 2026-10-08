@@ -628,6 +628,15 @@ local function eatenCinematic(sh: Shark?, at: Vector3, carried: { r: string, m: 
 		fade(0, 0.3)
 	end)
 	task.delay(total + 0.05, function()
+		-- stay black until the server has washed us up on the beach
+		local deadline = os.clock() + 1.2
+		while os.clock() < deadline do
+			local h = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+			if not h or (flat(h.Position) - flat(at)).Magnitude > 20 then
+				break
+			end
+			task.wait()
+		end
 		RunService:UnbindFromRenderStep("SharkCinematic")
 		cam.CameraType = Enum.CameraType.Custom
 		cam.FieldOfView = 70
@@ -677,11 +686,22 @@ Remotes.get("SharkEvent").OnClientEvent:Connect(function(kind, data)
 		end
 		return
 	end
+	if kind == "miss" then
+		local sh = sharks[data.id]
+		if sh then
+			Fx.splash(Vector3.new(sh.pos.X, 0.5, sh.pos.Z), math.clamp(sh.L / 9, 1, 3))
+		end
+		if data.victim == player.UserId then
+			Fx.bigWord("DODGED!", UI.C.sky, 0.9)
+			Fx.sound("splash", 0.6, 1.3)
+		end
+		return
+	end
 	if kind ~= "bite" then
 		return
 	end
 	local sh = sharks[data.id]
-	local at = Vector3.new(data.x, 0.5, data.z)
+	local at = Vector3.new(data.px or 0, 0.5, data.pz or 0)
 	local char = player.Character
 	local hrp = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
 	if data.result == "eaten" then
@@ -692,7 +712,9 @@ Remotes.get("SharkEvent").OnClientEvent:Connect(function(kind, data)
 			task.delay(CHOMP_AT, Fx.shake, 2)
 		end
 		if data.victim == player.UserId then
-			eatenCinematic(sh, at, data.r and { r = data.r, m = data.m, z = data.z } or nil)
+			-- frame it where you actually are (you're held in place under the water)
+			local here = hrp and Vector3.new(hrp.Position.X, 0.5, hrp.Position.Z) or at
+			eatenCinematic(sh, here, data.r and { r = data.r, m = data.m, z = data.cz } or nil)
 		end
 	elseif data.result == "shield" then
 		if sh then

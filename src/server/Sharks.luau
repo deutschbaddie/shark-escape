@@ -1,10 +1,12 @@
--- Server-side shark AI. Every ~90s: an 8s warning, then a hunt. Each player
+-- Server-side shark AI. Every ~80s: a 6s warning, then a hunt. Each player
 -- still in open water gets their own shark (the variant of their zone),
 -- which hunts like a real one:
---   stalk  - circles you in a tightening spiral (time to reach sand!)
---   charge - lines up and lunges
---   bite   - CHOMP (clients play the leap; the victim gets a cutscene)
--- Reach an island or the beach at any point and it circles you, then leaves.
+--   stalk     - circles you once in a tightening spiral (get to sand!)
+--   charge    - lunges, always faster than you, but turns slowly
+--   overshoot - you swerved at the last second: it shoots past, circles back
+--   bite      - CHOMP (clients play the leap; the victim gets a cutscene)
+-- Reach an island or the beach and it circles there, waiting for you to
+-- step off. While it hunts, grabs are luckier (Game.frenzy): worth the risk.
 -- The server owns positions and bites; clients only draw and animate.
 
 local RunService = game:GetService("RunService")
@@ -28,7 +30,7 @@ for i, v in VARIANTS do
 end
 
 -- wire codes (SharkView.STATE_NAMES must match)
-local STATE = { charge = 1, circle = 2, leave = 3, bite = 4, stalk = 5 }
+local STATE = { charge = 1, circle = 2, leave = 3, bite = 4, stalk = 5, overshoot = 1 }
 
 type Hunter = {
 	id: number,
@@ -73,6 +75,21 @@ end
 local function clampLane(p: Vector3): Vector3
 	return Vector3.new(math.clamp(p.X, -Config.LANE_WIDTH / 2 + 6, Config.LANE_WIDTH / 2 - 6), 0,
 		math.clamp(p.Z, Config.SHORE_Z + 6, Config.OCEAN_END - 8))
+end
+
+-- the charge never loses a straight race: faster than the zone's shark
+-- speed or your own top speed, whichever is higher
+local function chargeSpeed(h: Hunter, s: Game.Session): number
+	local cfg = Config.Shark
+	return math.max(h.speed * cfg.chargeMult, Game.walkSpeed(s) * cfg.chargeVsPlayer)
+end
+
+local function restalk(h: Hunter, p: Vector3, time: number)
+	local rel = flat(h.pos - p)
+	h.state, h.timer = "stalk", 0
+	h.stalkTime = time
+	h.angle = math.atan2(rel.Z, rel.X)
+	h.radius = rel.Magnitude
 end
 
 local function spawnHunter(s: Game.Session)
@@ -155,10 +172,10 @@ local function update(dt: number)
 				local k = math.clamp(h.timer / h.stalkTime, 0, 1)
 				local want = cfg.stalkRadius + (cfg.stalkEnd - cfg.stalkRadius) * k
 				h.radius += (want - h.radius) * math.min(dt * 1.5, 1)
-				h.angle += (h.speed * 0.42 / math.max(h.radius, 8)) * dt
+				h.angle += (h.speed * 0.55 / math.max(h.radius, 8)) * dt
 				local goal = Vector3.new(p.X + math.cos(h.angle) * h.radius, 0, p.Z + math.sin(h.angle) * h.radius)
 				local to = flat(goal - h.pos)
-				local maxStep = h.speed * 1.4 * dt
+				local maxStep = math.max(h.speed * 1.4, chargeSpeed(h, s :: Game.Session)) * dt
 				local move = to.Magnitude > maxStep and to.Unit * maxStep or to
 				if move.Magnitude > 0.05 then
 					h.yaw = turnToward(h.yaw, yawOf(move), 6 * dt)
@@ -176,42 +193,55 @@ local function update(dt: number)
 			elseif not Game.huntable(s :: Game.Session) then
 				lostTarget(h, hrp)
 			else
+				local victim = s :: Game.Session
 				local p = (hrp :: BasePart).Position
 				local to = flat(p - h.pos)
 				local dist = to.Magnitude
-				h.yaw = turnToward(h.yaw, yawOf(to), 5 * dt)
-				h.pos += forward(h.yaw) * math.min(h.speed * cfg.chargeMult * dt, math.max(dist - 1, 0))
+				-- full speed, slow to turn: a late swerve makes it miss
+				h.yaw = turnToward(h.yaw, yawOf(to), (dist > 30 and 4 or cfg.chargeTurn) * dt)
+				local fwd = forward(h.yaw)
+				h.pos = clampLane(h.pos + fwd * chargeSpeed(h, victim) * dt)
 				pushOutOfIslands(h)
-				local head = h.pos + forward(h.yaw) * h.length * 0.38
+				local head = h.pos + fwd * h.length * 0.38
 				local hd = Vector2.new(p.X - head.X, p.Z - head.Z).Magnitude
-				if hd < math.max(3.5, h.length * 0.16) or dist < h.length * 0.3 then
-					local victim = s :: Game.Session
+				local ahead = flat(p - head):Dot(fwd)
+				if hd < math.max(4, h.length * 0.2) or dist < h.length * 0.3 then
 					local carried = victim.carrying
 					local result = Game.bite(victim, h.pos)
 					EventRemote:FireAllClients("bite", {
-						id = h.id, victim = victim.player.UserId, result = result, x = p.X, z = p.Z,
-						r = carried and carried.r, m = carried and carried.m, z = carried and carried.z,
+						id = h.id, victim = victim.player.UserId, result = result, px = p.X, pz = p.Z,
+						r = carried and carried.r, m = carried and carried.m, cz = carried and carried.z,
 					})
 					h.state, h.timer = "bite", 0
 					h.holdFor = result == "eaten" and cfg.eatenTime or 0.8
+				elseif ahead < -2 and h.timer > 0.4 then
+					-- dodged! it shoots past and has to come round again
+					h.state, h.timer = "overshoot", 0
+					EventRemote:FireAllClients("miss", { id = h.id, victim = victim.player.UserId })
 				elseif h.timer > cfg.chargeGiveUp then
-					-- they're outrunning it: back to circling for a moment
-					local rel = flat(h.pos - p)
-					h.state, h.timer = "stalk", 0
-					h.stalkTime = cfg.stalk * 0.5
-					h.angle = math.atan2(rel.Z, rel.X)
-					h.radius = rel.Magnitude
+					restalk(h, p, cfg.recircle)
+				end
+			end
+		elseif h.state == "overshoot" then
+			-- carry on past, braking, then circle back for another go
+			local fwd = forward(h.yaw)
+			local k = math.clamp(1 - h.timer / 0.7, 0.25, 1)
+			h.pos = clampLane(h.pos + fwd * h.speed * k * dt)
+			pushOutOfIslands(h)
+			if h.timer > 0.7 then
+				if alive and Game.huntable(s :: Game.Session) then
+					restalk(h, (hrp :: BasePart).Position, cfg.recircle)
+				elseif alive then
+					lostTarget(h, hrp)
+				else
+					h.state, h.timer = "leave", 0
 				end
 			end
 		elseif h.state == "circle" then
 			local island = h.island :: Layout.Island
 			if alive and Game.huntable(s :: Game.Session) and phase == "hunt" then
-				-- they left the island! start over
-				local rel = flat(h.pos - (hrp :: BasePart).Position)
-				h.state, h.timer = "stalk", 0
-				h.stalkTime = cfg.stalk * 0.6
-				h.angle = math.atan2(rel.Z, rel.X)
-				h.radius = rel.Magnitude
+				-- they stepped off the island: it was waiting
+				restalk(h, (hrp :: BasePart).Position, 0.8)
 			elseif phase ~= "hunt" or not alive then
 				h.state, h.timer = "leave", 0
 			else
@@ -287,12 +317,14 @@ function Sharks.start()
 			EventRemote:FireAllClients("warning", { duration = cfg.warning })
 			task.wait(cfg.warning)
 			phase, phaseEnds = "hunt", os.clock() + cfg.hunt
+			Game.frenzy = true
 			EventRemote:FireAllClients("hunt", { duration = cfg.hunt })
 			while os.clock() < phaseEnds do
 				huntSweep()
 				task.wait(0.4)
 			end
 			phase, phaseEnds = "calm", os.clock() + cfg.cycle - cfg.warning - cfg.hunt
+			Game.frenzy = false
 			for _, h in hunters do
 				if h.state ~= "bite" then
 					h.state, h.timer = "leave", 0

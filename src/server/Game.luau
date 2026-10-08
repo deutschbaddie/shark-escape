@@ -40,6 +40,7 @@ export type Session = {
 }
 
 Game.sessions = {} :: { [Player]: Session }
+Game.frenzy = false -- set by Sharks while a hunt is on
 
 local StateRemote = Remotes.get("State")
 local NotifyRemote = Remotes.get("Notify")
@@ -178,6 +179,9 @@ function Game.luck(s: Session): number
 	end
 	if s.profile.luckUntil > os.time() then
 		l += Config.Luck.potion
+	end
+	if Game.frenzy then
+		l += Config.Shark.frenzyLuck -- the shark is out: rarer catches for the brave
 	end
 	return l
 end
@@ -511,9 +515,10 @@ function Game.bite(s: Session, sharkPos: Vector3): string
 		Game.notify(s.player, "lost", { r = s.carrying.r, m = s.carrying.m })
 		Game.setCarry(s, nil)
 	end
-	s.eatenUntil = os.clock() + Config.Shark.eatenTime + 2
+	s.eatenUntil = os.clock() + Config.Shark.eatenTime + 2.5
 	hrp.Anchored = true
-	task.delay(Config.Shark.eatenTime, function()
+	-- wash up once the victim's cutscene has faded to black (+ a little for ping)
+	task.delay(Config.Shark.eatenTime + 0.35, function()
 		local h = root(s.player)
 		if h then
 			local x = math.clamp(h.Position.X, -Config.LANE_WIDTH / 2 + 10, Config.LANE_WIDTH / 2 - 10)

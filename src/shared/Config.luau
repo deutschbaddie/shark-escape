@@ -355,20 +355,26 @@ Config.Codes = {
 
 ----------------------------------------------------------------- sharks
 Config.Shark = {
-	cycle = 90, -- seconds between attacks (calm time is most of it)
-	firstAttack = 75,
-	warning = 8, -- "SHARK INCOMING" countdown: time to get to sand
-	hunt = 18,
-	spawnDistance = 60,
-	-- a hunting shark circles you first (a tightening spiral), then charges
-	stalk = 5, -- seconds of circling before the charge
-	stalkRadius = 34,
-	stalkEnd = 15,
-	chargeMult = 1.35, -- charge speed vs the zone's shark speed
-	chargeGiveUp = 3.5, -- outran it? it goes back to circling
+	cycle = 80, -- seconds between attacks (calm time is most of it)
+	firstAttack = 70,
+	warning = 6, -- "SHARK INCOMING" countdown: time to get to sand
+	hunt = 22,
+	spawnDistance = 46,
+	-- a hunting shark circles you once (a tightening spiral), then charges.
+	-- The charge is always faster than you: reach sand / an island, or swerve
+	-- at the last second (it turns slowly at full speed) and it overshoots.
+	stalk = 2.6, -- seconds of circling before the first charge
+	recircle = 1.3, -- after a miss
+	stalkRadius = 24,
+	stalkEnd = 13,
+	chargeMult = 1.35, -- charge speed vs the zone's shark speed...
+	chargeVsPlayer = 1.22, -- ...and never slower than this x your top speed
+	chargeTurn = 2.3, -- rad/s while charging
+	chargeGiveUp = 4,
 	maxHunters = 24,
 	newPlayerGrace = 150, -- seconds before a brand-new player can be hunted
-	eatenTime = 2.8, -- length of the bite cutscene before you wash up
+	eatenTime = 3.0, -- length of the bite cutscene before you wash up
+	frenzyLuck = 0.3, -- extra chance to bump a grab up a rarity while it hunts
 }
 
 ----------------------------------------------------------------- rebirth
