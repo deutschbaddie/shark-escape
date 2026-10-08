@@ -262,6 +262,7 @@ function Game.push(s: Session)
 		luckLeft = math.max(0, p.luckUntil - now),
 		playtime = p.playtime,
 		starter = p.starter,
+		starterNext = Config.StarterLadder[p.starterTier + 1], -- next pack to offer (nil = all bought)
 		dailyDay = p.daily.day,
 		dailyWait = math.max(0, p.daily.last + Config.DAILY_GAP_HOURS * 3600 - now),
 		groupWait = math.max(0, p.groupClaim + Config.GroupChest.cooldownHours * 3600 - now),

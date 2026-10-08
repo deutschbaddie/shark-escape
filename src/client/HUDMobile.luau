@@ -466,7 +466,12 @@ end
 local function updateOffer(d: any)
 	local want: string? = nil
 	if d.playtime >= Config.SHOP_UNLOCK_SECONDS then
-		for _, key in { "TwoXSpeed", "TwoXCoins", "AutoCollect" } do
+		-- the starter ladder first, then the big passes
+		local pack = d.starterNext and Config.Products[d.starterNext]
+		if pack and pack.id ~= 0 then
+			want = d.starterNext
+		end
+		for _, key in want and {} or { "TwoXSpeed", "TwoXCoins", "AutoCollect" } do
 			local pass = Config.Passes[key]
 			if pass.id ~= 0 and not d.passes[key] then
 				want = key
@@ -478,7 +483,7 @@ local function updateOffer(d: any)
 	b.Visible = want ~= nil
 	if want and b:GetAttribute("Key") ~= want then
 		b:SetAttribute("Key", want)
-		local pass = Config.Passes[want]
+		local pass = Config.Passes[want] or Config.Products[want]
 		local face = b:FindFirstChild("Face") or b
 		local old = face:FindFirstChild("Icon")
 		if old then
@@ -492,8 +497,11 @@ end
 local function offerClicked()
 	local key = menuButtons.Offer:GetAttribute("Key")
 	local pass = key and Config.Passes[key]
+	local product = key and Config.Products[key]
 	if pass and pass.id ~= 0 then
 		MarketplaceService:PromptGamePassPurchase(player, pass.id)
+	elseif product and product.id ~= 0 then
+		MarketplaceService:PromptProductPurchase(player, product.id)
 	end
 end
 

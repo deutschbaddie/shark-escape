@@ -139,16 +139,16 @@ export type Ride = {
 Config.Rides = {
 	{ id = "Noodle", name = "Pool Noodle", icon = "", price = 0, gain = 1 },
 	{ id = "Duck", name = "Rubber Duck Floatie", icon = "", price = 30, gain = 2 },
-	{ id = "Tube", name = "Inner Tube", icon = "", price = 150, gain = 3 },
-	{ id = "Boogie", name = "Boogie Board", icon = "", price = 600, gain = 4 },
-	{ id = "Surf", name = "Surfboard", icon = "", price = 2000, gain = 5 },
-	{ id = "Bathtub", name = "Bathtub", icon = "", price = 7000, gain = 7 },
-	{ id = "Banana", name = "Banana Boat", icon = "", price = 24000, gain = 9 },
-	{ id = "JetSki", name = "Jet Ski", icon = "", price = 80000, gain = 12 },
-	{ id = "Speedboat", name = "Speedboat", icon = "", price = 270000, gain = 16 },
-	{ id = "Dolphin", name = "Dolphin", icon = "", price = 900000, gain = 22 },
-	{ id = "Donut", name = "Giant Donut", icon = "", price = 3000000, gain = 30 },
-	{ id = "Rocket", name = "Rocket Surfboard", icon = "", price = 10000000, gain = 40 },
+	{ id = "Tube", name = "Inner Tube", icon = "", price = 500, gain = 3 },
+	{ id = "Boogie", name = "Boogie Board", icon = "", price = 2500, gain = 4 },
+	{ id = "Surf", name = "Surfboard", icon = "", price = 10000, gain = 5 },
+	{ id = "Bathtub", name = "Bathtub", icon = "", price = 40000, gain = 7 },
+	{ id = "Banana", name = "Banana Boat", icon = "", price = 160000, gain = 9 },
+	{ id = "JetSki", name = "Jet Ski", icon = "", price = 600000, gain = 12 },
+	{ id = "Speedboat", name = "Speedboat", icon = "", price = 2400000, gain = 16 },
+	{ id = "Dolphin", name = "Dolphin", icon = "", price = 9000000, gain = 22 },
+	{ id = "Donut", name = "Giant Donut", icon = "", price = 35000000, gain = 30 },
+	{ id = "Rocket", name = "Rocket Surfboard", icon = "", price = 130000000, gain = 40 },
 	-- Robux rides: never skip the ladder, they multiply it.
 	{ id = "GoldDuck", name = "Golden Duck", icon = "", price = 0, robux = "GoldDuck", mult = 1.25 },
 	{ id = "SharkBoard", name = "Shark Board", icon = "", price = 0, robux = "SharkBoard", mult = 1.5 },
@@ -510,10 +510,18 @@ Config.Products = {
 	LuckPotion = { iconName = "Potion", id = 0, price = 49, name = "Luck Potion (10 min)", icon = "", desc = "+15% rarity upgrade chance" },
 	GoldenBubble = { iconName = "GoldBubble", id = 0, price = 99, name = "Golden Bubble", icon = "",
 		desc = "Rare 70% · Epic 25% · Legendary 5%" },
-	StarterPack = { iconName = "Gift", id = 0, price = 49, name = "Starter Pack", icon = "",
+	-- the starter ladder: each pack unlocks the next, bigger one (Config.StarterLadder)
+	StarterPack = { iconName = "StarterPack", id = 0, price = 49, name = "Starter Pack", icon = "",
 		desc = "A Rare creature + 30 min 2x Speed + 3 Shields" },
+	ProPack = { iconName = "ProPack", id = 0, price = 149, name = "Pro Pack", icon = "",
+		desc = "An Epic creature + 1 hour 2x Speed + 30 min Luck + 5 Shields" },
+	MegaPack = { iconName = "MegaPack", id = 0, price = 399, name = "Mega Pack", icon = "",
+		desc = "A HUGE Legendary + 2 hours 2x Speed + 1 hour Luck + 10 Shields" },
 	DoubleOffline = { iconName = "Clock", id = 0, price = 25, name = "2x Offline Coins", icon = "", desc = "Double your welcome-back coins" },
 }
+
+-- one-time packs, offered in order: buy one and the next appears
+Config.StarterLadder = { "StarterPack", "ProPack", "MegaPack" }
 
 Config.GoldenBubbleOdds = { { "Rare", 70 }, { "Epic", 25 }, { "Legendary", 5 } }
 Config.SHOP_UNLOCK_SECONDS = 300 -- no Robux prompts or offers in the first 5 minutes
@@ -566,6 +574,7 @@ Config.Icons = {
 		Lock = "", Trophy = "", Sparkle = "", Chest = "", Fin = "", Fish = "", Island = "",
 		-- new HUD icons (upload as single images)
 		Friends = "", Coral = "", Settings = "",
+		StarterPack = "", ProPack = "", MegaPack = "",
 	},
 	SheetA = "",
 	SheetB = "",

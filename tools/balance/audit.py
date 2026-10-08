@@ -20,8 +20,8 @@ ZONES = [  # id, gate, length, value
     ("Lagoon", 0, 260, 1), ("Coral Reef", 100, 400, 5), ("Kelp Forest", 500, 560, 25),
     ("Shipwreck Bay", 1000, 720, 120), ("Deep Blue", 5000, 1000, 600), ("The Abyss", 25000, 1400, 3000),
 ]
-RIDES = [(0, 1), (30, 2), (150, 3), (600, 4), (2000, 5), (7000, 7), (24000, 9), (80000, 12),
-         (270000, 16), (900000, 22), (3000000, 30), (10000000, 40)]
+RIDES = [(0, 1), (30, 2), (500, 3), (2500, 4), (10000, 5), (40000, 7), (160000, 9), (600000, 12),
+         (2400000, 16), (9000000, 22), (35000000, 30), (130000000, 40)]
 RIDE_NAMES = ["Pool Noodle", "Rubber Duck", "Inner Tube", "Boogie Board", "Surfboard", "Bathtub",
               "Banana Boat", "Jet Ski", "Speedboat", "Dolphin", "Giant Donut", "Rocket Surfboard"]
 RAR = [("Common", 60, 1, 1), ("Uncommon", 25, 2.5, 2), ("Rare", 10, 6, 3), ("Epic", 4, 25, 4), ("Legendary", 1, 120, 5)]

@@ -316,7 +316,7 @@ end
 
 ----------------------------------------------------------------- robux shop
 local function storeCard(parent: Instance, kind: string, key: string, def: any, owned: boolean?, order: number)
-	local best = key == "StarterPack"
+	local best = table.find(Config.StarterLadder, key) ~= nil
 	local f = UI.card(parent, (owned and T.green) or (best and T.gold) or nil, { Size = UDim2.new(0.5, -6, 1, 0), LayoutOrder = order })
 	local tile = UI.inset(f, { Size = UDim2.fromOffset(88, 88), Position = UDim2.fromOffset(10, 10) })
 	UI.icon(tile, def.iconName, { Size = UDim2.new(1, -12, 1, -12), Position = UDim2.fromOffset(6, 6) })
@@ -420,9 +420,9 @@ function Shop.openStore()
 		end
 	end, { Size = UDim2.fromOffset(144, 52), Position = UDim2.new(1, -10, 0.5, 0), AnchorPoint = Vector2.new(1, 0.5) })
 
-	if not d.starter then
+	if d.starterNext and Config.Products[d.starterNext] then
 		section("SPECIAL OFFER")
-		add("product", "StarterPack", Config.Products.StarterPack)
+		add("product", d.starterNext, Config.Products[d.starterNext])
 		endRow()
 	end
 	section("GAME PASSES  -  YOURS FOREVER")

@@ -24,6 +24,7 @@ export type Profile = {
 	shields: number,
 	grabs: number,
 	starter: boolean,
+	starterTier: number, -- how far up Config.StarterLadder you've bought
 	daily: { day: number, last: number },
 	groupClaim: number,
 	boostUntil: number,
@@ -57,6 +58,7 @@ function Data.default(): Profile
 		shields = 0,
 		grabs = 0,
 		starter = false,
+		starterTier = 0,
 		daily = { day = 1, last = 0 }, -- next day to claim (1..7), when you last claimed
 		groupClaim = 0, -- last group chest claim (os.time)
 		boostUntil = 0,
@@ -80,6 +82,9 @@ local function reconcile(saved: any): Profile
 		end
 	end
 	p.rides.Noodle = true
+	if p.starter and p.starterTier < 1 then
+		p.starterTier = 1 -- bought the Starter Pack before the ladder existed
+	end
 	-- v1 saves had a fixed "tank" list: those become Active creatures
 	if type(saved) == "table" and type(saved.tank) == "table" and #p.creatures == 0 then
 		for _, c in saved.tank do

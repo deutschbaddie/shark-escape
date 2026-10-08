@@ -85,12 +85,29 @@ local grants: { [string]: (Game.Session) -> boolean } = {
 		s.offline = 0
 		return true
 	end,
+	-- the starter ladder (each is offered once, in order; a repeat buy still delivers)
 	StarterPack = function(s)
-		-- the shop hides this after the first buy; if it's bought again anyway, still deliver it
 		s.profile.starter = true
+		s.profile.starterTier = math.max(s.profile.starterTier, 1)
 		s.profile.boostUntil = math.max(s.profile.boostUntil, os.time()) + 30 * 60
 		s.profile.shields += 3
 		Bubbles.give(s, "Rare")
+		return true
+	end,
+	ProPack = function(s)
+		s.profile.starterTier = math.max(s.profile.starterTier, 2)
+		s.profile.boostUntil = math.max(s.profile.boostUntil, os.time()) + 60 * 60
+		s.profile.luckUntil = math.max(s.profile.luckUntil, os.time()) + 30 * 60
+		s.profile.shields += 5
+		Bubbles.give(s, "Epic")
+		return true
+	end,
+	MegaPack = function(s)
+		s.profile.starterTier = math.max(s.profile.starterTier, 3)
+		s.profile.boostUntil = math.max(s.profile.boostUntil, os.time()) + 120 * 60
+		s.profile.luckUntil = math.max(s.profile.luckUntil, os.time()) + 60 * 60
+		s.profile.shields += 10
+		Bubbles.give(s, "Legendary", nil, 2.2)
 		return true
 	end,
 }
