@@ -215,6 +215,70 @@ for i, r in Config.Rarities do
 	r.index = i
 end
 
+-- Every zone has its own 5 creatures (one per rarity): 30 to collect.
+-- kind = which blocky builder (Creatures.luau); c1/c2/c3 = colors; flags
+-- tweak the build (glow, bill, lure, horn, shell...).
+export type Species = {
+	name: string, kind: string, icon: string, c1: Color3, c2: Color3, c3: Color3?,
+	glow: boolean?, bill: boolean?, lure: boolean?, horn: boolean?, shell: boolean?, long: boolean?,
+	ghost: boolean?, horns: boolean?, size: number?,
+}
+local RGB = Color3.fromRGB
+Config.Species = {
+	Lagoon = {
+		Common = { name = "Clownfish", kind = "fish", icon = "🐠", c1 = RGB(255, 128, 32), c2 = RGB(255, 255, 255), c3 = RGB(30, 30, 40) },
+		Uncommon = { name = "Hermit Crab", kind = "crab", icon = "🦀", c1 = RGB(255, 110, 80), c2 = RGB(240, 200, 150), shell = true },
+		Rare = { name = "Pufferfish", kind = "puffer", icon = "🐡", c1 = RGB(255, 214, 64), c2 = RGB(255, 245, 210) },
+		Epic = { name = "Sea Turtle", kind = "turtle", icon = "🐢", c1 = RGB(70, 170, 90), c2 = RGB(150, 110, 60) },
+		Legendary = { name = "Narwhal", kind = "whale", icon = "🦄", c1 = RGB(150, 190, 230), c2 = RGB(240, 248, 255), horn = true },
+	},
+	Reef = {
+		Common = { name = "Blue Tang", kind = "fish", icon = "🐟", c1 = RGB(40, 110, 230), c2 = RGB(25, 30, 60), c3 = RGB(255, 220, 40) },
+		Uncommon = { name = "Seahorse", kind = "seahorse", icon = "🌀", c1 = RGB(255, 150, 60), c2 = RGB(255, 210, 120) },
+		Rare = { name = "Octopus", kind = "ceph", icon = "🐙", c1 = RGB(235, 80, 120), c2 = RGB(255, 170, 190) },
+		Epic = { name = "Manta Ray", kind = "ray", icon = "🪽", c1 = RGB(40, 60, 100), c2 = RGB(235, 240, 250) },
+		Legendary = { name = "Coral Dragon", kind = "serpent", icon = "🐉", c1 = RGB(255, 110, 150), c2 = RGB(255, 220, 120), horns = true },
+	},
+	Kelp = {
+		Common = { name = "Parrotfish", kind = "fish", icon = "🐠", c1 = RGB(70, 210, 150), c2 = RGB(255, 120, 200), c3 = RGB(255, 230, 90) },
+		Uncommon = { name = "Spider Crab", kind = "crab", icon = "🦀", c1 = RGB(200, 70, 50), c2 = RGB(255, 170, 120), long = true },
+		Rare = { name = "Jellyfish", kind = "jelly", icon = "🪼", c1 = RGB(255, 140, 220), c2 = RGB(255, 220, 245), glow = true },
+		Epic = { name = "Squid", kind = "ceph", icon = "🦑", c1 = RGB(240, 150, 120), c2 = RGB(255, 210, 190), long = true },
+		Legendary = { name = "Sea Dragon", kind = "serpent", icon = "🐉", c1 = RGB(90, 180, 70), c2 = RGB(220, 240, 120) },
+	},
+	Shipwreck = {
+		Common = { name = "Moray Eel", kind = "serpent", icon = "🐍", c1 = RGB(120, 140, 60), c2 = RGB(220, 210, 120), size = 0.8 },
+		Uncommon = { name = "Lobster", kind = "crab", icon = "🦞", c1 = RGB(220, 40, 40), c2 = RGB(255, 140, 110), long = true, shell = false },
+		Rare = { name = "Swordfish", kind = "fish", icon = "🗡️", c1 = RGB(70, 90, 150), c2 = RGB(220, 230, 245), c3 = RGB(30, 40, 70), bill = true },
+		Epic = { name = "Ghost Octopus", kind = "ceph", icon = "👻", c1 = RGB(210, 240, 255), c2 = RGB(150, 220, 255), ghost = true },
+		Legendary = { name = "Orca", kind = "whale", icon = "🐋", c1 = RGB(25, 28, 40), c2 = RGB(255, 255, 255), size = 1.05 },
+	},
+	Deep = {
+		Common = { name = "Lanternfish", kind = "fish", icon = "🏮", c1 = RGB(40, 50, 90), c2 = RGB(80, 230, 255), c3 = RGB(20, 20, 40), glow = true },
+		Uncommon = { name = "Anglerfish", kind = "fish", icon = "🎣", c1 = RGB(70, 50, 80), c2 = RGB(255, 240, 120), c3 = RGB(30, 20, 40), lure = true },
+		Rare = { name = "Giant Squid", kind = "ceph", icon = "🦑", c1 = RGB(180, 40, 50), c2 = RGB(255, 120, 110), long = true },
+		Epic = { name = "Moon Ray", kind = "ray", icon = "🌙", c1 = RGB(60, 70, 140), c2 = RGB(160, 220, 255), glow = true },
+		Legendary = { name = "Leviathan", kind = "serpent", icon = "🐉", c1 = RGB(30, 90, 140), c2 = RGB(90, 230, 255), horns = true, glow = true, size = 1.2 },
+	},
+	Abyss = {
+		Common = { name = "Glowfish", kind = "fish", icon = "✨", c1 = RGB(90, 255, 200), c2 = RGB(20, 40, 60), c3 = RGB(20, 20, 30), glow = true },
+		Uncommon = { name = "Abyss Jelly", kind = "jelly", icon = "🪼", c1 = RGB(140, 90, 255), c2 = RGB(220, 200, 255), glow = true },
+		Rare = { name = "Vampire Squid", kind = "ceph", icon = "🦇", c1 = RGB(90, 20, 40), c2 = RGB(255, 60, 90), glow = true },
+		Epic = { name = "Megalodon Pup", kind = "whale", icon = "🦈", c1 = RGB(110, 130, 160), c2 = RGB(235, 240, 250), fin = true },
+		Legendary = { name = "Kraken", kind = "ceph", icon = "🐙", c1 = RGB(60, 20, 70), c2 = RGB(255, 80, 200), glow = true, size = 1.12 },
+	},
+} :: any
+
+function Config.species(zoneId: string?, rarityId: string): Species
+	local z = Config.Species[zoneId or "Lagoon"] or Config.Species.Lagoon
+	return z[rarityId] or z.Common
+end
+
+-- "Gold Clownfish", "Octopus"...
+function Config.creatureName(zoneId: string?, rarityId: string, mutationId: string?): string
+	return (mutationId and (mutationId .. " ") or "") .. Config.species(zoneId, rarityId).name
+end
+
 function Config.rarity(id: string): Rarity
 	for _, r in Config.Rarities do
 		if r.id == id then
@@ -262,12 +326,31 @@ Config.COLLECT_RADIUS = 6
 Config.SELL_SECONDS = 20 -- a creature that doesn't fit sells for this many seconds of its income
 
 ----------------------------------------------------------------- tank
+-- Your tank: everything you catch is kept (up to `storage`); the best ones
+-- are Active and earn money. "+1 EQUIP" buys another active slot.
 Config.Tank = {
 	startSlots = 4,
 	maxSlots = 12,
 	passSlots = 4,
-	-- price of slot #5, #6, ... #12
+	-- price of active slot #5, #6, ... #12
 	slotPrices = { 250, 1000, 4000, 15000, 60000, 250000, 1000000, 4000000 },
+	storage = 40, -- caught creatures kept (active + stored); past this the weakest stored one is sold
+}
+
+-- hold time (seconds) on the grab prompt: rarer = longer = riskier
+Config.GrabHold = { Common = 0.35, Uncommon = 0.55, Rare = 0.8, Epic = 1.1, Legendary = 1.5 }
+
+-- +10% coins per friend in your server (max +50%)
+Config.FriendBoost = { per = 0.1, max = 0.5 }
+
+-- Slow Mode caps your speed so precise grabs are easy at high speed
+Config.SLOW_SPEED = 26
+
+-- Codes (case-insensitive, once per player). Edit freely.
+Config.Codes = {
+	SHARK = { coins = 250, speed = 50 },
+	RELEASE = { coins = 1000, speed = 100 },
+	CHOMP = { shields = 1 },
 }
 
 ----------------------------------------------------------------- sharks
@@ -338,7 +421,12 @@ end
 
 ----------------------------------------------------------------- offline
 -- Your tank keeps earning while you're away (at a slower rate, capped).
-Config.Offline = { rate = 0.5, maxHours = 6, minSeconds = 120 }
+Config.Offline = { rate = 0.3, maxHours = 24, minSeconds = 120 }
+
+-- what your tank makes per day while you're offline
+function Config.offlinePerDay(income: number): number
+	return income * Config.Offline.rate * 86400
+end
 
 ----------------------------------------------------------------- images
 -- Stud texture: "Studs" by aetoreous (public domain). Decal 6927295857,
@@ -348,12 +436,22 @@ Config.Images = {
 	StudsWorldTile = 8, -- studs of world space one image tile covers on parts
 }
 
--- Custom icon set: two 1024x1024 sheets (4x4 grid of 256px icons) in
--- assets/icons. Upload IconsA.png and IconsB.png (Asset Manager > Import),
--- paste the ids below. Until then every icon falls back to its emoji.
+-- Custom icons. Upload each PNG from assets/icons/single/ (Asset Manager >
+-- Import) and paste its id next to its name in `ids` ("rbxassetid://123" or
+-- just the number). Order of use: ids[name] > sheet > emoji fallback.
+-- (The two sheets in assets/icons work too; leave them "" when using singles.)
 Config.Icons = {
-	SheetA = "rbxassetid://118060098168308",
-	SheetB = "rbxassetid://72421449834580",
+	ids = {
+		-- HUD (upload these first)
+		Sneaker = "", Cash = "", Shop = "", Index = "", Rides = "", Tank = "", Rebirth = "", Shark = "",
+		-- popups, shop cards, guide
+		Arrow = "", Clock = "", MoneyBag = "", Gift = "", Speed = "", Coins = "",
+		X2Speed = "", X2Coins = "", Magnet = "", Clover = "", BigTank = "", Crown = "",
+		GoldDuck = "", SharkBoard = "", RainbowSki = "", Shield = "", Boost = "", Potion = "", GoldBubble = "",
+		Lock = "", Trophy = "", Sparkle = "", Chest = "", Fin = "", Fish = "", Island = "",
+	},
+	SheetA = "",
+	SheetB = "",
 	cells = {
 		Speed = { "A", 1 }, Coins = { "A", 2 }, Rides = { "A", 3 }, Index = { "A", 4 },
 		Shop = { "A", 5 }, Rebirth = { "A", 6 }, Shark = { "A", 7 }, Tank = { "A", 8 },
@@ -365,6 +463,7 @@ Config.Icons = {
 		Arrow = { "B", 13 }, MoneyBag = { "B", 14 }, Fish = { "B", 15 }, Island = { "B", 16 },
 	},
 	emoji = {
+		Sneaker = "👟", Cash = "$",
 		Speed = "⚡", Coins = "🪙", Rides = "🛟", Index = "📖", Shop = "🛒", Rebirth = "🔁", Shark = "🦈", Tank = "🐟",
 		Shield = "🛡️", Boost = "⏩", Potion = "🧪", Lock = "🔒", Gift = "🎁", Clock = "⏰", Trophy = "🏆", Sparkle = "✨",
 		X2Speed = "⚡", X2Coins = "🪙", Magnet = "🧲", Clover = "🍀", BigTank = "🐟", Crown = "👑", GoldDuck = "🦆",

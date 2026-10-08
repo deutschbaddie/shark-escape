@@ -31,7 +31,9 @@ export type Session = {
 	dirty: boolean,
 	inWater: boolean,
 	leaderSpeed: IntValue?,
-	leaderRebirths: IntValue?,
+	leaderIncome: IntValue?,
+	friendBoost: number, -- +coins from friends in this server (0..0.5)
+	slow: boolean, -- Slow Mode on
 	offline: number, -- welcome-back coins waiting to be claimed
 }
 
@@ -94,7 +96,7 @@ function Game.gain(s: Session): number
 end
 
 function Game.coinMult(s: Session): number
-	local m = 1
+	local m = 1 + s.friendBoost
 	if s.passes.TwoXCoins then
 		m *= 2
 	end
@@ -104,12 +106,28 @@ function Game.coinMult(s: Session): number
 	return m
 end
 
+local function baseValue(c: Data.Creature): number
+	return Config.creatureValue(c.r, c.z, c.m)
+end
+
 function Game.income(s: Session): number
 	local total = 0
-	for _, c in s.profile.tank do
-		total += Config.creatureValue(c.r, c.z, c.m)
+	for _, c in s.profile.creatures do
+		if c.e then
+			total += baseValue(c)
+		end
 	end
 	return total * Game.coinMult(s)
+end
+
+function Game.activeCount(s: Session): number
+	local n = 0
+	for _, c in s.profile.creatures do
+		if c.e then
+			n += 1
+		end
+	end
+	return n
 end
 
 function Game.maxSlots(s: Session): number
@@ -124,6 +142,33 @@ function Game.slotPrice(s: Session): number?
 	return Config.Tank.slotPrices[bought + 1]
 end
 
+-- WalkSpeed from speed, capped while Slow Mode is on
+function Game.walkSpeed(s: Session): number
+	local v = Config.realSpeed(s.profile.speed)
+	return s.slow and math.min(v, Config.SLOW_SPEED) or v
+end
+
+-- friends in this server boost your coins (social = more players)
+function Game.updateFriendBoost(s: Session)
+	local n = 0
+	for other in Game.sessions do
+		if other ~= s.player then
+			local ok, friends = pcall(s.player.IsFriendsWith, s.player, other.UserId)
+			if ok and friends then
+				n += 1
+			end
+		end
+	end
+	local boost = math.min(n * Config.FriendBoost.per, Config.FriendBoost.max)
+	if boost ~= s.friendBoost then
+		s.friendBoost = boost
+		if Game.refreshTank then
+			Game.refreshTank(s)
+		end
+		s.dirty = true
+	end
+end
+
 function Game.luck(s: Session): number
 	local l = Config.Luck.base
 	if s.passes.LuckyNet then
@@ -133,6 +178,10 @@ function Game.luck(s: Session): number
 		l += Config.Luck.potion
 	end
 	return l
+end
+
+function Game.tankSlots(s: Session): number
+	return s.profile.slots + (s.passes.BigTank and Config.Tank.passSlots or 0)
 end
 
 local function tankSlots(s: Session): number
@@ -152,9 +201,10 @@ end
 ----------------------------------------------------------------- state sync
 function Game.push(s: Session)
 	local p = s.profile
-	local tank = {}
-	for _, c in p.tank do
-		table.insert(tank, { r = c.r, z = c.z, m = c.m, v = Config.creatureValue(c.r, c.z, c.m) * Game.coinMult(s) })
+	local mult = Game.coinMult(s)
+	local list = table.create(#p.creatures)
+	for _, c in p.creatures do
+		table.insert(list, { id = c.id, r = c.r, z = c.z, m = c.m, e = c.e == true, v = baseValue(c) * mult })
 	end
 	local rides = {}
 	for _, ride in Config.Rides do
@@ -171,8 +221,12 @@ function Game.push(s: Session)
 		income = Game.income(s),
 		rides = rides,
 		ride = p.ride,
-		tank = tank,
+		creatures = list,
+		active = Game.activeCount(s),
+		storage = Config.Tank.storage,
 		slots = tankSlots(s),
+		friendBoost = s.friendBoost,
+		slow = s.slow,
 		slotPrice = Game.slotPrice(s),
 		rebirths = p.rebirths,
 		tut = p.tut,
@@ -245,7 +299,7 @@ function Game.setCarry(s: Session, c: Data.Creature?)
 	local char = s.player.Character
 	local head = char and char:FindFirstChild("Head") :: BasePart?
 	if c and head then
-		local m = Creatures.build(c.r, c.m, 0.85)
+		local m = Creatures.build(c.r, c.m, 0.85, c.z)
 		m:PivotTo(head.CFrame * CFrame.new(0, 2.6, 0))
 		Build.weldToRoot(m)
 		local w = Instance.new("WeldConstraint")
@@ -260,79 +314,145 @@ function Game.setCarry(s: Session, c: Data.Creature?)
 end
 
 ----------------------------------------------------------------- tank
-local function weakestIndex(tank: { Data.Creature }): (number?, number)
-	local idx, val = nil, math.huge
-	for i, c in tank do
-		local v = Config.creatureValue(c.r, c.z, c.m)
-		if v < val then
-			idx, val = i, v
+-- Everything you catch is kept (up to Config.Tank.storage). The Active ones
+-- (c.e) swim in your tank and earn; the rest wait in storage. New catches
+-- go Active if there's room, or swap in for your weakest Active one if
+-- they're better. Players can Equip / Unequip / Equip Best from the Tank UI.
+
+local function weakestActive(s: Session): Data.Creature?
+	local best, val = nil, math.huge
+	for _, c in s.profile.creatures do
+		if c.e and baseValue(c) < val then
+			best, val = c, baseValue(c)
 		end
 	end
-	return idx, val
+	return best
 end
 
+local function weakestStored(s: Session): (number?, Data.Creature?)
+	local idx, best, val = nil, nil, math.huge
+	for i, c in s.profile.creatures do
+		if not c.e and baseValue(c) < val then
+			idx, best, val = i, c, baseValue(c)
+		end
+	end
+	return idx, best
+end
+
+local function findCreature(s: Session, id: any): Data.Creature?
+	if typeof(id) ~= "number" then
+		return nil
+	end
+	for _, c in s.profile.creatures do
+		if c.id == id then
+			return c
+		end
+	end
+	return nil
+end
+
+local function makeLabel(parent: Instance, size: UDim2, offset: Vector3, maxDist: number): (TextLabel, BillboardGui)
+	local bb = Instance.new("BillboardGui")
+	bb.Size = size
+	bb.StudsOffsetWorldSpace = offset
+	bb.MaxDistance = maxDist
+	bb.LightInfluence = 0
+	bb.Parent = parent
+	local t = Instance.new("TextLabel")
+	t.Size = UDim2.fromScale(1, 1)
+	t.BackgroundTransparency = 1
+	t.Font = Enum.Font.FredokaOne
+	t.TextScaled = true
+	t.TextColor3 = Color3.fromRGB(255, 255, 255)
+	t.Parent = bb
+	local st = Instance.new("UIStroke")
+	st.Color = Color3.fromRGB(22, 22, 34)
+	st.Thickness = 2
+	st.Parent = t
+	return t, bb
+end
+
+-- the swimming showcase: Active creatures with their $/s (clients make them swim)
 function Game.refreshTank(s: Session)
 	local plot = s.plot
 	if not plot then
 		return
 	end
 	plot.slots:ClearAllChildren()
-	local full = #s.profile.tank >= tankSlots(s)
-	local weakest = full and weakestIndex(s.profile.tank) or nil
-	local tcf = CFrame.new(Layout.tankPos(plot.cf)) * plot.cf.Rotation * CFrame.new(0, 0.5, 0)
-	for i, c in s.profile.tank do
-		local col = (i - 1) % 8
-		local row = math.floor((i - 1) / 8)
-		local m = Creatures.build(c.r, c.m, 0.62)
-		m:PivotTo(tcf * CFrame.new(-6.3 + col * 1.8, 3.1 + row * 2.6, 0) * CFrame.Angles(0, math.pi / 2, 0))
-		m:SetAttribute("Swim", true)
-		-- what this one earns; when the tank is full the weakest is marked,
-		-- because your next better catch replaces it automatically
-		local value = Config.creatureValue(c.r, c.z, c.m) * Game.coinMult(s)
-		local swapNext = full and i == weakest
-		local bb = Instance.new("BillboardGui")
-		bb.Size = UDim2.fromScale(1.75, 0.62)
-		bb.StudsOffsetWorldSpace = Vector3.new(0, 0.95, 0)
-		bb.MaxDistance = 45
-		bb.LightInfluence = 0
-		bb.Parent = m.PrimaryPart
-		local t = Instance.new("TextLabel")
-		t.Size = UDim2.fromScale(1, 1)
-		t.BackgroundTransparency = 1
-		t.Font = Enum.Font.FredokaOne
-		t.TextScaled = true
-		t.Text = (swapNext and "↻$" or "$") .. formatShort(value) .. "/s"
-		t.TextColor3 = swapNext and Color3.fromRGB(200, 200, 210) or Config.rarity(c.r).color
-		t.Parent = bb
-		local st = Instance.new("UIStroke")
-		st.Color = Color3.fromRGB(22, 22, 34)
-		st.Thickness = 2
-		st.Parent = t
-		m.Parent = plot.slots
+	local mult = Game.coinMult(s)
+	local base = CFrame.new(Layout.tankPos(plot.cf))
+	for _, c in s.profile.creatures do
+		if c.e then
+			local m = Creatures.build(c.r, c.m, 0.72, c.z)
+			m:SetAttribute("Seed", (c.id or 1) * 7.7)
+			m:PivotTo(base + Vector3.new(0, 5, 0))
+			local t = makeLabel(m.PrimaryPart :: BasePart, UDim2.fromScale(2.6, 0.75), Vector3.new(0, 1.35, 0), 55)
+			t.Text = "$" .. formatShort(baseValue(c) * mult) .. "/s"
+			t.TextColor3 = Config.rarity(c.r).color
+			m.Parent = plot.slots
+		end
 	end
+	Game.updateTankSign(s)
 end
 
+-- the sign over the tank: what it earns now, and per day while you're away
+function Game.updateTankSign(s: Session)
+	local plot = s.plot
+	if not plot then
+		return
+	end
+	local inc = Game.income(s)
+	plot.tankIncome.Text = ("$%s/s  ·  %d/%d Active"):format(formatShort(inc), Game.activeCount(s), tankSlots(s))
+	plot.tankOffline.Text = ("💤 $%s / day offline"):format(formatShort(Config.offlinePerDay(inc)))
+end
 
--- put a creature in the tank; if full, it replaces the weakest (or sells)
-function Game.addToTank(s: Session, c: Data.Creature)
-	local value = Config.creatureValue(c.r, c.z, c.m)
-	local tank = s.profile.tank
-	if #tank < tankSlots(s) then
-		table.insert(tank, c)
-		Game.notify(s.player, "deposit", { r = c.r, m = c.m, z = c.z, v = value * Game.coinMult(s) })
+-- a new catch arrives at the dock
+function Game.addCreature(s: Session, c: Data.Creature)
+	local p = s.profile
+	c.id = p.nextId
+	p.nextId += 1
+	local value = baseValue(c)
+	local mult = Game.coinMult(s)
+	local info: { [string]: any } = { r = c.r, m = c.m, z = c.z, v = value * mult }
+	if Game.activeCount(s) < tankSlots(s) then
+		c.e = true
 	else
-		local wi, wv = weakestIndex(tank)
-		if wi and value > wv then
-			local old = tank[wi]
-			local sold = math.floor(wv * Config.SELL_SECONDS)
-			s.profile.coins += sold
-			tank[wi] = c
-			Game.notify(s.player, "deposit", { r = c.r, m = c.m, z = c.z, v = value * Game.coinMult(s), replaced = old.r, sold = sold })
+		local weak = weakestActive(s)
+		if weak and value > baseValue(weak) then
+			weak.e = false
+			c.e = true
+			info.swapped = Config.creatureName(weak.z, weak.r, weak.m)
 		else
-			local sold = math.floor(value * Config.SELL_SECONDS)
-			s.profile.coins += sold
-			Game.notify(s.player, "sold", { r = c.r, m = c.m, sold = sold })
+			c.e = false
 		end
+	end
+	info.active = c.e
+	table.insert(p.creatures, c)
+	-- storage full? the weakest stored creature is sold
+	if #p.creatures > Config.Tank.storage then
+		local idx, worst = weakestStored(s)
+		if idx and worst then
+			local sold = math.floor(baseValue(worst) * Config.SELL_SECONDS * mult)
+			p.coins += sold
+			table.remove(p.creatures, idx)
+			info.sold = sold
+			info.soldName = Config.creatureName(worst.z, worst.r, worst.m)
+		end
+	end
+	Game.notify(s.player, "deposit", info)
+	Game.refreshTank(s)
+	s.dirty = true
+end
+
+-- Equip Best: the highest earners become Active
+function Game.equipBest(s: Session)
+	local list = table.clone(s.profile.creatures)
+	table.sort(list, function(a, b)
+		return baseValue(a) > baseValue(b)
+	end)
+	local slots = tankSlots(s)
+	for i, c in list do
+		c.e = i <= slots
 	end
 	Game.refreshTank(s)
 	s.dirty = true
@@ -454,17 +574,65 @@ actions.equip = function(s, id)
 	end
 end
 
-actions.buySlot = function(s)
-	local price = Game.slotPrice(s)
-	local hrp = root(s.player)
-	if not (hrp and Layout.atRideShop(hrp.Position)) then
-		Game.notify(s.player, "rideShop", {})
+actions.equip = function(s, id)
+	local c = findCreature(s, id)
+	if c and not c.e and Game.activeCount(s) < tankSlots(s) then
+		c.e = true
+		Game.refreshTank(s)
+		s.dirty = true
+	end
+end
+
+actions.unequip = function(s, id)
+	local c = findCreature(s, id)
+	if c and c.e then
+		c.e = false
+		Game.refreshTank(s)
+		s.dirty = true
+	end
+end
+
+actions.equipBest = function(s)
+	Game.equipBest(s)
+end
+
+actions.slowMode = function(s, on)
+	s.slow = on == true
+	local hum = humanoid(s.player)
+	if hum then
+		hum.WalkSpeed = Game.walkSpeed(s)
+	end
+	s.dirty = true
+end
+
+actions.code = function(s, text)
+	if typeof(text) ~= "string" or #text > 30 then
 		return
 	end
+	local key = text:upper():gsub("%s", "")
+	local reward = Config.Codes[key]
+	if not reward then
+		Game.notify(s.player, "code", { ok = false, text = "That code doesn't exist" })
+		return
+	end
+	if s.profile.codes[key] then
+		Game.notify(s.player, "code", { ok = false, text = "You already used that code" })
+		return
+	end
+	s.profile.codes[key] = true
+	s.profile.coins += reward.coins or 0
+	s.profile.speed += reward.speed or 0
+	s.profile.shields += reward.shields or 0
+	Game.notify(s.player, "code", { ok = true, coins = reward.coins, speed = reward.speed, shields = reward.shields })
+	s.dirty = true
+end
+
+actions.buySlot = function(s)
+	local price = Game.slotPrice(s)
 	if price and s.profile.coins >= price then
 		s.profile.coins -= price
 		s.profile.slots += 1
-		Game.refreshTank(s)
+		Game.equipBest(s)
 		Game.notify(s.player, "slot", { slots = tankSlots(s) })
 		s.dirty = true
 	end
@@ -561,7 +729,7 @@ local function onCharacter(s: Session, char: Model)
 	if not hum or not hrp then
 		return
 	end
-	hum.WalkSpeed = Config.realSpeed(s.profile.speed)
+	hum.WalkSpeed = Game.walkSpeed(s)
 	hum.JumpPower = 50
 	if s.plot then
 		task.defer(function()
@@ -596,6 +764,8 @@ function Game.join(player: Player)
 		dirty = true,
 		inWater = false,
 		offline = 0,
+		friendBoost = 0,
+		slow = false,
 	}
 	Game.sessions[player] = s
 	-- welcome back: the tank kept earning (slower) while you were away
@@ -609,18 +779,23 @@ function Game.join(player: Player)
 	end
 	claimPlot(s)
 
+	-- player list columns, like the big simulators: Money/s and Speed
 	local ls = Instance.new("Folder")
 	ls.Name = "leaderstats"
+	local inc = Instance.new("IntValue")
+	inc.Name = "Money/s"
+	inc.Value = math.floor(Game.income(s))
+	inc.Parent = ls
 	local sp = Instance.new("IntValue")
 	sp.Name = "Speed"
 	sp.Value = math.floor(profile.speed)
 	sp.Parent = ls
-	local rb = Instance.new("IntValue")
-	rb.Name = "Rebirths"
-	rb.Value = profile.rebirths
-	rb.Parent = ls
 	ls.Parent = player
-	s.leaderSpeed, s.leaderRebirths = sp, rb
+	s.leaderSpeed, s.leaderIncome = sp, inc
+	-- friend boosts for everyone (a friend joining changes others' boost too)
+	for _, other in Game.sessions do
+		task.spawn(Game.updateFriendBoost, other)
+	end
 
 	player.CharacterAdded:Connect(function(char)
 		onCharacter(s, char)
@@ -646,11 +821,16 @@ function Game.leave(player: Player)
 		s.plot.owner = nil
 		s.plot.signLabel.Text = "Empty Dock"
 		s.plot.padLabel.Text = "$0"
+		s.plot.tankIncome.Text = ""
+		s.plot.tankOffline.Text = ""
 		s.plot.slots:ClearAllChildren()
 		s.plot.model:SetAttribute("Owner", nil)
 	end
 	if s.canSave then
 		Data.save(player.UserId, s.profile)
+	end
+	for _, other in Game.sessions do
+		task.spawn(Game.updateFriendBoost, other)
 	end
 end
 
@@ -674,7 +854,7 @@ local function secondTick()
 		p.playtime += 1
 		local hum = humanoid(s.player)
 		if hum then
-			hum.WalkSpeed = Config.realSpeed(p.speed)
+			hum.WalkSpeed = Game.walkSpeed(s)
 		end
 		-- zone unlock moments
 		for _, zone in Config.Zones do
@@ -692,12 +872,13 @@ local function secondTick()
 		end
 		if s.plot then
 			s.plot.padLabel.Text = "$" .. formatShort(s.pending)
+			Game.updateTankSign(s)
 		end
 		if s.leaderSpeed then
 			s.leaderSpeed.Value = math.floor(p.speed)
 		end
-		if s.leaderRebirths then
-			s.leaderRebirths.Value = p.rebirths
+		if s.leaderIncome then
+			s.leaderIncome.Value = math.floor(inc)
 		end
 		Game.push(s)
 	end
@@ -735,7 +916,7 @@ local function fastTick()
 				if Layout.segmentDist(tank, from, pos) < Config.DEPOSIT_RADIUS then
 					local c = s.carrying :: Data.Creature
 					Game.setCarry(s, nil)
-					Game.addToTank(s, c)
+					Game.addCreature(s, { r = c.r, z = c.z, m = c.m })
 				end
 			end
 		end

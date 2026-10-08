@@ -190,7 +190,7 @@ local function update(dt: number)
 					local result = Game.bite(victim, h.pos)
 					EventRemote:FireAllClients("bite", {
 						id = h.id, victim = victim.player.UserId, result = result, x = p.X, z = p.Z,
-						r = carried and carried.r, m = carried and carried.m,
+						r = carried and carried.r, m = carried and carried.m, z = carried and carried.z,
 					})
 					h.state, h.timer = "bite", 0
 					h.holdFor = result == "eaten" and cfg.eatenTime or 0.8

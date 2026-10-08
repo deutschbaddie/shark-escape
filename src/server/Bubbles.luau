@@ -1,7 +1,6 @@
 -- Creature bubbles floating in every zone. Swim into one to grab it.
 -- Rarity and mutation are rolled on the server; luck can bump a grab up a tier.
 
-local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local CollectionService = game:GetService("CollectionService")
 
@@ -14,9 +13,10 @@ local Game = require(script.Parent.Game)
 
 local Bubbles = {}
 
-type Bubble = { model: Model, pos: Vector3, r: string, m: string?, zone: Config.Zone }
+type Bubble = { model: Model, pos: Vector3, r: string, m: string?, zone: Config.Zone, taken: boolean? }
 
 local live: { Bubble } = {}
+local tryGrab: (Player, Bubble) -> ()
 local folder: Folder
 local rng = Random.new()
 
@@ -70,7 +70,7 @@ local function spawnBubble(zone: Config.Zone)
 		Name = "Shell", Material = Enum.Material.ForceField, CanCollide = false, CanQuery = false, CastShadow = false,
 	})
 	model.PrimaryPart = shell
-	local creature = Creatures.build(r, m, 1)
+	local creature = Creatures.build(r, m, 1, zone.id)
 	creature:PivotTo(CFrame.new(pos))
 	creature.Parent = model
 	if rarity.index >= 4 then -- Epic+ gets a sky beam you can see from the shore
@@ -100,9 +100,24 @@ local function spawnBubble(zone: Config.Zone)
 	model:SetAttribute("Zone", zone.id)
 	model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
 	CollectionService:AddTag(model, "Bubble")
-	table.insert(live, { model = model, pos = pos, r = r, m = m, zone = zone })
+	local entry: Bubble = { model = model, pos = pos, r = r, m = m, zone = zone }
+	table.insert(live, entry)
+	-- hold to grab: rarer = longer hold (more risk with sharks around)
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "GrabPrompt"
+	prompt.ActionText = "Grab"
+	prompt.ObjectText = Config.creatureName(zone.id, r, m)
+	prompt.HoldDuration = Config.GrabHold[r] or 0.5
+	prompt.MaxActivationDistance = 12
+	prompt.RequiresLineOfSight = false
+	prompt.Style = Enum.ProximityPromptStyle.Custom
+	prompt.KeyboardKeyCode = Enum.KeyCode.E
+	prompt.Parent = shell
+	prompt.Triggered:Connect(function(player)
+		tryGrab(player, entry)
+	end)
 	if r == "Legendary" then
-		Game.notifyAll("announce", { text = ("A LEGENDARY %s appeared in %s!"):format(rarity.species, zone.name), color = rarity.color })
+		Game.notifyAll("announce", { text = ("A LEGENDARY %s appeared in %s!"):format(Config.creatureName(zone.id, r, m), zone.name), color = rarity.color })
 	end
 end
 
@@ -148,34 +163,30 @@ local function grab(s: Game.Session, b: Bubble)
 		v = Config.creatureValue(r, b.zone.id, b.m) * Game.coinMult(s) })
 end
 
-local lastPos: { [Player]: Vector3 } = {}
-
-local function tick()
-	for player, s in Game.sessions do
-		local hrp = Game.root(s.player)
-		local prev = lastPos[player]
-		lastPos[player] = hrp and hrp.Position or nil
-		if s.carrying or os.clock() < s.eatenUntil or not hrp then
-			continue
-		end
-		local pos = hrp.Position
-		-- swept: anything you passed through since the last tick counts
-		local from = (prev and (prev - pos).Magnitude < 120) and prev or pos
-		for i, b in live do
-			if Layout.segmentDist(b.pos, from, pos) < Config.GRAB_RADIUS and math.abs(pos.Y - b.pos.Y) < 9 then
-				table.remove(live, i)
-				b.model:Destroy()
-				grab(s, b)
-				local zone = b.zone
-				task.delay(rng:NextNumber(3, 6), function()
-					if count(zone) < Config.BUBBLES_PER_ZONE then
-						spawnBubble(zone)
-					end
-				end)
-				break
-			end
-		end
+-- hold the prompt to grab (server checks you're really there)
+tryGrab = function(player: Player, b: Bubble)
+	local s = Game.sessions[player]
+	if not s or b.taken or s.carrying or os.clock() < s.eatenUntil then
+		return
 	end
+	local hrp = Game.root(player)
+	if not hrp or Vector2.new(hrp.Position.X - b.pos.X, hrp.Position.Z - b.pos.Z).Magnitude > 16 then
+		return
+	end
+	local i = table.find(live, b)
+	if not i then
+		return
+	end
+	b.taken = true
+	table.remove(live, i)
+	b.model:Destroy()
+	grab(s, b)
+	local zone = b.zone
+	task.delay(rng:NextNumber(3, 6), function()
+		if count(zone) < Config.BUBBLES_PER_ZONE then
+			spawnBubble(zone)
+		end
+	end)
 end
 
 -- Golden Bubble / Starter Pack: straight into your hands (or your tank)
@@ -184,7 +195,7 @@ function Bubbles.give(s: Game.Session, r: string, zoneId: string?)
 	local c = { r = r, z = zoneId or zone.id, m = Bubbles.rollMutation() }
 	Game.discover(s, c)
 	if s.carrying then
-		Game.addToTank(s, c)
+		Game.addCreature(s, c)
 	else
 		Game.setCarry(s, c)
 		Game.notify(s.player, "grab", { r = c.r, m = c.m, z = c.z, gift = true, v = Config.creatureValue(c.r, c.z, c.m) * Game.coinMult(s) })
@@ -192,9 +203,6 @@ function Bubbles.give(s: Game.Session, r: string, zoneId: string?)
 end
 
 function Bubbles.start()
-	Players.PlayerRemoving:Connect(function(p)
-		lastPos[p] = nil
-	end)
 	folder = Instance.new("Folder")
 	folder.Name = "Bubbles"
 	folder.Parent = Workspace
@@ -203,12 +211,6 @@ function Bubbles.start()
 			spawnBubble(zone)
 		end
 	end
-	task.spawn(function()
-		while true do
-			task.wait(0.1)
-			tick()
-		end
-	end)
 end
 
 return Bubbles

@@ -6,11 +6,11 @@ cd "$(dirname "$0")"
 python3 make_icons.py
 python3 make_store_art.py
 CHROME=${CHROME:-/opt/pw-browsers/chromium}
-for f in build/*.html; do
+for f in build/*.html build/single/*.html; do
   out="${f%.html}.png"
   case "$f" in
     *store_thumb*) W=1920; H=1080 ;;
-    *store_icon*) W=512; H=512 ;;
+    *store_icon*|*single/*) W=512; H=512 ;;
     *) W=1024; H=1024 ;;
   esac
   "$CHROME" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --force-device-scale-factor=1 \
@@ -23,3 +23,5 @@ cp build/sheet_a.png ../../assets/icons/IconsA.png
 cp build/sheet_b.png ../../assets/icons/IconsB.png
 cp build/store_icon.png ../../assets/store/GameIcon.png
 cp build/store_thumb.png ../../assets/store/Thumbnail.png
+mkdir -p ../../assets/icons/single
+cp build/single/*.png ../../assets/icons/single/

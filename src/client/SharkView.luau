@@ -532,7 +532,7 @@ local function fade(to: number, time: number)
 	TweenService:Create(black :: Frame, TweenInfo.new(time), { BackgroundTransparency = to }):Play()
 end
 
-local function eatenCinematic(sh: Shark?, at: Vector3, carried: { r: string, m: string? }?)
+local function eatenCinematic(sh: Shark?, at: Vector3, carried: { r: string, m: string?, z: string? }?)
 	if cine then
 		return
 	end
@@ -560,7 +560,7 @@ local function eatenCinematic(sh: Shark?, at: Vector3, carried: { r: string, m: 
 	local pet: Model? = nil
 	local petStart = ground + up * 5.6
 	if carried then
-		pet = Creatures.build(carried.r, carried.m, 1.1)
+		pet = Creatures.build(carried.r, carried.m, 1.1, carried.z)
 		pet:PivotTo(CFrame.new(petStart))
 		pet.Parent = Workspace
 	end
@@ -621,7 +621,7 @@ local function eatenCinematic(sh: Shark?, at: Vector3, carried: { r: string, m: 
 		tint.TintColor = Color3.fromRGB(255, 190, 195)
 		Fx.bigWord("CHOMP!", UI.C.red, 0.9)
 		if caption then
-			caption.Text = carried and ("The shark ate your %s!"):format(Config.rarity(carried.r).species) or "The shark got you!"
+			caption.Text = carried and ("The shark ate your %s!"):format(Config.creatureName(carried.z, carried.r, carried.m)) or "The shark got you!"
 		end
 	end)
 	task.delay(total - 0.35, function()
@@ -692,7 +692,7 @@ Remotes.get("SharkEvent").OnClientEvent:Connect(function(kind, data)
 			task.delay(CHOMP_AT, Fx.shake, 2)
 		end
 		if data.victim == player.UserId then
-			eatenCinematic(sh, at, data.r and { r = data.r, m = data.m } or nil)
+			eatenCinematic(sh, at, data.r and { r = data.r, m = data.m, z = data.z } or nil)
 		end
 	elseif data.result == "shield" then
 		if sh then

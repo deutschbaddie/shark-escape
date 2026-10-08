@@ -112,7 +112,7 @@ function Index.open()
 			UI.stroke(card, r.id == selected and C.white or C.ink, r.id == selected and 4 or 3)
 			UI.shade(card)
 			UI.studs(card, { size = 18, alpha = 0.82 })
-			local model = Creatures.build(r.id, nil, 1)
+			local model = Creatures.build(r.id, nil, 1, zoneId)
 			-- black light = solid silhouette for undiscovered
 			Shop.viewport(card, model, {
 				Size = UDim2.new(1, -8, 1, -30), Position = UDim2.fromOffset(4, 26),
@@ -120,7 +120,7 @@ function Index.open()
 				LightColor = found and Color3.new(1, 1, 1) or Color3.new(0, 0, 0),
 				ImageTransparency = found and 0 or 0.25,
 			})
-			UI.outlined(card, found and r.species or "???", { Size = UDim2.new(1, -8, 0, 24), Position = UDim2.fromOffset(4, 3), ZIndex = card.ZIndex + 2 })
+			UI.outlined(card, found and Config.species(zoneId, r.id).name or "???", { Size = UDim2.new(1, -8, 0, 24), Position = UDim2.fromOffset(4, 3), ZIndex = card.ZIndex + 2 })
 			if found and not d.claimed[key] then
 				UI.badge(card)
 			end
@@ -149,12 +149,12 @@ function Index.open()
 		g.Rotation = 90
 		g.Color = ColorSequence.new(Color3.fromRGB(150, 150, 160), Color3.fromRGB(60, 60, 70))
 		g.Parent = view
-		Shop.viewport(view, Creatures.build(selected, nil, 1), {
+		Shop.viewport(view, Creatures.build(selected, nil, 1, zoneId), {
 			Size = UDim2.new(1, 0, 1, -64),
 			Ambient = found and Color3.fromRGB(200, 200, 210) or Color3.new(0, 0, 0),
 			LightColor = found and Color3.new(1, 1, 1) or Color3.new(0, 0, 0),
 		})
-		UI.outlined(view, found and r.species or "???", { Size = UDim2.new(1, -12, 0, 28), Position = UDim2.new(0, 6, 1, -62) })
+		UI.outlined(view, found and Config.species(zoneId, selected).name or "???", { Size = UDim2.new(1, -12, 0, 28), Position = UDim2.new(0, 6, 1, -62) })
 		UI.outlined(view, r.id, { Size = UDim2.new(1, -12, 0, 24), Position = UDim2.new(0, 6, 1, -32), TextColor3 = r.color })
 
 		local rewards = UI.frame(right, { Size = UDim2.new(1, -16, 1, -214), Position = UDim2.fromOffset(8, 206), BackgroundColor3 = Color3.fromRGB(20, 70, 30) })

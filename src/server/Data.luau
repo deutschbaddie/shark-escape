@@ -8,13 +8,16 @@ local Config = require(game.ReplicatedStorage.Shared.Config)
 
 local Data = {}
 
-export type Creature = { r: string, z: string, m: string? }
+-- a caught creature; e = Active (in the tank, earning). id is per profile.
+export type Creature = { r: string, z: string, m: string?, id: number?, e: boolean? }
 export type Profile = {
 	speed: number,
 	coins: number,
 	rides: { [string]: boolean },
 	ride: string,
-	tank: { Creature },
+	creatures: { Creature },
+	nextId: number,
+	codes: { [string]: boolean },
 	slots: number,
 	rebirths: number,
 	tut: number,
@@ -43,7 +46,9 @@ function Data.default(): Profile
 		coins = 0,
 		rides = { Noodle = true },
 		ride = "Noodle",
-		tank = {},
+		creatures = {},
+		nextId = 1,
+		codes = {},
 		slots = Config.Tank.startSlots,
 		rebirths = 0,
 		tut = 0,
@@ -71,6 +76,21 @@ local function reconcile(saved: any): Profile
 		end
 	end
 	p.rides.Noodle = true
+	-- v1 saves had a fixed "tank" list: those become Active creatures
+	if type(saved) == "table" and type(saved.tank) == "table" and #p.creatures == 0 then
+		for _, c in saved.tank do
+			if type(c) == "table" and type(c.r) == "string" then
+				table.insert(p.creatures, { r = c.r, z = c.z or "Lagoon", m = c.m, id = p.nextId, e = true })
+				p.nextId += 1
+			end
+		end
+	end
+	for _, c in p.creatures do -- repair ids
+		if type(c.id) ~= "number" then
+			c.id = p.nextId
+			p.nextId += 1
+		end
+	end
 	return p
 end
 

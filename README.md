@@ -17,12 +17,15 @@ Rojo project. Untested in Studio so far.
    **Studio access to API services** so saving works while testing.
 
 ## Uploads (one time)
-- Icons: Asset Manager → Import → `assets/icons/IconsA.png` and `IconsB.png`. Right-click each →
-  Copy ID, then paste them into `Config.Icons.SheetA` / `SheetB` as `"rbxassetid://<id>"`. Until then
-  the game shows emoji.
-- Store art: `assets/store/GameIcon.png` (512×512) and `Thumbnail.png` (1920×1080) go in
-  Creator Hub → your experience → Places / Thumbnails.
-- Regenerate any art with `tools/icons/render.sh` (needs Python + Chromium).
+- **Icons, one by one:** Studio > Asset Manager > Import each PNG in `assets/icons/single/`, right-click >
+  Copy ID, and paste it next to its name in `Config.Icons.ids` (in `src/shared/Config.luau`, edited in
+  your code editor, not in Studio, because Rojo overwrites Studio edits). Start with the HUD ones:
+  Sneaker, Cash, Shop, Index, Rides, Tank, Rebirth, Shark. A decal id works too; the server converts it.
+  Until an id is set, that icon shows an emoji.
+- **Store art:** `assets/store/GameIcon.png` (512x512) and `Thumbnail.png` (1920x1080) go in
+  Creator Hub > your experience > Places / Thumbnails.
+- Regenerate art with `tools/icons/render.sh`. Preview all 30 creatures with
+  `tools/preview/dump.py <path-to-luau>` then `tools/preview/render.py`.
 
 ## Sharks (rigged, hand-built)
 - `python3 tools/shark_gen.py` writes `assets/sharks/Shark*.glb` (6 variants, 9 bones each).

@@ -28,6 +28,8 @@ local C = UI.C
 local player = Players.LocalPlayer
 
 local DONE = 5
+local HOLD_HINT = game:GetService("UserInputService").TouchEnabled and "🫧 Swim to a bubble and HOLD the button to grab it!"
+	or "🫧 Swim to a bubble and HOLD E to grab it!"
 local step = -1 -- local copy, never behind the server
 
 local function point(at: Vector3?, label: string?)
@@ -216,19 +218,19 @@ local function update()
 			advance(1)
 		else
 			at, label = nearestBubble(pos), "Grab it!"
-			hint = "🫧 Swim out and grab a creature bubble!"
+			hint = HOLD_HINT
 		end
 	end
 	if step == 1 then
-		if not d.carrying and #d.tank > 0 then
+		if not d.carrying and #d.creatures > 0 then
 			advance(2)
 		elseif not d.carrying then
 			-- a shark ate it on the way back: go grab another
 			at, label = nearestBubble(pos), "Grab it!"
-			hint = "🫧 Grab another bubble!"
+			hint = HOLD_HINT
 		elseif plot then
 			at, label = Layout.tankPos(plot) + Vector3.new(0, 4, 0), "Your dock"
-			hint = "🏠 Bring it back to your dock!"
+			hint = "🏠 Bring it back to your dock! It goes in your tank"
 		end
 	end
 	if step == 2 and plot then

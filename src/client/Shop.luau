@@ -107,7 +107,7 @@ end
 ----------------------------------------------------------------- rides
 -- what the rides window shows that can change: next ride + what you can afford
 local function ridesKey(d: any): string
-	local key = d.ride .. "|" .. #d.tank .. "|" .. d.slots .. "|" .. tostring(d.slotPrice and d.coins >= d.slotPrice)
+	local key = d.ride .. "|" .. tostring(Shop.atRideShop())
 	for _, ride in Config.Rides do
 		if d.rides[ride.id] then
 			key ..= ride.id
@@ -135,17 +135,6 @@ function Shop.openRides()
 		end
 		table.clear(spinners)
 		d = State.data
-		-- tank slot card first
-		local slotCard = item(scroll, 0, C.blue)
-		UI.icon(slotCard, "BigTank", { Size = UDim2.fromOffset(96, 96), Position = UDim2.new(0.5, 0, 0, 8), AnchorPoint = Vector2.new(0.5, 0) })
-		UI.outlined(slotCard, ("Tank %d / %d"):format(#d.tank, d.slots), { Size = UDim2.new(1, -16, 0, 28), Position = UDim2.fromOffset(8, 104) })
-		UI.outlined(slotCard, "More room = more coins", { Size = UDim2.new(1, -16, 0, 18), Position = UDim2.fromOffset(8, 136), TextColor3 = C.gold })
-		if d.slotPrice then
-			local can = d.coins >= d.slotPrice
-			UI.button(slotCard, ("+1 SLOT  $%s"):format(UI.short(d.slotPrice)), can and C.green or C.gold, function()
-				State.action("buySlot")
-			end, { Size = UDim2.new(1, -16, 0, 44), Position = UDim2.new(0, 8, 1, -52) })
-		end
 		local foundNext = false
 		for _, ride in Config.Rides do
 			local owned = d.rides[ride.id] == true
@@ -243,6 +232,30 @@ function Shop.openStore()
 			priceButton(f, kind, key, def)
 		end
 	end
+	-- codes (free rewards from videos / socials)
+	order += 1
+	local codes = item(scroll, order, C.orange)
+	UI.icon(codes, "Gift", { Size = UDim2.fromOffset(70, 70), Position = UDim2.new(0.5, 0, 0, 6), AnchorPoint = Vector2.new(0.5, 0) })
+	UI.outlined(codes, "Codes", { Size = UDim2.new(1, -12, 0, 26), Position = UDim2.fromOffset(6, 80) })
+	local box = Instance.new("TextBox")
+	box.Size = UDim2.new(1, -16, 0, 40)
+	box.Position = UDim2.fromOffset(8, 112)
+	box.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	box.PlaceholderText = "Enter code"
+	box.Text = ""
+	box.Font = UI.FONT
+	box.TextScaled = true
+	box.TextColor3 = C.ink
+	box.ClearTextOnFocus = false
+	box.Parent = codes
+	UI.corner(box, 8)
+	UI.stroke(box, C.ink, 2)
+	UI.button(codes, "Redeem", C.green, function()
+		if box.Text ~= "" then
+			State.action("code", box.Text)
+			box.Text = ""
+		end
+	end, { Size = UDim2.new(1, -16, 0, 44), Position = UDim2.new(0, 8, 1, -52) })
 	if not d.starter then
 		add("product", "StarterPack", Config.Products.StarterPack)
 	end

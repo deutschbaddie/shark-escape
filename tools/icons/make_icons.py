@@ -545,6 +545,46 @@ def i_island():
     return s
 
 
+def i_sneaker():
+    """Speed: a sneaker with motion lines and a yellow + badge."""
+    s = '<g filter="url(#ds)">'
+    for i, y in enumerate((96, 128, 160)):
+        s += f'<line x1="{14 + i * 6}" y1="{y}" x2="{58 + i * 6}" y2="{y}" stroke="{INK}" stroke-width="16" stroke-linecap="round"/>'
+        s += f'<line x1="{14 + i * 6}" y1="{y}" x2="{58 + i * 6}" y2="{y}" stroke="#7fd8ff" stroke-width="7" stroke-linecap="round"/>'
+    # sole
+    s += f'<path class="o" d="M58,178 L226,178 C238,178 242,192 232,200 L66,200 C52,200 48,184 58,178 Z" fill="{g("white")}"/>'
+    # upper
+    s += (f'<path class="o" d="M64,180 C62,140 74,100 104,84 L128,74 C140,96 150,108 168,118 C200,128 226,140 230,170 L230,180 Z" '
+          f'fill="{g("blue")}"/>')
+    s += f'<path d="M104,84 L128,74 C134,88 140,98 148,106 L114,120 Z" fill="#ffffff" opacity="0.9"/>'
+    for i in range(3):
+        x = 126 + i * 16
+        s += f'<line x1="{x}" y1="{112 + i * 6}" x2="{x + 18}" y2="{104 + i * 6}" stroke="#ffffff" stroke-width="7" stroke-linecap="round"/>'
+    s += f'<path d="M180,140 C200,146 216,154 222,172" fill="none" stroke="#ffffff" stroke-width="8" stroke-linecap="round" opacity="0.8"/>'
+    s += "</g>"
+    s += '<path class="hl2" d="M80,160 C80,132 90,110 108,96"/>'
+    # + badge
+    s += f'<rect class="t" x="168" y="168" width="68" height="68" rx="10" fill="{g("gold")}"/>'
+    s += f'<path d="M202,182 L202,222 M182,202 L222,202" stroke="{INK}" stroke-width="12" stroke-linecap="round"/>'
+    return s
+
+
+def i_cash():
+    """Money: a fat stack of green bills with a $ band."""
+    s = '<g filter="url(#ds)">'
+    for k in range(3):
+        y = 150 - k * 30
+        s += f'<g transform="rotate(-14 128 {y + 40})">'
+        s += f'<rect class="o" x="30" y="{y}" width="196" height="80" rx="10" fill="{g("green")}"/>'
+        s += f'<rect x="44" y="{y + 12}" width="168" height="56" rx="8" fill="none" stroke="#1f8a2a" stroke-width="6"/>'
+        s += f'<circle cx="128" cy="{y + 40}" r="20" fill="#1f8a2a" opacity="0.5"/>'
+        s += "</g>"
+    s += f'<g transform="rotate(-14 128 130)"><rect class="t" x="98" y="76" width="60" height="120" rx="8" fill="{g("gold")}"/>'
+    s += f'<text class="txt" x="128" y="152" font-size="64" text-anchor="middle" fill="#ffffff" style="stroke-width:10">$</text></g>'
+    s += "</g>"
+    return s
+
+
 SHEET_A = [
     ("Speed", i_speed), ("Coins", i_coins), ("Rides", i_rides), ("Index", i_index),
     ("Shop", i_shop), ("Rebirth", i_rebirth), ("Shark", i_shark), ("Tank", i_tank),
@@ -557,6 +597,17 @@ SHEET_B = [
     ("RainbowSki", i_rainbowski), ("GoldBubble", i_goldbubble), ("Chest", i_chest), ("Fin", i_fin),
     ("Arrow", i_arrow), ("MoneyBag", i_moneybag), ("Fish", i_fish), ("Island", i_island),
 ]
+
+
+SINGLES = [("Sneaker", i_sneaker), ("Cash", i_cash)] + SHEET_A + SHEET_B
+
+
+def single(fn):
+    return (
+        '<!doctype html><html><head><style>html,body{margin:0;background:transparent}</style></head><body>'
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 256 256"><style>{STYLE}</style>{defs()}'
+        f'<g transform="translate(128,128) scale(0.9) translate(-128,-122)">{fn()}</g></svg></body></html>'
+    )
 
 
 def sheet(icons, preview=False):
@@ -576,6 +627,9 @@ def sheet(icons, preview=False):
 
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
+    os.makedirs(os.path.join(OUT, "single"), exist_ok=True)
+    for name, fn in SINGLES:
+        open(os.path.join(OUT, "single", f"{name}.html"), "w").write(single(fn))
     for name, icons in (("sheet_a", SHEET_A), ("sheet_b", SHEET_B)):
         open(os.path.join(OUT, f"{name}.html"), "w").write(sheet(icons))
         open(os.path.join(OUT, f"{name}_preview.html"), "w").write(sheet(icons, preview=True))

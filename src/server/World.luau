@@ -27,6 +27,8 @@ export type Plot = {
 	model: Model,
 	padLabel: TextLabel,
 	signLabel: TextLabel,
+	tankIncome: TextLabel,
+	tankOffline: TextLabel,
 	slots: Folder,
 	owner: Player?,
 }
@@ -578,24 +580,57 @@ local function buildPlot(i: number, cf: CFrame): Plot
 		{ Vector3.new(1, 1.2, 28.4), Vector3.new(-15, 0.1, -1) }, { Vector3.new(1, 1.2, 28.4), Vector3.new(15, 0.1, -1) } } do
 		Build.studs(Build.part(m, s[1], cf * CFrame.new(s[2]), dark))
 	end
-	-- tank
+	-- the showcase tank: Active creatures swim inside (clients move them
+	-- within the invisible TankInterior box)
 	local tcf = CFrame.new(Layout.tankPos(cf)) * cf.Rotation * CFrame.new(0, 0.5, 0)
 	local frame = C(40, 140, 240)
-	studAll(Build.part(m, Vector3.new(17, 0.8, 6), tcf * CFrame.new(0, 0.4, 0), frame))
-	studAll(Build.part(m, Vector3.new(17, 0.8, 6), tcf * CFrame.new(0, 8.8, 0), frame))
-	for _, x in { -8.2, 8.2 } do
-		studAll(Build.part(m, Vector3.new(0.8, 7.6, 6.2), tcf * CFrame.new(x, 4.6, 0), frame))
+	studAll(Build.part(m, Vector3.new(23, 1, 9), tcf * CFrame.new(0, 0.5, 0), frame, { Name = "TankBase" }))
+	Build.studs(Build.part(m, Vector3.new(21.6, 0.6, 7.6), tcf * CFrame.new(0, 1.3, 0), SAND))
+	local glass = C(210, 245, 255)
+	for _, z in { -3.9, 3.9 } do
+		Build.part(m, Vector3.new(21.6, 8, 0.2), tcf * CFrame.new(0, 5.4, z), glass, { Material = Enum.Material.Glass, Transparency = 0.8 })
 	end
-	local glass = C(200, 240, 255)
-	Build.part(m, Vector3.new(15.8, 7.6, 0.2), tcf * CFrame.new(0, 4.6, -2.9), glass, { Material = Enum.Material.Glass, Transparency = 0.75 })
-	Build.part(m, Vector3.new(15.8, 7.6, 0.2), tcf * CFrame.new(0, 4.6, 2.9), glass, { Material = Enum.Material.Glass, Transparency = 0.75 })
-	Build.part(m, Vector3.new(15.8, 6.8, 5.4), tcf * CFrame.new(0, 4.4, 0), C(60, 210, 240), { Transparency = 0.6, CanCollide = false, Name = "TankWater" })
-	Build.studs(Build.part(m, Vector3.new(15.8, 0.6, 5.4), tcf * CFrame.new(0, 1.1, 0), SAND))
+	for _, x in { -10.9, 10.9 } do
+		Build.part(m, Vector3.new(0.2, 8, 7.6), tcf * CFrame.new(x, 5.4, 0), glass, { Material = Enum.Material.Glass, Transparency = 0.8 })
+	end
+	for _, x in { -11.1, 11.1 } do
+		for _, z in { -4.1, 4.1 } do
+			studAll(Build.part(m, Vector3.new(0.8, 8, 0.8), tcf * CFrame.new(x, 5.4, z), frame))
+		end
+	end
+	for _, z in { -4.1, 4.1 } do
+		studAll(Build.part(m, Vector3.new(23, 0.8, 0.8), tcf * CFrame.new(0, 9.8, z), frame))
+	end
+	for _, x in { -11.1, 11.1 } do
+		studAll(Build.part(m, Vector3.new(0.8, 0.8, 7.4), tcf * CFrame.new(x, 9.8, 0), frame))
+	end
+	local water = Build.part(m, Vector3.new(21.4, 7.2, 7.4), tcf * CFrame.new(0, 5.2, 0), C(70, 200, 240),
+		{ Name = "TankWater", Transparency = 0.78, CanCollide = false, CanQuery = false, CastShadow = false })
+	local light = Instance.new("PointLight")
+	light.Color = C(120, 230, 255)
+	light.Brightness = 1.2
+	light.Range = 16
+	light.Parent = water
+	-- a little decor on the sand
+	local rng = Random.new(i * 31)
+	for k = 1, 4 do
+		local x = -8.5 + (k - 1) * 5.6 + rng:NextNumber(-1, 1)
+		Build.studs(Build.part(m, Vector3.new(1.4, 0.9, 1.2), tcf * CFrame.new(x, 2.05, rng:NextNumber(-2.5, 2.5)), C(150, 156, 170)))
+		local kelpH = rng:NextNumber(2.5, 4.5)
+		Build.part(m, Vector3.new(0.4, kelpH, 0.4), tcf * CFrame.new(x + 1.4, 1.6 + kelpH / 2, rng:NextNumber(-2.5, 2.5)), C(60, 170, 80))
+	end
+	local interior = Build.part(m, Vector3.new(19, 5.6, 5.6), tcf * CFrame.new(0, 5, 0), C(255, 255, 255),
+		{ Name = "TankInterior", Transparency = 1, CanCollide = false, CanQuery = false, CanTouch = false, CastShadow = false })
+	interior:SetAttribute("Plot", i)
 	local slots = Instance.new("Folder")
 	slots.Name = "Slots"
 	slots.Parent = m
-	local deck = m:FindFirstChild("Deck") :: BasePart
-	local sign = label(deck, Vector2.new(10, 2.2), (tcf * CFrame.new(0, 12, 0)).Position - deck.Position, "Empty Dock", nil, 140)
+	-- sign over the tank: owner, what it earns, what it earns per day offline
+	local signAnchor = Build.part(m, Vector3.new(0.2, 0.2, 0.2), tcf * CFrame.new(0, 13.2, 0), C(255, 255, 255),
+		{ Name = "TankSign", Transparency = 1, CanCollide = false, CanQuery = false, CanTouch = false, CastShadow = false })
+	local sign = label(signAnchor, Vector2.new(12, 2.3), Vector3.new(0, 2.2, 0), "Empty Dock", nil, 140)
+	local tankIncome = label(signAnchor, Vector2.new(12, 1.9), Vector3.new(0, 0.1, 0), "", C(130, 255, 90), 120)
+	local tankOffline = label(signAnchor, Vector2.new(11, 1.5), Vector3.new(0, -1.6, 0), "", C(170, 220, 255), 80)
 	-- collect pad
 	local pcf = CFrame.new(Layout.padPos(cf)) * CFrame.new(0, 0.55, 0)
 	Build.cyl(m, 0.2, 7.4, pcf * CFrame.new(0, -0.03, 0), C(90, 240, 90), { Material = Enum.Material.Neon, Name = "PadRim", CastShadow = false })
@@ -606,7 +641,10 @@ local function buildPlot(i: number, cf: CFrame): Plot
 		{ Name = "PadSign", Transparency = 1, CanCollide = false, CanQuery = false, CanTouch = false, CastShadow = false })
 	local padLabel = label(anchor, Vector2.new(7, 2.2), Vector3.zero, "$0", C(140, 255, 90), 90);
 	(padLabel.Parent :: BillboardGui).AlwaysOnTop = true
-	return { index = i, cf = cf, model = m, padLabel = padLabel, signLabel = sign, slots = slots, owner = nil }
+	return {
+		index = i, cf = cf, model = m, padLabel = padLabel, signLabel = sign, slots = slots, owner = nil,
+		tankIncome = tankIncome, tankOffline = tankOffline,
+	}
 end
 
 -- Builds everything. Safe to run again (and from the Studio command bar to

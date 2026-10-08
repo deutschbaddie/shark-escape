@@ -38,7 +38,6 @@ local goalText: TextLabel
 local rideBtn: TextButton
 local ridePrice: TextLabel
 local rideFill: Frame
-local slotBtn: TextButton
 local carryChip: TextLabel
 local hintLabel: TextLabel
 local toastHolder: Frame
@@ -57,6 +56,7 @@ HUD.onShop = nil :: (() -> ())?
 HUD.onIndex = nil :: (() -> ())?
 HUD.atRideShop = nil :: (() -> boolean)?
 HUD.onRebirth = nil :: (() -> ())?
+HUD.onTank = nil :: (() -> ())?
 
 function HUD.goToRideShop()
 	Travel.go("Rides")
@@ -69,6 +69,10 @@ local function call(fn: (() -> ())?)
 end
 
 ----------------------------------------------------------------- build
+local friendLabel: TextLabel
+local setSlow: ((boolean) -> ())? = nil
+local leaveBanner: Frame
+
 local function build()
 	gui = Instance.new("ScreenGui")
 	gui.Name = "HUD"
@@ -84,100 +88,113 @@ local function build()
 	rescale()
 	Workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(rescale)
 
-	-- left menu: 2-wide grid of square buttons
-	local menu = UI.frame(gui, { Name = "Menu", Size = UDim2.fromOffset(184, 190), Position = UDim2.new(0, 14, 0.5, -10), AnchorPoint = Vector2.new(0, 0.5), BackgroundTransparency = 1 })
-	local grid = Instance.new("UIGridLayout")
-	grid.CellSize = UDim2.fromOffset(86, 86)
-	grid.CellPadding = UDim2.fromOffset(10, 10)
-	grid.SortOrder = Enum.SortOrder.LayoutOrder
-	grid.Parent = menu
-	menuButtons.Rides = UI.iconButton(menu, "Rides", "Rides", C.sky, function()
-		call(HUD.onRides)
-	end, { LayoutOrder = 1 })
-	menuButtons.Index = UI.iconButton(menu, "Index", "Index", C.orange, function()
-		call(HUD.onIndex)
-	end, { LayoutOrder = 2 })
-	menuButtons.Shop = UI.iconButton(menu, "Shop", "Shop", C.pink, function()
+	-- left: wide menu buttons + Slow Mode (the classic simulator column)
+	local menu = UI.frame(gui, { Name = "Menu", Size = UDim2.fromOffset(250, 300), Position = UDim2.new(0, 12, 0.46, 0), AnchorPoint = Vector2.new(0, 0.5), BackgroundTransparency = 1 })
+	local list = Instance.new("UIListLayout")
+	list.Padding = UDim.new(0, 10)
+	list.SortOrder = Enum.SortOrder.LayoutOrder
+	list.Parent = menu
+	menuButtons.Shop = UI.wideButton(menu, "Shop", "Shop", C.green, function()
 		UI.clearBadge(menuButtons.Shop)
 		call(HUD.onShop)
-	end, { LayoutOrder = 3, Visible = false })
-	menuButtons.Rebirth = UI.iconButton(menu, "Rebirth", "Rebirth", C.green, function()
+	end, { Size = UDim2.fromOffset(210, 72), LayoutOrder = 1, Visible = false })
+	menuButtons.Index = UI.wideButton(menu, "Index", "Index", C.blue, function()
+		call(HUD.onIndex)
+	end, { Size = UDim2.fromOffset(210, 72), LayoutOrder = 2 })
+	menuButtons.Rides = UI.wideButton(menu, "Rides", "Rides", C.orange, function()
+		call(HUD.onRides)
+	end, { Size = UDim2.fromOffset(210, 72), LayoutOrder = 3 })
+	local _, set = UI.toggle(menu, "Slow Mode", false, function(on)
+		State.action("slowMode", on)
+	end, { LayoutOrder = 4 })
+	setSlow = set
+
+	-- right: square buttons (Tank, Rebirth)
+	local right = UI.frame(gui, { Size = UDim2.fromOffset(92, 200), Position = UDim2.new(1, -12, 0.46, 0), AnchorPoint = Vector2.new(1, 0.5), BackgroundTransparency = 1 })
+	local rl = Instance.new("UIListLayout")
+	rl.Padding = UDim.new(0, 10)
+	rl.HorizontalAlignment = Enum.HorizontalAlignment.Right
+	rl.SortOrder = Enum.SortOrder.LayoutOrder
+	rl.Parent = right
+	menuButtons.Tank = UI.iconButton(right, "Tank", "Tank", C.orange, function()
+		call(HUD.onTank)
+	end, { Size = UDim2.fromOffset(88, 88), LayoutOrder = 1 })
+	menuButtons.Rebirth = UI.iconButton(right, "Rebirth", "Rebirth", C.green, function()
 		call(HUD.onRebirth)
-	end, { LayoutOrder = 4, Visible = false })
+	end, { Size = UDim2.fromOffset(88, 88), LayoutOrder = 2, Visible = false })
 
-	-- bottom-left: the two big numbers
-	local stats = UI.frame(gui, { Size = UDim2.fromOffset(226, 120), Position = UDim2.new(0, 14, 1, -10), AnchorPoint = Vector2.new(0, 1), BackgroundTransparency = 1 })
-	UI.icon(stats, "Speed", { Size = UDim2.fromOffset(56, 56), Position = UDim2.fromOffset(0, 2) })
-	speedLabel = UI.outlined(stats, "0", { Size = UDim2.fromOffset(166, 52), Position = UDim2.fromOffset(58, 4), TextXAlignment = Enum.TextXAlignment.Left, Font = UI.NUMFONT })
-	UI.icon(stats, "Coins", { Size = UDim2.fromOffset(56, 56), Position = UDim2.fromOffset(0, 60) })
-	coinsLabel = UI.outlined(stats, "0", { Size = UDim2.fromOffset(166, 52), Position = UDim2.fromOffset(58, 62), TextXAlignment = Enum.TextXAlignment.Left, Font = UI.NUMFONT, TextColor3 = C.money })
-	extrasLabel = UI.outlined(gui, "", { Size = UDim2.fromOffset(226, 24), Position = UDim2.new(0, 16, 1, -134), AnchorPoint = Vector2.new(0, 1), TextXAlignment = Enum.TextXAlignment.Left })
+	-- bottom-left: the two big numbers + friend boost
+	local stats = UI.frame(gui, { Name = "Stats", Size = UDim2.fromOffset(250, 150), Position = UDim2.new(0, 10, 1, -8), AnchorPoint = Vector2.new(0, 1), BackgroundTransparency = 1 })
+	UI.icon(stats, "Sneaker", { Size = UDim2.fromOffset(64, 64), Position = UDim2.fromOffset(0, 0) })
+	speedLabel = UI.outlined(stats, "0", { Size = UDim2.fromOffset(180, 54), Position = UDim2.fromOffset(68, 6), TextXAlignment = Enum.TextXAlignment.Left, Font = UI.NUMFONT })
+	local sg = Instance.new("UIGradient")
+	sg.Color = ColorSequence.new(Color3.fromRGB(255, 214, 60), Color3.fromRGB(255, 120, 20))
+	sg.Rotation = 90
+	sg.Parent = speedLabel
+	UI.icon(stats, "Cash", { Size = UDim2.fromOffset(64, 64), Position = UDim2.fromOffset(0, 60) })
+	coinsLabel = UI.outlined(stats, "$0", { Size = UDim2.fromOffset(180, 54), Position = UDim2.fromOffset(68, 66), TextXAlignment = Enum.TextXAlignment.Left, Font = UI.NUMFONT, TextColor3 = C.money })
+	friendLabel = UI.outlined(stats, "Friend Boost +0%", { Size = UDim2.fromOffset(190, 24), Position = UDim2.fromOffset(4, 124), TextXAlignment = Enum.TextXAlignment.Left })
+	local invite = UI.button(stats, "+", C.green, function()
+		pcall(function()
+			game:GetService("SocialService"):PromptGameInvite(player)
+		end)
+	end, { Size = UDim2.fromOffset(32, 32), Position = UDim2.fromOffset(200, 120) })
+	invite.Name = "Invite"
+	extrasLabel = UI.outlined(gui, "", { Size = UDim2.fromOffset(240, 22), Position = UDim2.new(0, 14, 1, -162), AnchorPoint = Vector2.new(0, 1), TextXAlignment = Enum.TextXAlignment.Left })
 
-	-- bottom-center: gain line, goal bar, buttons
-	local bottom = UI.frame(gui, { Name = "Bottom", Size = UDim2.fromOffset(470, 150), Position = UDim2.new(0.5, 0, 1, -10), AnchorPoint = Vector2.new(0.5, 1), BackgroundTransparency = 1 })
-	gainLabel = UI.outlined(bottom, "⚡ +1 SPEED/S", { Size = UDim2.fromOffset(240, 28), Position = UDim2.fromOffset(4, 0), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = C.gold })
-	tankLabel = UI.outlined(bottom, "", { Size = UDim2.fromOffset(220, 28), Position = UDim2.new(1, -4, 0, 0), AnchorPoint = Vector2.new(1, 0), TextXAlignment = Enum.TextXAlignment.Right, TextColor3 = C.gold })
+	-- bottom-center: gain line, goal bar, next ride
+	local bottom = UI.frame(gui, { Name = "Bottom", Size = UDim2.fromOffset(440, 150), Position = UDim2.new(0.5, 0, 1, -10), AnchorPoint = Vector2.new(0.5, 1), BackgroundTransparency = 1 })
+	gainLabel = UI.outlined(bottom, "+1 SPEED/S", { Size = UDim2.fromOffset(220, 28), Position = UDim2.fromOffset(4, 0), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = C.gold })
+	tankLabel = UI.outlined(bottom, "", { Size = UDim2.fromOffset(220, 28), Position = UDim2.new(1, -4, 0, 0), AnchorPoint = Vector2.new(1, 0), TextXAlignment = Enum.TextXAlignment.Right, TextColor3 = C.money })
 	local _, gf, gl = UI.bar(bottom, C.blue, { Size = UDim2.new(1, 0, 0, 46), Position = UDim2.fromOffset(0, 32) })
 	goalFill, goalText = gf, gl
 	goalText.TextXAlignment = Enum.TextXAlignment.Left
 	rideBtn = UI.button(bottom, "", C.gold, function()
 		local d = State.data
 		local nxt = d and HUD.nextRide(d)
-		if nxt and d.coins >= nxt.price then
-			if HUD.atRideShop and HUD.atRideShop() then
-				State.action("buyRide", nxt.id)
-			else
-				HUD.goToRideShop()
-			end
+		if nxt and d.coins >= nxt.price and HUD.atRideShop and HUD.atRideShop() then
+			State.action("buyRide", nxt.id)
 		else
 			HUD.goToRideShop()
 		end
-	end, { Size = UDim2.new(0.66, -5, 0, 62), Position = UDim2.fromOffset(0, 88) })
-	local rl = rideBtn:FindFirstChild("Label") :: TextLabel
-	rl.Size = UDim2.new(1, -16, 0, 30)
-	rl.Position = UDim2.new(0.5, 0, 0, 6)
-	rl.AnchorPoint = Vector2.new(0.5, 0)
+	end, { Size = UDim2.new(1, 0, 0, 62), Position = UDim2.fromOffset(0, 88) })
+	local rlab = rideBtn:FindFirstChild("Label") :: TextLabel
+	rlab.Size = UDim2.new(1, -16, 0, 30)
+	rlab.Position = UDim2.new(0.5, 0, 0, 6)
+	rlab.AnchorPoint = Vector2.new(0.5, 0)
 	ridePrice = UI.outlined(rideBtn, "", { Size = UDim2.new(1, -16, 0, 18), Position = UDim2.new(0.5, 0, 0, 34), AnchorPoint = Vector2.new(0.5, 0), ZIndex = rideBtn.ZIndex + 1 })
 	local rb = UI.frame(rideBtn, { Size = UDim2.new(1, -20, 0, 5), Position = UDim2.new(0, 10, 1, -9), BackgroundColor3 = Color3.fromRGB(0, 0, 0), BackgroundTransparency = 0.5, ZIndex = rideBtn.ZIndex + 1 })
 	UI.corner(rb, 3)
 	rideFill = UI.frame(rb, { Size = UDim2.fromScale(0, 1), BackgroundColor3 = C.white, ZIndex = rb.ZIndex + 1 })
 	UI.corner(rideFill, 3)
-	slotBtn = UI.button(bottom, "", C.sky, function()
-		local d = State.data
-		if d and d.slotPrice and d.coins >= d.slotPrice and HUD.atRideShop and HUD.atRideShop() then
-			State.action("buySlot")
-		else
-			HUD.goToRideShop()
-		end
-	end, { Size = UDim2.new(0.34, -5, 0, 62), Position = UDim2.new(1, 0, 0, 88), AnchorPoint = Vector2.new(1, 0) })
 
 	carryChip = UI.outlined(gui, "", { Size = UDim2.fromOffset(460, 28), Position = UDim2.new(0.5, 0, 1, -168), AnchorPoint = Vector2.new(0.5, 1), Visible = false })
 
-	-- bottom-right: shark timer pill
-	timerPill = UI.frame(gui, { Size = UDim2.fromOffset(190, 48), Position = UDim2.new(1, -14, 1, -12), AnchorPoint = Vector2.new(1, 1),
-		BackgroundColor3 = Color3.fromRGB(0, 0, 0), BackgroundTransparency = 0.55 })
-	UI.corner(timerPill, 24)
-	UI.icon(timerPill, "Shark", { Size = UDim2.fromOffset(52, 52), Position = UDim2.fromOffset(0, -4) })
-	timerLabel = UI.outlined(timerPill, "", { Size = UDim2.new(1, -60, 1, -12), Position = UDim2.fromOffset(52, 6), TextXAlignment = Enum.TextXAlignment.Left, Font = UI.NUMFONT })
-
-	-- touch screens: the thumbstick and jump button own the bottom corners
-	if UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled then
-		stats.AnchorPoint = Vector2.new(0, 0)
-		stats.Position = UDim2.fromOffset(14, 4)
-		extrasLabel.AnchorPoint = Vector2.new(0, 0)
-		extrasLabel.Position = UDim2.fromOffset(16, 126)
-		timerPill.AnchorPoint = Vector2.new(1, 0)
-		timerPill.Position = UDim2.new(1, -14, 0, 8)
-	end
+	-- bottom-right: shark timer (icon + "in 1m 40s" over a soft dark fade)
+	timerPill = UI.frame(gui, { Size = UDim2.fromOffset(300, 70), Position = UDim2.new(1, 0, 1, 0), AnchorPoint = Vector2.new(1, 1),
+		BackgroundColor3 = Color3.fromRGB(0, 0, 0), BackgroundTransparency = 0.4 })
+	local fade = Instance.new("UIGradient")
+	fade.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.35, 0.3), NumberSequenceKeypoint.new(1, 0.2) })
+	fade.Parent = timerPill
+	UI.icon(timerPill, "Shark", { Size = UDim2.fromOffset(62, 62), Position = UDim2.new(0, 46, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5) })
+	timerLabel = UI.outlined(timerPill, "", { Size = UDim2.new(1, -124, 0, 44), Position = UDim2.new(0, 112, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), TextXAlignment = Enum.TextXAlignment.Left, Font = UI.NUMFONT })
 
 	-- top-center
 	distLabel = UI.outlined(gui, "", { Size = UDim2.fromOffset(300, 56), Position = UDim2.new(0.5, 0, 0, 76), AnchorPoint = Vector2.new(0.5, 0), Font = UI.NUMFONT, TextColor3 = C.gold, Visible = false })
 	zoneTitle = UI.outlined(gui, "", { Size = UDim2.fromOffset(620, 90), Position = UDim2.new(0.5, 0, 0.3, 0), AnchorPoint = Vector2.new(0.5, 0.5), TextColor3 = Color3.fromRGB(70, 230, 230), Visible = false })
-	hintLabel = UI.outlined(gui, "", { Size = UDim2.fromOffset(560, 40), Position = UDim2.new(0.5, 0, 0, 136), AnchorPoint = Vector2.new(0.5, 0), Visible = false })
-	alertLabel = UI.outlined(gui, "", { Size = UDim2.fromOffset(600, 56), Position = UDim2.new(0.5, 0, 0, 136), AnchorPoint = Vector2.new(0.5, 0), Visible = false, TextColor3 = C.red })
+	hintLabel = UI.outlined(gui, "", { Size = UDim2.fromOffset(520, 34), Position = UDim2.new(0.5, 0, 0, 136), AnchorPoint = Vector2.new(0.5, 0), Visible = false })
+	alertLabel = UI.outlined(gui, "", { Size = UDim2.fromOffset(600, 50), Position = UDim2.new(0.5, 0, 0, 136), AnchorPoint = Vector2.new(0.5, 0), Visible = false, TextColor3 = C.red })
+
+	-- "you earn $X/day offline" banner (at your dock, and when you open the menu to leave)
+	leaveBanner = UI.frame(gui, { Size = UDim2.fromOffset(560, 54), Position = UDim2.new(0.5, 0, 0, 8), AnchorPoint = Vector2.new(0.5, 0),
+		BackgroundColor3 = Color3.fromRGB(30, 34, 60), Visible = false })
+	UI.corner(leaveBanner, 12)
+	UI.stroke(leaveBanner, C.ink, 3)
+	UI.shade(leaveBanner)
+	UI.outlined(leaveBanner, "", { Name = "Text", Size = UDim2.new(1, -20, 1, -12), Position = UDim2.fromOffset(10, 6), TextColor3 = Color3.fromRGB(190, 225, 255) })
 
 	-- toasts
-	toastHolder = UI.frame(gui, { Size = UDim2.fromOffset(460, 200), Position = UDim2.new(0.5, 0, 0, 196), AnchorPoint = Vector2.new(0.5, 0), BackgroundTransparency = 1 })
+	toastHolder = UI.frame(gui, { Size = UDim2.fromOffset(460, 200), Position = UDim2.new(0.5, 0, 0, 190), AnchorPoint = Vector2.new(0.5, 0), BackgroundTransparency = 1 })
 	local tl = Instance.new("UIListLayout")
 	tl.Padding = UDim.new(0, 6)
 	tl.HorizontalAlignment = Enum.HorizontalAlignment.Center
@@ -194,6 +211,17 @@ local function build()
 		g.Parent = f
 	end
 	vignette.Visible = false
+
+	-- touch screens: the thumbstick and jump button own the bottom corners
+	if UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled then
+		stats.AnchorPoint = Vector2.new(0, 0)
+		stats.Position = UDim2.fromOffset(10, 4)
+		extrasLabel.AnchorPoint = Vector2.new(0, 0)
+		extrasLabel.Position = UDim2.fromOffset(14, 156)
+		menu.Position = UDim2.new(0, 12, 0.6, 0)
+		timerPill.AnchorPoint = Vector2.new(1, 0)
+		timerPill.Position = UDim2.new(1, 0, 0, 60)
+	end
 end
 
 -- top banner offer: the best pass you don't own yet (only once the shop is open)
@@ -335,6 +363,7 @@ end
 
 ----------------------------------------------------------------- render state
 local lastSpeed = -1
+local lastSlow = false
 local shopShown = false
 local function render(d: any)
 	speedLabel.Text = UI.short(d.speed)
@@ -343,8 +372,28 @@ local function render(d: any)
 	end
 	coinsLabel.Text = "$" .. UI.short(d.coins)
 	local mult = Config.Rebirth.mult ^ d.rebirths
-	gainLabel.Text = ("⚡ +%s SPEED/S"):format(UI.short(d.gain))
-	tankLabel.Text = mult > 1 and ("x%s Rebirth"):format(string.format("%g", math.floor(mult * 100 + 0.5) / 100)) or (#d.tank >= d.slots and ("🐟 FULL · +$%s/s"):format(UI.short(d.income)) or ("🐟 %d/%d · +$%s/s"):format(#d.tank, d.slots, UI.short(d.income)))
+	gainLabel.Text = mult > 1 and ("+%s SPEED/S  (x%s)"):format(UI.short(d.gain), string.format("%g", math.floor(mult * 100 + 0.5) / 100))
+		or ("+%s SPEED/S"):format(UI.short(d.gain))
+	tankLabel.Text = ("🐟 %d/%d  +$%s/s"):format(d.active, d.slots, UI.short(d.income))
+	friendLabel.Text = ("Friend Boost +%d%%"):format(math.floor(d.friendBoost * 100 + 0.5))
+	if setSlow and d.slow ~= lastSlow then
+		lastSlow = d.slow
+		setSlow(d.slow)
+	end
+	-- "!" on the Tank when a stored creature would earn more than an active one
+	local minActive, bestStored = math.huge, 0
+	for _, c in d.creatures do
+		if c.e then
+			minActive = math.min(minActive, c.v)
+		else
+			bestStored = math.max(bestStored, c.v)
+		end
+	end
+	if bestStored > 0 and (d.active < d.slots or bestStored > minActive) then
+		UI.badge(menuButtons.Tank)
+	else
+		UI.clearBadge(menuButtons.Tank)
+	end
 	local extras = {}
 	if d.shields > 0 then
 		table.insert(extras, "🛡️" .. d.shields)
@@ -408,20 +457,14 @@ local function render(d: any)
 			UI.clearBadge(menuButtons.Rides)
 		end
 	end
-	if d.slotPrice then
-		slotBtn.Visible = true
-		UI.setText(slotBtn, ("+1 SLOT\n$%s"):format(UI.short(d.slotPrice)))
-		slotBtn.BackgroundColor3 = d.coins >= d.slotPrice and C.green or C.sky
-	else
-		slotBtn.Visible = false
-	end
 
 	-- carrying
 	if d.carrying then
 		local r = Config.rarity(d.carrying.r)
+		local sp = Config.species(d.carrying.z, d.carrying.r)
 		carryChip.Visible = true
 		carryChip.TextColor3 = r.color
-		carryChip.Text = ("%s %s%s → bring it to your dock! 🏠"):format(r.icon, d.carrying.m and (d.carrying.m .. " ") or "", r.species)
+		carryChip.Text = ("%s %s → bring it to your dock! 🏠"):format(sp.icon, Config.creatureName(d.carrying.z, d.carrying.r, d.carrying.m))
 	else
 		carryChip.Visible = false
 	end
@@ -459,8 +502,26 @@ local function showZoneTitle(name: string, color: Color3)
 	end)
 end
 
+local menuOpen = false
+local function updateLeaveBanner(pos: Vector3?)
+	local d = State.data
+	local atDock = false
+	if d and pos and d.plot > 0 then
+		local tank = Layout.tankPos(Layout.Plots[d.plot])
+		atDock = Vector2.new(pos.X - tank.X, pos.Z - tank.Z).Magnitude < 26 and not Layout.inWater(pos)
+	end
+	local show = d ~= nil and (menuOpen or atDock) and not player:GetAttribute("Cinematic")
+	leaveBanner.Visible = show
+	if show then
+		local text = leaveBanner:FindFirstChild("Text") :: TextLabel
+		text.Text = d.income > 0 and ("💤 Your tank earns $%s / day while you're offline!"):format(UI.short(Config.offlinePerDay(d.income)))
+			or "💤 Put creatures in your tank to earn while you're offline!"
+	end
+end
+
 local function frame()
 	local pos = myPos()
+	updateLeaveBanner(pos)
 	if pos then
 		local wet = Layout.inWater(pos)
 		distLabel.Visible = wet and not alertLabel.Visible
@@ -504,7 +565,7 @@ local function frame()
 	end
 	local left = math.max(0, phaseEnds - os.clock())
 	if phase == "calm" then
-		timerLabel.Text = "in " .. UI.time(left)
+		timerLabel.Text = "in " .. UI.timeWords(left)
 		timerLabel.TextColor3 = left < 10 and C.gold or C.white
 		timerPill.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 	else
@@ -521,6 +582,7 @@ local newDiscovery = false -- "discover" arrives just before "grab"; one toast s
 
 handlers.grab = function(d)
 	local r = Config.rarity(d.r)
+	local sp = Config.species(d.z, d.r)
 	local pos = myPos()
 	if pos then
 		Fx.sparkle(pos + Vector3.new(0, 3, 0), r.color, 20 + r.index * 12)
@@ -530,7 +592,7 @@ handlers.grab = function(d)
 	if d.lucky then
 		Fx.bigWord("🍀 LUCKY! " .. d.r:upper(), C.green, 1.2)
 	elseif d.pity then
-		Fx.bigWord("✨ RARE " .. r.species:upper() .. "!", r.color, 1.2)
+		Fx.bigWord(("✨ %s %s!"):format(d.r:upper(), sp.name:upper()), r.color, 1.2)
 	elseif r.index >= 3 then
 		Fx.bigWord(d.r:upper() .. "!", r.color, 1.1)
 	end
@@ -539,14 +601,11 @@ handlers.grab = function(d)
 		Fx.sound("legendary", 0.8)
 	end
 	local note = ""
-	local data = State.data
 	if newDiscovery then
 		note = "  📖 NEW!"
-	elseif data and #data.tank >= data.slots then
-		note = "  (tank full: swaps your weakest)"
 	end
 	newDiscovery = false
-	HUD.toast(("%s %s%s  +$%s/s%s"):format(r.icon, d.m and (d.m .. " ") or "", r.species, UI.short(d.v), note), r.color)
+	HUD.toast(("%s %s  +$%s/s%s"):format(sp.icon, Config.creatureName(d.z, d.r, d.m), UI.short(d.v), note), r.color)
 end
 
 handlers.discover = function(d)
@@ -565,25 +624,46 @@ end
 handlers.deposit = function(d)
 	local r = Config.rarity(d.r)
 	local data = State.data
-	if data and data.plot > 0 then
-		local tank = Layout.tankPos(Layout.Plots[data.plot])
-		Fx.sparkle(tank + Vector3.new(0, 5, 0), r.color, 40)
-		Fx.popup3D(tank + Vector3.new(0, 10, 0), ("+$%s/s"):format(UI.short(d.v)), C.money, true)
+	if not (data and data.plot > 0) then
+		return
 	end
-	if d.replaced and data and data.plot > 0 then
-		-- shown right at the tank, where it happened
-		local tank = Layout.tankPos(Layout.Plots[data.plot])
-		task.delay(0.6, function()
-			Fx.popup3D(tank + Vector3.new(0, 13, 0), ("↻ %s swapped out  +$%s"):format(Config.rarity(d.replaced).species, UI.short(d.sold or 0)), C.sky, true)
+	-- everything is shown right at the tank, where it happens
+	local tank = Layout.tankPos(Layout.Plots[data.plot])
+	Fx.sparkle(tank + Vector3.new(0, 6, 0), r.color, 40)
+	if d.active then
+		Fx.popup3D(tank + Vector3.new(0, 11, 0), ("+$%s/s"):format(UI.short(d.v)), C.money, true)
+	else
+		Fx.popup3D(tank + Vector3.new(0, 11, 0), "📦 Stored", C.sky, true)
+	end
+	if d.swapped then
+		task.delay(0.7, function()
+			Fx.popup3D(tank + Vector3.new(0, 14, 0), ("↻ %s → storage"):format(d.swapped), C.sky, false)
+		end)
+	end
+	if d.sold then
+		task.delay(1.2, function()
+			Fx.popup3D(tank + Vector3.new(0, 15, 0), ("Storage full · sold %s +$%s"):format(d.soldName or "", UI.short(d.sold)), C.gold, false)
 		end)
 	end
 end
 
-handlers.sold = function(d)
-	local data = State.data
-	if data and data.plot > 0 then
-		local tank = Layout.tankPos(Layout.Plots[data.plot])
-		Fx.popup3D(tank + Vector3.new(0, 11, 0), ("Tank full · sold %s +$%s"):format(Config.rarity(d.r).species, UI.short(d.sold)), C.sky, true)
+handlers.code = function(d)
+	if d.ok then
+		local bits = {}
+		if d.coins then
+			table.insert(bits, "+$" .. UI.short(d.coins))
+		end
+		if d.speed then
+			table.insert(bits, "+⚡" .. UI.short(d.speed))
+		end
+		if d.shields then
+			table.insert(bits, "+🛡️" .. d.shields)
+		end
+		Fx.bigWord("🎟️ CODE REDEEMED!", C.green, 1.1)
+		HUD.toast(table.concat(bits, "  "), C.green, 3)
+		Fx.sound("coin", 0.7)
+	else
+		HUD.toast("❌ " .. tostring(d.text), C.red, 2.5)
 	end
 end
 
@@ -767,6 +847,14 @@ function HUD.start()
 		render(State.data)
 	end
 	RunService.Heartbeat:Connect(frame)
+	-- opening the Roblox menu (usually to leave): remind what the tank earns offline
+	local GuiService = game:GetService("GuiService")
+	GuiService.MenuOpened:Connect(function()
+		menuOpen = true
+	end)
+	GuiService.MenuClosed:Connect(function()
+		menuOpen = false
+	end)
 	player:GetAttributeChangedSignal("Cinematic"):Connect(function()
 		local on = player:GetAttribute("Cinematic") == true
 		gui.Enabled = not on

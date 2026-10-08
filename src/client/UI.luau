@@ -254,10 +254,23 @@ end
 
 function UI.icon(parent: Instance, name: string, props: { [string]: any }?): GuiObject
 	local icons = Config.Icons
+	local single = tostring(icons.ids and icons.ids[name] or ""):match("%d+")
 	local cell = icons.cells[name]
 	local sheet = cell and sheetId(cell[1]) or ""
 	local obj: GuiObject
-	if cell and sheet ~= "" then
+	if single then
+		local img = Instance.new("ImageLabel")
+		img.BackgroundTransparency = 1
+		local function apply()
+			-- the server swaps in the real image id if a decal id was pasted
+			local resolved = ReplicatedStorage:GetAttribute("Icon_" .. name)
+			img.Image = typeof(resolved) == "string" and resolved or ("rbxassetid://" .. single)
+		end
+		apply()
+		ReplicatedStorage:GetAttributeChangedSignal("Icon_" .. name):Connect(apply)
+		img.ScaleType = Enum.ScaleType.Fit
+		obj = img
+	elseif cell and sheet ~= "" then
 		local img = Instance.new("ImageLabel")
 		img.BackgroundTransparency = 1
 		img.Image = sheet
@@ -291,6 +304,53 @@ function UI.iconButton(parent: Instance, icon: string, caption: string, color: C
 	l.Position = UDim2.new(0.5, 0, 1, -6)
 	l.AnchorPoint = Vector2.new(0.5, 1)
 	return b
+end
+
+-- wide menu button: icon on the left, big label (the "🛒 Shop" style)
+function UI.wideButton(parent: Instance, icon: string, caption: string, color: Color3, onClick: () -> (), props: { [string]: any }?): TextButton
+	local b = UI.button(parent, caption, color, onClick, props)
+	UI.icon(b, icon, { Size = UDim2.new(0, 60, 1, -14), Position = UDim2.new(0, 10, 0.5, -2), AnchorPoint = Vector2.new(0, 0.5), ZIndex = b.ZIndex + 1 })
+	local l = b:FindFirstChild("Label") :: TextLabel
+	l.Size = UDim2.new(1, -84, 0.62, 0)
+	l.Position = UDim2.new(0, 76, 0.5, -2)
+	l.AnchorPoint = Vector2.new(0, 0.5)
+	l.TextXAlignment = Enum.TextXAlignment.Left
+	return b
+end
+
+-- on/off switch with a caption to its right (Slow Mode). returns setter
+function UI.toggle(parent: Instance, caption: string, on: boolean, onChange: (boolean) -> (), props: { [string]: any }?): (Frame, (boolean) -> ())
+	local holder = UI.frame(parent, { Size = UDim2.fromOffset(250, 52), BackgroundTransparency = 1 })
+	apply(holder, props)
+	local track = Instance.new("TextButton")
+	track.AutoButtonColor = false
+	track.Text = ""
+	track.Size = UDim2.fromOffset(104, 48)
+	track.BackgroundColor3 = Color3.fromRGB(40, 64, 44)
+	track.BorderSizePixel = 0
+	track.Parent = holder
+	UI.corner(track, 10)
+	UI.stroke(track, UI.C.ink, 3)
+	local knob = UI.frame(track, { Size = UDim2.fromOffset(40, 38), Position = UDim2.fromOffset(4, 5), BackgroundColor3 = UI.C.green })
+	UI.corner(knob, 8)
+	UI.stroke(knob, UI.C.ink, 2.5)
+	UI.shade(knob)
+	UI.outlined(holder, caption, { Size = UDim2.new(1, -116, 0, 30), Position = UDim2.fromOffset(114, 11), TextXAlignment = Enum.TextXAlignment.Left })
+	local state = on
+	local function set(v: boolean)
+		state = v
+		TweenService:Create(knob, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
+			Position = UDim2.fromOffset(v and 60 or 4, 5),
+			BackgroundColor3 = v and UI.C.green or Color3.fromRGB(150, 160, 150),
+		}):Play()
+		track.BackgroundColor3 = v and Color3.fromRGB(46, 110, 50) or Color3.fromRGB(40, 44, 50)
+	end
+	set(on)
+	track.Activated:Connect(function()
+		set(not state)
+		onChange(state)
+	end)
+	return holder, set
 end
 
 -- red "!" bubble on a button's corner
@@ -439,6 +499,17 @@ function UI.commas(n: number): string
 	local s = tostring(math.floor(n))
 	local out = s:reverse():gsub("(%d%d%d)", "%1,"):reverse()
 	return (out:gsub("^,", ""))
+end
+
+-- "1m 40s", "45s", "2h 5m"
+function UI.timeWords(sec: number): string
+	sec = math.max(0, math.floor(sec))
+	if sec >= 3600 then
+		return ("%dh %dm"):format(sec // 3600, (sec % 3600) // 60)
+	elseif sec >= 60 then
+		return ("%dm %ds"):format(sec // 60, sec % 60)
+	end
+	return ("%ds"):format(sec)
 end
 
 function UI.time(sec: number): string

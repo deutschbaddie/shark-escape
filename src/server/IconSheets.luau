@@ -28,6 +28,17 @@ local function resolve(raw: any): string?
 end
 
 function IconSheets.start()
+	-- single icons: same decal -> image fix, published as "Icon_<Name>"
+	for name, raw in Config.Icons.ids do
+		if tostring(raw):match("%d+") then
+			task.spawn(function()
+				local id = resolve(raw)
+				if id then
+					ReplicatedStorage:SetAttribute("Icon_" .. name, id)
+				end
+			end)
+		end
+	end
 	for _, which in { "A", "B" } do
 		task.spawn(function()
 			local id = resolve(Config.Icons["Sheet" .. which])

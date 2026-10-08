@@ -23,9 +23,10 @@ local function board(m: Model, len: number, wid: number, color: Color3, stripe: 
 end
 
 builders.Noodle = function(m)
-	local noodle = Build.part(m, Vector3.new(8, 1.1, 1.1), CFrame.new(0, -0.55, 0) * CFrame.Angles(0, math.pi / 2, 0), C(255, 128, 40))
+	-- two noodles, centered under the rider
+	local noodle = Build.part(m, Vector3.new(8, 1.1, 1.1), CFrame.new(-0.55, -0.55, 0) * CFrame.Angles(0, math.pi / 2, 0), C(255, 128, 40))
 	noodle.Shape = Enum.PartType.Cylinder
-	local n2 = Build.part(m, Vector3.new(8, 1.1, 1.1), CFrame.new(1.05, -0.55, 0) * CFrame.Angles(0, math.pi / 2, 0), C(255, 72, 150))
+	local n2 = Build.part(m, Vector3.new(8, 1.1, 1.1), CFrame.new(0.55, -0.55, 0) * CFrame.Angles(0, math.pi / 2, 0), C(255, 72, 150))
 	n2.Shape = Enum.PartType.Cylinder
 end
 

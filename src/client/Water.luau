@@ -352,34 +352,6 @@ local function animateTagged(dt: number)
 	end
 end
 
-local swimmers: { [Instance]: CFrame } = {}
-local function animateTank(dt: number)
-	local t = os.clock()
-	local map = Workspace:FindFirstChild("Map")
-	if not map then
-		return
-	end
-	for _, plot in map:GetChildren() do
-		local slots = plot:FindFirstChild("Slots")
-		if slots then
-			for _, m in slots:GetChildren() do
-				if m:IsA("Model") then
-					local base = swimmers[m]
-					if not base then
-						base = m:GetPivot()
-						swimmers[m] = base
-						m.Destroying:Connect(function()
-							swimmers[m] = nil
-						end)
-					end
-					local seed = base.Position.X * 3
-					m:PivotTo(base * CFrame.new(math.sin(t * 0.9 + seed) * 0.5, math.sin(t * 2 + seed) * 0.25, 0) * CFrame.Angles(0, math.sin(t * 0.9 + seed) * 0.6, 0))
-				end
-			end
-		end
-	end
-end
-
 local rainbowParts: { BasePart } = {}
 local function scanRainbow()
 	table.clear(rainbowParts)
@@ -430,11 +402,16 @@ function Water.start()
 		updateRiders(dt)
 		updateLines(dt)
 		animateTagged(dt)
-		animateTank(dt)
 		local t = os.clock()
 		local hue = (t * 0.25) % 1
 		for i, p in rainbowParts do
-			p.Color = Color3.fromHSV((hue + i * 0.04) % 1, 0.7, 1)
+			local c = Color3.fromHSV((hue + i * 0.04) % 1, 0.7, 1)
+			p.Color = c
+			for _, tex in p:GetChildren() do
+				if tex:IsA("Texture") then
+					tex.Color3 = c
+				end
+			end
 		end
 		for _, f in foamParts do
 			f.Transparency = 0.2 + 0.3 * (0.5 + 0.5 * math.sin(t * 1.6))

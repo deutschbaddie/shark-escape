@@ -75,16 +75,18 @@ These are model numbers, not playtest results. Tune them after real sessions.
 Honesty rules in code: no Robux prompts or offers in the first 5 minutes, paid random items show their odds, no fake timers, and a free player can finish everything.
 
 ## 4. What got built
-- Core loop with server authority (rolls, cash and purchases on the server; `ProcessReceipt` with receipt dedupe). Saves on leave, autosaves and saves on shutdown.
-- 6 zones with hard gates, 54 islands, server-wide shark attacks: a warning breach, hunt, circling islands, bite cinematic.
-- 6 hand-built rigged sharks (`tools/shark_gen.py`), with a part-built fallback until they're imported.
-- 15 rides, each with its own handling (`Config.RideFeel`) and pose (stand / sit / straddle / prone / float). No walk cycle on water.
-- Ride Shop building (rides are bought there), Shop and Index huts with step-on pads, FASTEST global leaderboard board.
-- Onboarding: bubble → dock → pad → practice shark → Ride Shop.
-- Creature Index, Welcome Back offline earnings, rebirth with a confirm screen.
-- Studded simulator UI kit, a 32-icon custom set, stud texture, mobile layout for touch screens.
+- Core loop with server authority (rolls, cash and purchases on the server; `ProcessReceipt` with receipt dedupe). Saves on leave, autosaves and saves on shutdown; old saves migrate.
+- **30 creatures**, 5 per zone, each built from studded blocks and animated (tails, fins, tentacles, legs, wings).
+- **Hold-to-grab prompts:** rarer creatures take longer to grab (0.35s to 1.5s), so the shark is a real risk. Every prompt has the custom style (key circle, filling ring, white outline on the target).
+- **Tank collection (Steal-an-Egg style):** everything you catch is kept (up to 40). The best are Active and swim in a showcase tank with $/s tags. Tank panel with X/Y Active, +1 EQUIP, Equip/Unequip, Equip Best. Better catches swap in automatically.
+- **Offline earnings:** the tank earns 30% while you're away (max 24h). "$X/day offline" is shown on your tank sign, at your dock, and when you open the menu to leave. Welcome Back claim on return.
+- **Friend Boost** (+10% coins per friend in the server, max +50%) with an invite button. **Slow Mode** toggle for precise grabs at high speed. **Codes** (in the Shop). Player list shows Money/s and Speed.
+- 6 zones with hard gates, 54 islands, server-wide shark attacks: a shark circles you, charges, and plays the bite cutscene.
+- 15 rides, each with its own handling and pose; no walk cycle on water. Ride Shop building (rides are bought there).
+- Shop / Index / Ride Shop buildings with step-on pads (HUD buttons teleport you there), FASTEST leaderboard board, onboarding with a practice shark.
+- Studded simulator UI kit, custom icons (single files), stud texture, mobile layout.
 
-**Cut / not yet:** music and most sound effects (need Creator Store ids), trading, pets, daily rewards (REVEX: only if the loop needs them).
+**Cut / not yet:** music and most sound effects (need Creator Store ids), stealing from other players, trading, daily rewards.
 
 ## 5. Playtest notes (to do in Studio; nothing here has been played yet)
 - Check the R15 ride poses on every stance; adjust `Water.luau` POSES if a body part clips the ride.

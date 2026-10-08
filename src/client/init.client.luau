@@ -7,16 +7,29 @@ local Shop = require(script.Shop)
 local Hub = require(script.Hub)
 local Onboarding = require(script.Onboarding)
 local Ride = require(script.Ride)
+local Animals = require(script.Animals)
+local Prompts = require(script.Prompts)
+local Tank = require(script.Tank)
+local Travel = require(script.Travel)
 require(script.SharkView)
 
 Water.start()
+Animals.start()
+Prompts.start()
 Ride.start()
 Shop.start()
--- menus open in person: the buttons take you to the building
-local Travel = require(script.Travel)
-HUD.onRides = function() Travel.go("Rides") end
-HUD.onShop = function() Travel.go("Shop") end
-HUD.onIndex = function() Travel.go("Index") end
+Tank.start()
+-- shops open in person: the buttons take you to the building
+HUD.onRides = function()
+	Travel.go("Rides")
+end
+HUD.onShop = function()
+	Travel.go("Shop")
+end
+HUD.onIndex = function()
+	Travel.go("Index")
+end
+HUD.onTank = Tank.toggle -- your collection opens anywhere
 HUD.atRideShop = Shop.atRideShop
 HUD.onRebirth = Hub.confirmRebirth
 HUD.start()

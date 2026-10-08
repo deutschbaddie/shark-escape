@@ -160,6 +160,11 @@ function Build.recolor(model: Instance, color: Color3, material: Enum.Material?)
 			if material then
 				d.Material = material
 			end
+			for _, t in d:GetChildren() do
+				if t:IsA("Texture") then
+					t.Color3 = color
+				end
+			end
 		end
 	end
 end
