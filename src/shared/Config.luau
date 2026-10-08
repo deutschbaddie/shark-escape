@@ -138,17 +138,17 @@ export type Ride = {
 
 Config.Rides = {
 	{ id = "Noodle", name = "Pool Noodle", icon = "🏊", price = 0, gain = 1 },
-	{ id = "Duck", name = "Rubber Duck Floatie", icon = "🦆", price = 25, gain = 2 },
-	{ id = "Tube", name = "Inner Tube", icon = "⭕", price = 85, gain = 3 },
-	{ id = "Boogie", name = "Boogie Board", icon = "🏖️", price = 300, gain = 4 },
-	{ id = "Surf", name = "Surfboard", icon = "🏄", price = 1000, gain = 5 },
-	{ id = "Bathtub", name = "Bathtub", icon = "🛁", price = 3300, gain = 7 },
-	{ id = "Banana", name = "Banana Boat", icon = "🍌", price = 11000, gain = 9 },
-	{ id = "JetSki", name = "Jet Ski", icon = "🚤", price = 38000, gain = 12 },
-	{ id = "Speedboat", name = "Speedboat", icon = "🛥️", price = 130000, gain = 16 },
-	{ id = "Dolphin", name = "Dolphin", icon = "🐬", price = 450000, gain = 22 },
-	{ id = "Donut", name = "Giant Donut", icon = "🍩", price = 1500000, gain = 30 },
-	{ id = "Rocket", name = "Rocket Surfboard", icon = "🚀", price = 5000000, gain = 40 },
+	{ id = "Duck", name = "Rubber Duck Floatie", icon = "🦆", price = 30, gain = 2 },
+	{ id = "Tube", name = "Inner Tube", icon = "⭕", price = 150, gain = 3 },
+	{ id = "Boogie", name = "Boogie Board", icon = "🏖️", price = 600, gain = 4 },
+	{ id = "Surf", name = "Surfboard", icon = "🏄", price = 2000, gain = 5 },
+	{ id = "Bathtub", name = "Bathtub", icon = "🛁", price = 7000, gain = 7 },
+	{ id = "Banana", name = "Banana Boat", icon = "🍌", price = 24000, gain = 9 },
+	{ id = "JetSki", name = "Jet Ski", icon = "🚤", price = 80000, gain = 12 },
+	{ id = "Speedboat", name = "Speedboat", icon = "🛥️", price = 270000, gain = 16 },
+	{ id = "Dolphin", name = "Dolphin", icon = "🐬", price = 900000, gain = 22 },
+	{ id = "Donut", name = "Giant Donut", icon = "🍩", price = 3000000, gain = 30 },
+	{ id = "Rocket", name = "Rocket Surfboard", icon = "🚀", price = 10000000, gain = 40 },
 	-- Robux rides: never skip the ladder, they multiply it.
 	{ id = "GoldDuck", name = "Golden Duck", icon = "✨", price = 0, robux = "GoldDuck", mult = 1.25 },
 	{ id = "SharkBoard", name = "Shark Board", icon = "🦈", price = 0, robux = "SharkBoard", mult = 1.5 },
@@ -206,10 +206,10 @@ export type Rarity = { id: string, weight: number, mult: number, color: Color3, 
 
 Config.Rarities = {
 	{ id = "Common", weight = 60, mult = 1, color = Color3.fromRGB(205, 214, 224), species = "Clownfish", icon = "🐠" },
-	{ id = "Uncommon", weight = 25, mult = 3, color = Color3.fromRGB(96, 214, 110), species = "Pufferfish", icon = "🐡" },
-	{ id = "Rare", weight = 10, mult = 10, color = Color3.fromRGB(64, 156, 255), species = "Octopus", icon = "🐙" },
-	{ id = "Epic", weight = 4, mult = 40, color = Color3.fromRGB(190, 92, 255), species = "Sea Turtle", icon = "🐢" },
-	{ id = "Legendary", weight = 1, mult = 200, color = Color3.fromRGB(255, 196, 40), species = "Narwhal", icon = "🦄" },
+	{ id = "Uncommon", weight = 25, mult = 2.5, color = Color3.fromRGB(96, 214, 110), species = "Pufferfish", icon = "🐡" },
+	{ id = "Rare", weight = 10, mult = 6, color = Color3.fromRGB(64, 156, 255), species = "Octopus", icon = "🐙" },
+	{ id = "Epic", weight = 4, mult = 25, color = Color3.fromRGB(190, 92, 255), species = "Sea Turtle", icon = "🐢" },
+	{ id = "Legendary", weight = 1, mult = 120, color = Color3.fromRGB(255, 196, 40), species = "Narwhal", icon = "🦄" },
 } :: { Rarity }
 for i, r in Config.Rarities do
 	r.index = i
@@ -290,7 +290,7 @@ end
 
 export type Mutation = { id: string, chance: number, mult: number, color: Color3 }
 Config.Mutations = {
-	{ id = "Rainbow", chance = 0.003, mult = 10, color = Color3.fromRGB(255, 120, 220) },
+	{ id = "Rainbow", chance = 0.003, mult = 6, color = Color3.fromRGB(255, 120, 220) },
 	{ id = "Diamond", chance = 0.01, mult = 5, color = Color3.fromRGB(150, 236, 255) },
 	{ id = "Gold", chance = 0.03, mult = 2, color = Color3.fromRGB(255, 205, 60) },
 } :: { Mutation }
@@ -375,7 +375,7 @@ Config.Luck = {
 	base = 0.05, -- chance a grab bumps up one rarity ("LUCKY!")
 	pass = 0.15,
 	potion = 0.15,
-	pityGrab = 3, -- the 3rd creature you ever grab is at least Rare
+	pityGrab = 5, -- the 5th creature you ever grab is at least Rare
 	pityEpic = 30, -- and the 30th is at least Epic (if you've never had one)
 }
 
@@ -393,7 +393,7 @@ Config.Tank = {
 	maxSlots = 12,
 	passSlots = 4,
 	-- price of active slot #5, #6, ... #12
-	slotPrices = { 250, 1000, 4000, 15000, 60000, 250000, 1000000, 4000000 },
+	slotPrices = { 400, 2000, 8000, 30000, 120000, 500000, 2000000, 8000000 },
 	storage = 40, -- caught creatures kept (active + stored); past this the weakest stored one is sold
 }
 
@@ -480,14 +480,14 @@ function Config.indexReward(zoneId: string, rarityId: string): (number, number)
 	local zone = Config.zoneById(zoneId)
 	local r = Config.rarity(rarityId)
 	local v = zone and zone.value or 1
-	local coins = math.floor(20 * v * r.mult ^ 0.75)
+	local coins = math.floor(5 * v * r.mult ^ 0.7)
 	local speed = math.floor((5 + (zone and zone.gate or 0) * 0.02) * r.index)
 	return coins, speed
 end
 
 ----------------------------------------------------------------- offline
 -- Your tank keeps earning while you're away (at a slower rate, capped).
-Config.Offline = { rate = 0.3, maxHours = 24, minSeconds = 120 }
+Config.Offline = { rate = 0.1, maxHours = 8, minSeconds = 120 }
 
 -- what your tank makes per day while you're offline
 function Config.offlinePerDay(income: number): number

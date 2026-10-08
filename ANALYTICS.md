@@ -21,7 +21,7 @@ Logged once per brand-new player.
 | 4 In the tank | First creature deposited | 80%+ | They got lost on the way back. Make the tank arrow bigger. |
 | 5 First cash | First collect from the pad | 78%+ | They don't find the green pad. Pulse the pad and add a sound. |
 | 6 Shark drill | Drill passed or skipped | 70%+ | The practice shark scares them off. Slow it further, or shorten the circling. |
-| 7 First ride | Rubber Duck bought | 65%+ | Saving $25 takes too long, or the Ride Shop is hard to find. Lower the Duck's price. |
+| 7 First ride | Rubber Duck bought | 65%+ | Saving $30 takes too long, or the Ride Shop is hard to find. Lower the Duck's price. |
 | 8 Coral Reef | First new zone (100 speed) | 55%+ | The first real goal is too far away. Raise the early speed gain. |
 
 **Read it as:** the biggest drop between two steps is the next thing to fix. Fix one thing, wait 2–3 days, compare.

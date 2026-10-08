@@ -20,16 +20,16 @@ ZONES = [  # id, gate, length, value
     ("Lagoon", 0, 260, 1), ("Coral Reef", 100, 400, 5), ("Kelp Forest", 500, 560, 25),
     ("Shipwreck Bay", 1000, 720, 120), ("Deep Blue", 5000, 1000, 600), ("The Abyss", 25000, 1400, 3000),
 ]
-RIDES = [(0, 1), (25, 2), (85, 3), (300, 4), (1000, 5), (3300, 7), (11000, 9), (38000, 12),
-         (130000, 16), (450000, 22), (1500000, 30), (5000000, 40)]
+RIDES = [(0, 1), (30, 2), (150, 3), (600, 4), (2000, 5), (7000, 7), (24000, 9), (80000, 12),
+         (270000, 16), (900000, 22), (3000000, 30), (10000000, 40)]
 RIDE_NAMES = ["Pool Noodle", "Rubber Duck", "Inner Tube", "Boogie Board", "Surfboard", "Bathtub",
               "Banana Boat", "Jet Ski", "Speedboat", "Dolphin", "Giant Donut", "Rocket Surfboard"]
-RAR = [("Common", 60, 1, 1), ("Uncommon", 25, 3, 2), ("Rare", 10, 10, 3), ("Epic", 4, 40, 4), ("Legendary", 1, 200, 5)]
-SLOT_PRICES = [250, 1000, 4000, 15000, 60000, 250000, 1000000, 4000000]
+RAR = [("Common", 60, 1, 1), ("Uncommon", 25, 2.5, 2), ("Rare", 10, 6, 3), ("Epic", 4, 25, 4), ("Legendary", 1, 120, 5)]
+SLOT_PRICES = [400, 2000, 8000, 30000, 120000, 500000, 2000000, 8000000]
 LUCK, FRENZY_LUCK = 0.05, 0.30
 REBIRTH = 25000
 CYCLE, FIRST, WARN, HUNT = 80, 70, 5, 22
-OFFLINE_RATE, OFFLINE_HOURS = 0.3, 24
+OFFLINE_RATE, OFFLINE_HOURS = 0.1, 8
 
 PROFILES = {
     "ideal": dict(eff=1.35, idle=0.08, hide=0.55, eaten=0.10, first_catch=25, drill=22, drill_fail=0.15,
@@ -70,7 +70,7 @@ def roll(rng, luck):
 
 def index_reward(zi, ri):
     z, r = ZONES[zi], RAR[ri]
-    return math.floor(20 * z[3] * r[2] ** 0.75), math.floor((5 + z[1] * 0.02) * r[3])
+    return math.floor(5 * z[3] * r[2] ** 0.7), math.floor((5 + z[1] * 0.02) * r[3])
 
 
 def in_hunt(t):
@@ -161,7 +161,7 @@ def simulate(profile, seed, minutes, sessions=None):
             continue
         grabs += 1
         ri = roll(rng, luck)
-        if grabs == 3 and ri < 2:
+        if grabs == 5 and ri < 2:
             ri = 2
         if grabs == 30 and ri < 3 and not any(r >= 3 for (_, r) in index):
             ri = 3
