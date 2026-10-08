@@ -21,6 +21,12 @@ local Prompts = {}
 local player = Players.LocalPlayer
 
 Prompts.teach = nil :: string?
+
+-- fires (prompt) when the local player triggers any prompt: real triggers
+-- and touch holds finished on the button (see build). Listen here, not to
+-- ProximityPromptService, so phones always work.
+local triggeredEvent = Instance.new("BindableEvent")
+Prompts.Triggered = triggeredEvent.Event
 local GOLD = Color3.fromRGB(255, 214, 64)
 local RED = Color3.fromRGB(255, 92, 92)
 
@@ -310,16 +316,69 @@ local function build(prompt: ProximityPrompt, inputType: Enum.ProximityPromptInp
 			end
 		end
 	end))
-	if circle:IsA("TextButton") then
-		-- touch: press and hold the circle
-		table.insert(conns, circle.InputBegan:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-				prompt:InputHoldBegin()
+	if touch then
+		-- Touch: the hold runs on the button itself (prompt:InputHoldBegin is
+		-- unreliable on some phones). A big invisible hit area covers the whole
+		-- card; when the ring fills we trigger: grabs go straight to the server,
+		-- everything else fires Prompts.Triggered locally.
+		gui.Active = true
+		local hit = Instance.new("TextButton")
+		hit.Name = "Hit"
+		hit.Text = ""
+		hit.BackgroundTransparency = 1
+		hit.Size = UDim2.new(1, 16, 1, 16)
+		hit.Position = UDim2.fromOffset(-8, -8)
+		hit.ZIndex = 10
+		hit.Parent = gui
+		local touchHolding, touchStart, done = false, 0, false
+		local function finish()
+			done = true
+			touchHolding = false
+			setRing(1)
+			scale.Scale = 1.15
+			TweenService:Create(scale, TweenInfo.new(0.2, Enum.EasingStyle.Back), { Scale = 1 }):Play()
+			if prompt.Name == "GrabPrompt" then
+				local model = prompt:FindFirstAncestorOfClass("Model")
+				local id = model and model:GetAttribute("BubbleId")
+				if id then
+					State.action("grab", id)
+				end
+				if teach == "hold" and prompt.HoldDuration > 0 then
+					Prompts.setTeach(nil)
+				end
+			end
+			triggeredEvent:Fire(prompt)
+		end
+		local function press()
+			if done then
+				return
+			end
+			touchHolding, touchStart = true, os.clock()
+			holding, holdStart = true, touchStart
+			if prompt.HoldDuration <= 0 then
+				finish()
+			end
+		end
+		local function release()
+			if touchHolding and not done and hint and prompt.HoldDuration > 0 then
+				warnUntil = os.clock() + 1.2
+			end
+			touchHolding, holding = false, false
+			if not done then
+				setRing(0)
+			end
+		end
+		table.insert(conns, hit.MouseButton1Down:Connect(press))
+		table.insert(conns, hit.MouseButton1Up:Connect(release))
+		table.insert(conns, hit.MouseLeave:Connect(release))
+		table.insert(conns, hit.InputEnded:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.Touch then
+				release()
 			end
 		end))
-		table.insert(conns, circle.InputEnded:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-				prompt:InputHoldEnd()
+		table.insert(conns, RunService.Heartbeat:Connect(function()
+			if touchHolding and not done and os.clock() - touchStart >= prompt.HoldDuration then
+				finish()
 			end
 		end))
 	end
@@ -352,6 +411,11 @@ end
 
 function Prompts.start()
 	local open: { [ProximityPrompt]: () -> () } = {}
+	ProximityPromptService.PromptTriggered:Connect(function(prompt, who)
+		if who == player then
+			triggeredEvent:Fire(prompt)
+		end
+	end)
 	ProximityPromptService.PromptShown:Connect(function(prompt, inputType)
 		if prompt.Style ~= Enum.ProximityPromptStyle.Custom then
 			return

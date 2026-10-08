@@ -197,8 +197,8 @@ function Rewards.start()
 		onState(State.data)
 	end
 
-	ProximityPromptService.PromptTriggered:Connect(function(prompt, who)
-		if who ~= player or prompt.Name ~= "GroupChest" then
+	require(script.Parent.Prompts).Triggered:Connect(function(prompt)
+		if prompt.Name ~= "GroupChest" then
 			return
 		end
 		if not askedLike then

@@ -17,6 +17,8 @@ local Bubbles = {}
 type Bubble = { model: Model, pos: Vector3, r: string, m: string?, s: number, zone: Config.Zone, taken: boolean? }
 
 local live: { Bubble } = {}
+local byId: { [number]: Bubble } = {}
+local nextBubbleId = 0
 local tryGrab: (Player, Bubble) -> ()
 local folder: Folder
 local rng = Random.new()
@@ -88,6 +90,12 @@ local function spawnBubble(zone: Config.Zone)
 	CollectionService:AddTag(model, "Bubble")
 	local entry: Bubble = { model = model, pos = pos, r = r, m = m, s = size, zone = zone }
 	table.insert(live, entry)
+	nextBubbleId += 1
+	model:SetAttribute("BubbleId", nextBubbleId)
+	byId[nextBubbleId] = entry
+	model.Destroying:Connect(function()
+		byId[model:GetAttribute("BubbleId") :: number] = nil
+	end)
 	-- hold to grab: rarer = longer hold (more risk with sharks around)
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.Name = "GrabPrompt"
@@ -187,6 +195,15 @@ function Bubbles.give(s: Game.Session, r: string, zoneId: string?, size: number?
 		Game.notify(s.player, "grab", { r = c.r, m = c.m, z = c.z, s = c.s, gift = true, v = Config.creatureValue(c.r, c.z, c.m, c.s) * Game.coinMult(s) })
 	end
 end
+
+-- touch screens grab through this action (Prompts.luau runs the hold on
+-- the button itself, which works on every phone); same checks as the prompt
+Game.action("grab", function(s, id)
+	local b = typeof(id) == "number" and byId[id]
+	if b then
+		tryGrab(s.player, b)
+	end
+end)
 
 function Bubbles.start()
 	folder = Instance.new("Folder")

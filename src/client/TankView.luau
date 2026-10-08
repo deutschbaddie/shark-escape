@@ -290,8 +290,8 @@ function TankView.start()
 			hide()
 		end
 	end)
-	ProximityPromptService.PromptTriggered:Connect(function(prompt, who)
-		if who == player and prompt.Name == "ViewTank" then
+	require(script.Parent.Prompts).Triggered:Connect(function(prompt)
+		if prompt.Name == "ViewTank" then
 			openView(prompt:GetAttribute("Plot") :: number, prompt.ObjectText)
 		end
 	end)
