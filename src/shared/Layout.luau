@@ -71,6 +71,14 @@ function Layout.atRideShop(pos: Vector3): boolean
 end
 
 ----------------------------------------------------------------- queries
+-- the sand ramp from the beach down onto the water (World.luau builds it)
+Layout.RAMP_LEN = 8
+-- height of the ground you ride on at z: the beach, the ramp, or the water floor
+function Layout.groundY(z: number): number
+	local t = math.clamp((z - Config.SHORE_Z) / Layout.RAMP_LEN, 0, 1)
+	return Config.BEACH_TOP + (Config.FLOOR_TOP - Config.BEACH_TOP) * t
+end
+
 function Layout.inWater(pos: Vector3): boolean
 	return pos.Z >= Config.SHORE_Z + 1
 end

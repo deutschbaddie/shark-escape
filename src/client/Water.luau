@@ -214,6 +214,12 @@ RunService.PreSimulation:Connect(function()
 			local stance = Config.feel(rideId).stance
 			local pose = Rig.POSES[stance] or Rig.POSES.stand
 			local offset = fitOffset(r, rideId, stance)
+			-- in the shallows the body rises out of the ride (a noodle rider is
+			-- chest-deep, which would drag on the ramp and catch the beach)
+			local shallow = math.clamp((r.hrp.Position.Z - Config.SHORE_Z - Layout.RAMP_LEN) / 10, 0, 1)
+			if offset.Y < 0 and shallow < 1 then
+				offset = Vector3.new(offset.X, offset.Y * shallow, offset.Z)
+			end
 			for name, fn in pose do
 				local j = r.joints[name]
 				if j and j.Parent then

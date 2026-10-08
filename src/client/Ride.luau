@@ -283,9 +283,10 @@ local function exit(r: Rig)
 end
 
 ----------------------------------------------------------------- per frame
-local function rest(r: Rig): number
-	-- HRP height when standing on the water floor
-	return Config.FLOOR_TOP + r.hum.HipHeight + r.hrp.Size.Y / 2
+local function rest(r: Rig, z: number): number
+	-- HRP height on the ground under you: the water floor, or the sand ramp
+	-- as you ride back up onto the beach (so you glide up it, not into it)
+	return Layout.groundY(z) + r.hum.HipHeight + r.hrp.Size.Y / 2
 end
 
 local function step(dt: number)
@@ -326,7 +327,7 @@ local function step(dt: number)
 	end
 
 	-- height: bob on the surface, or fall back down after a hop
-	local base = rest(r)
+	local base = rest(r, pos.Z)
 	local bob = math.sin(t * feel.bobSpeed) * feel.bob
 	local porpoise = 0
 	if feel.porpoise and vf > top * 0.4 then

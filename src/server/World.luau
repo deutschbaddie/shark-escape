@@ -260,7 +260,7 @@ local function buildPlaza()
 	end
 	-- sand strip and a ramp down onto the water
 	Build.studs(Build.part(plaza, Vector3.new(W, 4, 12), CFrame.new(0, top - 2, -6), SAND, { Name = "Beach" }))
-	local rampLen = 8
+	local rampLen = Layout.RAMP_LEN
 	local drop = top - Config.FLOOR_TOP
 	Build.wedge(plaza, Vector3.new(W, drop, rampLen), CFrame.new(0, Config.FLOOR_TOP + drop / 2, rampLen / 2) * CFrame.Angles(0, math.pi, 0), SAND,
 		{ Name = "Ramp" })
