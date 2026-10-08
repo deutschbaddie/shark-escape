@@ -5,7 +5,7 @@ turning around from a stop (reverse + J-turn), a tap of reverse, and a
 
     python3 tools/balance/steer.py path/to/luau
 """
-import os, re, subprocess, sys
+import os, re, subprocess, sys, tempfile
 
 SCENARIOS = r"""
 -- old controller (before this change) for comparison
@@ -97,8 +97,8 @@ helpers = ride[ride.index("local function yawOf"):ride.index("-" * 65 + " animat
 helpers = helpers.replace("feel: Config.RideFeel", "feel: any")
 harness = (mock + "\nlocal Config = (function()\nlocal script={Parent={}}\n" + cfg.replace("require(", "(function() return {} end)(")
            + "\nend)()\nlocal Ride = {}\n" + consts + "\n" + helpers + SCENARIOS)
-path = os.path.join(HERE, "steer_harness.luau")
-open(path, "w").write(harness)
-out = subprocess.run([LUAU, path], capture_output=True, text=True)
-os.remove(path)
+with tempfile.TemporaryDirectory() as tmp:
+    path = os.path.join(tmp, "steer_harness.luau")
+    open(path, "w").write(harness)
+    out = subprocess.run([LUAU, path], capture_output=True, text=True)
 print(out.stdout, out.stderr)

@@ -13,8 +13,9 @@
 --   reverse   ask for the way behind you from a stop: the ride backs up
 --             (a tap = a little reverse); keep holding and it swings its
 --             nose round and drives off (a J-turn)
---   latch     after a whip the target stays put until the stick moves, so a
---             Follow camera swinging round (phones) can't make you circle
+--   latch     after a whip, small stick moves steer relative to the new
+--             course, so a Follow camera swinging round (phones) can't
+--             make you circle; a clearly new direction or letting go ends it
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -62,6 +63,7 @@ local LAUNCH = 0.6 -- seconds of double acceleration after a whip
 local REVERSE_AT = math.rad(140) -- input this far off the nose from a stop = reverse
 local REVERSE_SPEED = 0.45
 local REVERSE_SWING = 0.4 -- hold reverse this long and the nose swings round
+local LATCH_KEEP = math.rad(60) -- stick moves within this of the latched direction steer relative to it
 
 export type Steer = { heading: number, whip: boolean, launch: number, reverse: number, latchYaw: number?, latchMv: Vector3? }
 local steerState: Steer = { heading = 0, whip = false, launch = 0, reverse = 0 }
@@ -128,10 +130,13 @@ function Ride.steer(st: Steer, input: Vector3, mv: Vector3?, v: Vector3, feel: C
 	local speedK = math.clamp(speed / top, 0, 1)
 	local event = nil
 
-	-- where the stick points (held fixed during a whip while the stick is)
+	-- where the stick points. After a whip the target is latched: small stick
+	-- moves steer relative to it (whatever the camera does meanwhile); a new
+	-- direction (over 60 degrees away) or letting go goes back to camera-relative
 	local want = m > 0.05 and yawOf(input) or nil
-	if st.latchYaw and mv and st.latchMv and (mv - st.latchMv).Magnitude < 0.35 then
-		want = st.latchYaw
+	local nudge = st.latchMv and mv and wrap(yawOf(mv) - yawOf(st.latchMv)) or nil
+	if st.latchYaw and nudge and math.abs(nudge) < LATCH_KEEP then
+		want = st.latchYaw + nudge
 	else
 		st.latchYaw, st.latchMv = nil, nil
 	end
@@ -196,10 +201,10 @@ function Ride.steer(st: Steer, input: Vector3, mv: Vector3?, v: Vector3, feel: C
 	else
 		local align = want and math.clamp(math.cos(off) * 0.5 + 0.5, 0, 1) or 0
 		target = top * m * align
-		if target > vf then
-			rate = (top / feel.accel) * (st.launch > 0 and 2 or 1)
-		elseif vf < 0 then
+		if vf < 0 then
 			rate = top / BRAKE -- stop backing up at once
+		elseif target > vf then
+			rate = (top / feel.accel) * (st.launch > 0 and 2 or 1)
 		else
 			rate = top / feel.coast
 		end

@@ -354,9 +354,7 @@ function Onboarding.start()
 			conn:Disconnect()
 			point(nil)
 			tutBanner(nil)
-			if Prompts.teach == "tap" then
-				Prompts.setTeach(nil)
-			end
+			Prompts.setTeach(nil) -- also when the server finished the tutorial
 			if drill.shark then
 				drillEnd("abort")
 			end

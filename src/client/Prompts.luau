@@ -21,7 +21,6 @@ local Prompts = {}
 local player = Players.LocalPlayer
 
 Prompts.teach = nil :: string?
-local origHold: { [ProximityPrompt]: number } = setmetatable({}, { __mode = "k" }) :: any
 local GOLD = Color3.fromRGB(255, 214, 64)
 local RED = Color3.fromRGB(255, 92, 92)
 
@@ -98,19 +97,21 @@ local function modelOf(prompt: ProximityPrompt): Instance?
 	return p:FindFirstAncestorOfClass("Model") or p
 end
 
--- the first grab is a tap; afterwards grabs need their real hold again
+-- the first grab is a tap; afterwards grabs need their real hold again (the
+-- server's value is kept in a client-only attribute on the prompt itself)
 local function applyTeach(p: ProximityPrompt)
 	if p.Name ~= "GrabPrompt" then
 		return
 	end
+	local base = p:GetAttribute("BaseHold") :: number?
 	if Prompts.teach == "tap" then
-		if origHold[p] == nil then
-			origHold[p] = p.HoldDuration
+		if base == nil then
+			p:SetAttribute("BaseHold", p.HoldDuration)
 		end
 		p.HoldDuration = 0
-	elseif origHold[p] ~= nil then
-		p.HoldDuration = origHold[p]
-		origHold[p] = nil
+	elseif base ~= nil then
+		p.HoldDuration = base
+		p:SetAttribute("BaseHold", nil)
 	end
 end
 
