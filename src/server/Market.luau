@@ -112,6 +112,30 @@ local grants: { [string]: (Game.Session) -> boolean } = {
 	end,
 }
 
+-- speed / cash packs: Config.packAmount of your current speed gain or tank
+-- income (the store card shows the same number)
+for key, pack in Config.Packs do
+	grants[key] = function(s)
+		local p = s.profile
+		local amount = Config.packAmount(key, Game.gain(s), Game.income(s))
+		if pack.kind == "speed" then
+			local before = p.speed
+			p.speed += amount
+			p.bestSpeed = math.max(p.bestSpeed, p.speed)
+			for _, zone in Config.Zones do
+				if zone.gate > 0 and before < zone.gate and p.speed >= zone.gate then
+					Game.notify(s.player, "unlock", { zone = zone.id })
+				end
+			end
+			Game.notify(s.player, "announce", { text = ("+%s Speed!"):format(Game.short(amount)) })
+		else
+			p.coins += amount
+			Game.notify(s.player, "collect", { amount = amount })
+		end
+		return true
+	end
+end
+
 MarketplaceService.ProcessReceipt = function(receipt)
 	local player = Players:GetPlayerByUserId(receipt.PlayerId)
 	local s = player and Game.sessions[player]

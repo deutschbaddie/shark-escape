@@ -1,6 +1,7 @@
 -- The always-on screen in the Steal-an-Egg style: small, bright, studded,
 -- one obvious next thing.
---   left:          Shop / Index / Rides buttons + the Slow Mode box
+--   left:          Shop (red, opens the Robux store) with the promo button
+--                  under it (best current offer), Index / Rides, Slow Mode
 --   right:         small squares: Tank, Rebirth, offers and active boosts
 --                  (time left above the square)
 --   bottom-left:   speed (sneaker) and money, Friend Boost
@@ -25,6 +26,7 @@ local SharkView = require(script.Parent.SharkView)
 local Travel = require(script.Parent.Travel)
 local Guide = require(script.Parent.Guide)
 local Notify = require(script.Parent.Notify)
+local Shop = require(script.Parent.Shop)
 
 local HUD = {}
 local C = UI.C
@@ -49,6 +51,7 @@ local timerPill: Frame
 local timerLabel: TextLabel
 local stopRidePulse: (() -> ())? = nil
 local setSlow: ((boolean) -> ())? = nil
+local updatePromo: ((any) -> ())? = nil
 
 HUD.onRides = nil :: (() -> ())?
 HUD.onShop = nil :: (() -> ())?
@@ -80,7 +83,7 @@ local function timedSquare(parent: Instance, key: string, icon: string, color: C
 	local holder = UI.frame(parent, { Name = key, Size = UDim2.fromOffset(66, 84), BackgroundTransparency = 1, LayoutOrder = order, Visible = false })
 	local timer = UI.outlined(holder, "", { Size = UDim2.new(1, 16, 0, 18), Position = UDim2.new(0.5, 0, 0, 0), AnchorPoint = Vector2.new(0.5, 0), TextColor3 = C.orange })
 	local b = UI.iconButton(holder, icon, "", color, function()
-		call(HUD.onShop)
+		Shop.openStore("Boosts")
 	end, { Size = UDim2.fromOffset(62, 62), Position = UDim2.new(0.5, 0, 1, 0), AnchorPoint = Vector2.new(0.5, 1) })
 	boostSquares[key] = { holder = holder, button = b, timer = timer }
 end
@@ -94,26 +97,32 @@ local function build()
 	UI.autoScale(gui)
 
 	-- left: menu buttons + Slow Mode
-	local menu = UI.frame(gui, { Name = "Menu", Size = UDim2.fromOffset(180, 250), Position = UDim2.new(0, 10, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), BackgroundTransparency = 1 })
+	local menu = UI.frame(gui, { Name = "Menu", Size = UDim2.fromOffset(180, 340), Position = UDim2.new(0, 10, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), BackgroundTransparency = 1 })
 	local list = Instance.new("UIListLayout")
 	list.Padding = UDim.new(0, 8)
 	list.SortOrder = Enum.SortOrder.LayoutOrder
 	list.VerticalAlignment = Enum.VerticalAlignment.Center
 	list.Parent = menu
 	local size = UDim2.fromOffset(170, 56)
-	menuButtons.Shop = UI.wideButton(menu, "Shop", "Shop", C.green, function()
+	-- the Robux store opens anywhere (the Shop hut opens the same window)
+	menuButtons.Shop = UI.wideButton(menu, "Shop", "Shop", C.red, function()
 		UI.clearBadge(menuButtons.Shop)
-		call(HUD.onShop)
+		Shop.openStore()
 	end, { Size = size, LayoutOrder = 1, Visible = false })
+	-- the best current offer, right under Shop ("x2 Speed / ONLY 399 R$")
+	local promo, update = Shop.promo(menu, { Size = UDim2.fromOffset(170, 62), LayoutOrder = 2 })
+	menuButtons.Promo = promo
+	updatePromo = update
+	UI.frame(menu, { Name = "Gap", Size = UDim2.fromOffset(170, 4), BackgroundTransparency = 1, LayoutOrder = 3 }) -- room for its "ONLY ... R$"
 	menuButtons.Index = UI.wideButton(menu, "Index", "Index", C.index, function()
 		call(HUD.onIndex)
-	end, { Size = size, LayoutOrder = 2 })
+	end, { Size = size, LayoutOrder = 4 })
 	menuButtons.Rides = UI.wideButton(menu, "Rides", "Rides", C.orange, function()
 		call(HUD.onRides)
-	end, { Size = size, LayoutOrder = 3 })
+	end, { Size = size, LayoutOrder = 5 })
 	local _, set = UI.toggle(menu, "Slow Mode", false, function(on)
 		State.action("slowMode", on)
-	end, { LayoutOrder = 4 })
+	end, { LayoutOrder = 6 })
 	setSlow = set
 
 	-- right: small squares
@@ -134,8 +143,6 @@ local function build()
 		call(HUD.onRebirth)
 	end)
 	menuButtons.Rebirth.Visible = false
-	menuButtons.Offer = square(right, "X2Speed", C.red, 3, function() end)
-	menuButtons.Offer.Visible = false
 	timedSquare(right, "Shield", "Shield", C.sky, 4)
 	timedSquare(right, "Boost", "Boost", C.purple, 5)
 	timedSquare(right, "Luck", "Potion", C.green, 6)
@@ -273,48 +280,6 @@ local function unclaimed(d: any): number
 	return n
 end
 
--- the best pass you don't own yet, as a red square (only once the shop is open)
-local function updateOffer(d: any)
-	local want: string? = nil
-	if d.playtime >= Config.SHOP_UNLOCK_SECONDS then
-		-- the starter ladder first, then the big passes
-		local pack = d.starterNext and Config.Products[d.starterNext]
-		if pack and pack.id ~= 0 then
-			want = d.starterNext
-		end
-		for _, key in want and {} or { "TwoXSpeed", "TwoXCoins", "AutoCollect" } do
-			local pass = Config.Passes[key]
-			if pass.id ~= 0 and not d.passes[key] then
-				want = key
-				break
-			end
-		end
-	end
-	local b = menuButtons.Offer
-	b.Visible = want ~= nil
-	if want and b:GetAttribute("Key") ~= want then
-		b:SetAttribute("Key", want)
-		local pass = Config.Passes[want] or Config.Products[want]
-		local old = b:FindFirstChild("Icon")
-		if old then
-			old:Destroy()
-		end
-		UI.icon(b, pass.iconName or "X2Speed", { Size = UDim2.fromScale(0.74, 0.74), Position = UDim2.fromScale(0.5, 0.47), AnchorPoint = Vector2.new(0.5, 0.5), ZIndex = b.ZIndex + 1 })
-		UI.badge(b, "R$")
-	end
-end
-
-local function offerClicked()
-	local key = menuButtons.Offer:GetAttribute("Key")
-	local pass = key and Config.Passes[key]
-	local product = key and Config.Products[key]
-	if pass and pass.id ~= 0 then
-		MarketplaceService:PromptGamePassPurchase(player, pass.id)
-	elseif product and product.id ~= 0 then
-		MarketplaceService:PromptProductPurchase(player, product.id)
-	end
-end
-
 ----------------------------------------------------------------- render state
 local lastSlow = false
 local shopShown = false
@@ -425,7 +390,10 @@ local function render(d: any)
 	else
 		carryChip.Visible = false
 	end
-	updateOffer(d)
+	-- the promo under Shop: only once the shop is open (Config.SHOP_UNLOCK_SECONDS)
+	if updatePromo then
+		updatePromo(d)
+	end
 end
 
 ----------------------------------------------------------------- per-frame: status line, zone titles, shark state, timer
@@ -788,7 +756,6 @@ end
 function HUD.start()
 	Notify.start()
 	build()
-	menuButtons.Offer.Activated:Connect(offerClicked)
 	State.Changed:Connect(render)
 	if State.data then
 		render(State.data)

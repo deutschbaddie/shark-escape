@@ -1,4 +1,5 @@
--- Rides window (the coin ladder, live 3D previews) and the Robux shop.
+-- Rides window (the coin ladder, live 3D previews), the Robux store and the
+-- HUD promo button.
 -- Honest shop: real odds shown, unconfigured items say "Soon" instead of
 -- prompting, nothing pops up on its own.
 -- Also the small menu kit the other windows share (one window at a time,
@@ -7,6 +8,7 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local MarketplaceService = game:GetService("MarketplaceService")
+local TweenService = game:GetService("TweenService")
 
 local Shared = game.ReplicatedStorage.Shared
 local Config = require(Shared.Config)
@@ -315,82 +317,175 @@ function Shop.openRides()
 end
 
 ----------------------------------------------------------------- robux shop
-local function storeCard(parent: Instance, kind: string, key: string, def: any, owned: boolean?, order: number)
-	local best = table.find(Config.StarterLadder, key) ~= nil
-	local f = UI.card(parent, (owned and T.green) or (best and T.gold) or nil, { Size = UDim2.new(0.5, -6, 1, 0), LayoutOrder = order })
-	local tile = UI.inset(f, { Size = UDim2.fromOffset(88, 88), Position = UDim2.fromOffset(10, 10) })
-	UI.icon(tile, def.iconName, { Size = UDim2.new(1, -12, 1, -12), Position = UDim2.fromOffset(6, 6) })
-	if best then
-		UI.chip(f, "BEST VALUE", T.pink, { Size = UDim2.fromOffset(100, 24), Position = UDim2.fromOffset(10, 106), ZIndex = f.ZIndex + 2 })
-	end
-	-- item / benefit
-	UI.label(f, "body", def.name, { Size = UDim2.new(1, -122, 0, 26), Position = UDim2.fromOffset(110, 10), TextXAlignment = Enum.TextXAlignment.Left })
-	local desc = UI.label(f, "meta", def.desc, { Size = UDim2.new(1, -122, 0, 40), Position = UDim2.fromOffset(110, 38), TextXAlignment = Enum.TextXAlignment.Left,
-		TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true, TextColor3 = UI.light(T.mute, 0.35) })
-	desc.TextWrapped = true
-	-- price + BUY
-	local bottom = { Size = UDim2.fromOffset(120, 50), Position = UDim2.new(1, -10, 1, -10), AnchorPoint = Vector2.new(1, 1) }
-	if owned then
-		Shop.plate(f, "OWNED", T.green, bottom)
-		return
-	end
-	UI.label(f, "value", "R$ " .. def.price, { Size = UDim2.fromOffset(110, 30), Position = UDim2.new(1, -142, 1, -20), AnchorPoint = Vector2.new(1, 1),
-		TextXAlignment = Enum.TextXAlignment.Right, TextColor3 = T.gold, Font = UI.NUMFONT })
-	if def.id == 0 then
-		Shop.plate(f, "SOON", T.mute, bottom)
-		return
-	end
-	UI.button(f, "BUY", T.gold, function()
-		if kind == "pass" then
-			MarketplaceService:PromptGamePassPurchase(player, def.id)
-		else
-			MarketplaceService:PromptProductPurchase(player, def.id)
-		end
-	end, bottom)
+-- The store in the Steal-an-Egg format, in our style: one wide window of
+-- sections (FEATURED banners, then grids of big product cards: art on a soft
+-- glow, the value in big outlined text, the price) and a category bar beside
+-- it that scrolls to each section. Speed / cash packs show what they give you
+-- right now (Config.packAmount, the same formula the server grants).
+-- Items without an id yet show SOON instead of prompting.
+
+local STORE = Vector2.new(800, 480)
+local SIDE_W = 100 -- category bar, outside the window on its right
+local GAP = 12
+local BANNER_H = 164
+local CATEGORIES = {
+	{ id = "Featured", icon = "Sparkle", color = T.pink },
+	{ id = "Speed", icon = "Sneaker", color = T.orange },
+	{ id = "Money", icon = "Cash", color = T.green },
+	{ id = "Passes", icon = "Crown", color = T.purple },
+	{ id = "Boosts", icon = "Potion", color = T.blue },
+}
+local PASSES = { "AutoCollect", "LuckyNet", "BigTank", "VIP", "GoldDuck", "SharkBoard", "RainbowSki" }
+local BOOSTS = { "Shield", "SpeedBoost", "LuckPotion", "GoldenBubble", "DoubleOffline" }
+local SPEED_TEXT = UI.light(T.gold, 0.2)
+local MONEY_TEXT = UI.C.money
+
+local function phoneLayout(): boolean
+	return UI.TOUCH and workspace.CurrentCamera.ViewportSize.Y < 600
 end
 
-function Shop.openStore()
-	local d = State.data
-	if not d then
+-- the art for a store item: its own icon once uploaded, else a stand-in
+-- (speed / cash packs borrow the Speed and MoneyBag art)
+local function art(key: string, def: any): string
+	local own = tostring(Config.Icons.ids[def.iconName] or ""):match("%d+")
+	local pack = Config.Packs[key]
+	if own or not pack then
+		return def.iconName
+	end
+	return pack.kind == "speed" and "Speed" or "MoneyBag"
+end
+
+-- soft radial glow behind product art: stacked translucent discs
+local function glow(parent: Instance, color: Color3, size: number, props: { [string]: any })
+	local holder = UI.frame(parent, { Name = "Glow", Size = UDim2.fromOffset(size, size), BackgroundTransparency = 1 })
+	for k, v in props do
+		(holder :: any)[k] = v
+	end
+	for _, s in { 1, 0.84, 0.68, 0.52, 0.36 } do
+		local disc = UI.frame(holder, { Size = UDim2.fromScale(s, s), Position = UDim2.fromScale(0.5, 0.5), AnchorPoint = Vector2.new(0.5, 0.5),
+			BackgroundColor3 = color, BackgroundTransparency = 0.88, ZIndex = holder.ZIndex })
+		UI.corner(disc, size)
+	end
+	return holder
+end
+
+-- big outlined text (past the type scale's caps: "x1 > x2", hero values)
+local function bigText(parent: Instance, text: string, max: number, props: { [string]: any }): TextLabel
+	local l = UI.label(parent, "hero", text, props)
+	local c = l:FindFirstChildOfClass("UITextSizeConstraint")
+	if c then
+		c.MaxTextSize = max
+	end
+	local s = l:FindFirstChildOfClass("UIStroke")
+	if s then
+		s.Thickness = 3
+	end
+	return l
+end
+
+function Shop.buy(kind: string, def: any)
+	if def.id == 0 then
 		return
 	end
-	local _, body = Shop.window("Shop", T.gold, Vector2.new(760, 470), "Shop")
-	local scroll = Shop.list(body, { Size = UDim2.new(1, 8, 1, 0), Position = UDim2.fromOffset(-4, 0) }, 12)
-	local order = 0
-	local function nextOrder(): number
-		order += 1
-		return order
+	if kind == "pass" then
+		MarketplaceService:PromptGamePassPurchase(player, def.id)
+	else
+		MarketplaceService:PromptProductPurchase(player, def.id)
 	end
-	local function section(title: string)
-		UI.label(scroll, "body", title, { Size = UDim2.new(1, 0, 0, 26), LayoutOrder = nextOrder(), TextXAlignment = Enum.TextXAlignment.Left,
-			TextColor3 = T.gold })
-	end
-	-- cards two per row
-	local row: Frame? = nil
-	local inRow = 0
-	local function add(kind: string, key: string, def: any, owned: boolean?)
-		if not row or inRow == 2 then
-			local r = UI.frame(scroll, { Size = UDim2.new(1, 0, 0, 142), BackgroundTransparency = 1, LayoutOrder = nextOrder() })
-			local l = Instance.new("UIListLayout")
-			l.FillDirection = Enum.FillDirection.Horizontal
-			l.Padding = UDim.new(0, 12)
-			l.SortOrder = Enum.SortOrder.LayoutOrder
-			l.Parent = r
-			row, inRow = r, 0
-		end
-		inRow += 1
-		storeCard(row :: Frame, kind, key, def, owned, inRow)
-	end
-	local function endRow()
-		row = nil
-	end
+end
 
-	-- codes (free rewards from videos / socials)
-	local codes = UI.card(scroll, T.pink, { Size = UDim2.new(1, 0, 0, 76), LayoutOrder = nextOrder() })
-	UI.icon(codes, "Gift", { Size = UDim2.fromOffset(56, 56), Position = UDim2.fromOffset(10, 10) })
-	UI.label(codes, "body", "CODES", { Size = UDim2.fromOffset(150, 26), Position = UDim2.fromOffset(76, 12), TextXAlignment = Enum.TextXAlignment.Left })
-	UI.label(codes, "meta", "Free rewards", { Size = UDim2.fromOffset(150, 20), Position = UDim2.fromOffset(76, 40), TextXAlignment = Enum.TextXAlignment.Left,
-		TextColor3 = T.mute })
+-- green "R$ 79" (gold for passes), or a flat OWNED / SOON plate
+local function priceButton(parent: Instance, kind: string, def: any, owned: boolean, props: { [string]: any }): GuiObject
+	if owned then
+		return Shop.plate(parent, "OWNED", T.green, props)
+	elseif def.id == 0 then
+		return Shop.plate(parent, "SOON", T.mute, props)
+	end
+	local b = UI.button(parent, "R$ " .. def.price, kind == "pass" and T.gold or T.green, function()
+		Shop.buy(kind, def)
+	end, props)
+	local l = b:FindFirstChild("Label") :: TextLabel
+	l.Font = UI.NUMFONT
+	return b
+end
+
+-- the one offer the HUD promotes (after Config.SHOP_UNLOCK_SECONDS): the next
+-- starter-ladder pack, else 2x Speed, else 2x Cash. Returns key, kind.
+function Shop.offer(d: any): (string?, string?)
+	if not d or d.playtime < Config.SHOP_UNLOCK_SECONDS then
+		return nil, nil
+	end
+	if d.starterNext and Config.Products[d.starterNext] then
+		return d.starterNext, "product"
+	end
+	for _, key in { "TwoXSpeed", "TwoXCoins" } do
+		if not d.passes[key] then
+			return key, "pass"
+		end
+	end
+	return nil, nil
+end
+local OFFER_TITLE = { TwoXSpeed = "x2 Speed", TwoXCoins = "x2 Cash" }
+
+-- The HUD promo under the Shop button: the offer's art glowing over a cyan
+-- button, "x2 Speed" and "ONLY 399 R$" on it. A tap prompts the purchase (or
+-- opens the store while the item has no id). Returns the button and
+-- update(d) for each state change.
+function Shop.promo(parent: Instance, props: { [string]: any }): (TextButton, (any) -> ())
+	local b: TextButton
+	b = UI.button(parent, "", UI.C.sky, function()
+		local key, kind = b:GetAttribute("Key"), b:GetAttribute("Kind")
+		local def = key and (if kind == "pass" then Config.Passes[key] else Config.Products[key])
+		if def and def.id ~= 0 then
+			Shop.buy(kind, def)
+		else
+			Shop.openStore("Featured")
+		end
+	end, props)
+	b.Name = "Promo"
+	b.Visible = false
+	local face = b:FindFirstChild("Face") :: Frame
+	local h = b.Size.Y.Offset
+	glow(face, T.white, h * 1.25, { Position = UDim2.fromScale(0.5, 0.3), AnchorPoint = Vector2.new(0.5, 0.5), ZIndex = b.ZIndex })
+	local label = b:FindFirstChild("Label") :: TextLabel
+	label.Size = UDim2.new(1, -12, 0.5, 0)
+	label.Position = UDim2.new(0.5, 0, 0.44, 0)
+	local sub = UI.outlined(b, "", { Name = "Sub", Size = UDim2.new(0.8, 0, 0, math.floor(h * 0.42)), Position = UDim2.new(0.5, 0, 1, -2),
+		AnchorPoint = Vector2.new(0.5, 0.5), ZIndex = b.ZIndex + 2 })
+	local function update(d: any)
+		local key, kind = Shop.offer(d)
+		b.Visible = key ~= nil
+		if not key then
+			b:SetAttribute("Key", nil)
+			return
+		end
+		local def = if kind == "pass" then Config.Passes[key] else Config.Products[key]
+		if b:GetAttribute("Key") == key then
+			return
+		end
+		b:SetAttribute("Key", key)
+		b:SetAttribute("Kind", kind)
+		local old = face:FindFirstChild("Icon")
+		if old then
+			old:Destroy()
+		end
+		UI.icon(face, art(key, def), { Size = UDim2.fromOffset(h * 0.95, h * 0.95), Position = UDim2.fromScale(0.5, 0.12), AnchorPoint = Vector2.new(0.5, 0.5),
+			ZIndex = b.ZIndex })
+		UI.setText(b, OFFER_TITLE[key] or def.name)
+		sub.Text = ("ONLY %d R$"):format(def.price)
+		UI.pop(b, 1.12)
+	end
+	return b, update
+end
+
+-- the codes row (free rewards from videos / socials)
+local function codesCard(parent: Instance, y: number, h: number)
+	local codes = UI.card(parent, T.pink, { Name = "Codes", Size = UDim2.new(1, 0, 0, h), Position = UDim2.fromOffset(0, y) })
+	UI.icon(codes, "Gift", { Size = UDim2.fromOffset(56, 56), Position = UDim2.new(0, 10, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5) })
+	UI.label(codes, "body", "CODES", { Size = UDim2.fromOffset(150, 26), Position = UDim2.new(0, 76, 0.5, -14), AnchorPoint = Vector2.new(0, 0.5),
+		TextXAlignment = Enum.TextXAlignment.Left })
+	UI.label(codes, "meta", "Free rewards", { Size = UDim2.fromOffset(150, 20), Position = UDim2.new(0, 76, 0.5, 12), AnchorPoint = Vector2.new(0, 0.5),
+		TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = T.mute })
 	local box = Instance.new("TextBox")
 	box.Size = UDim2.new(1, -404, 0, 48)
 	box.Position = UDim2.new(0, 236, 0.5, 0)
@@ -419,21 +514,287 @@ function Shop.openStore()
 			box.Text = ""
 		end
 	end, { Size = UDim2.fromOffset(144, 52), Position = UDim2.new(1, -10, 0.5, 0), AnchorPoint = Vector2.new(1, 0.5) })
+end
 
-	if d.starterNext and Config.Products[d.starterNext] then
-		section("SPECIAL OFFER")
-		add("product", d.starterNext, Config.Products[d.starterNext])
-		endRow()
+-- what the store shows that can change (rebuild when it does; pack values just update)
+local function storeKey(d: any): string
+	local key = tostring(d.starterNext) .. "|" .. tostring((d.offline or 0) > 0)
+	for _, k in { "TwoXSpeed", "TwoXCoins", table.unpack(PASSES) } do
+		if d.passes[k] then
+			key ..= "|" .. k
+		end
 	end
-	section("GAME PASSES  -  YOURS FOREVER")
-	for _, key in { "TwoXSpeed", "TwoXCoins", "AutoCollect", "LuckyNet", "BigTank", "VIP" } do
-		add("pass", key, Config.Passes[key], d.passes[key] == true)
+	return key
+end
+
+-- live value of a card ("+150K SPEED", "+$2.3M", or the item's name)
+local function cardValue(key: string, def: any, d: any): (string, Color3)
+	local pack = Config.Packs[key]
+	if pack then
+		local n = Config.packAmount(key, d.gain or 0, d.income or 0)
+		if pack.kind == "speed" then
+			return ("+%s SPEED"):format(UI.short(n)), SPEED_TEXT
+		end
+		return "+$" .. UI.short(n), MONEY_TEXT
+	elseif key == "DoubleOffline" and (d.offline or 0) > 0 then
+		return "+$" .. UI.short(d.offline * 2), MONEY_TEXT
 	end
-	endRow()
-	section("BOOSTS")
-	for _, key in { "Shield", "SpeedBoost", "LuckPotion", "GoldenBubble" } do
-		add("product", key, Config.Products[key])
+	return def.name, T.white
+end
+
+function Shop.openStore(section: string?)
+	local d = State.data
+	if not d then
+		return
 	end
+	local phone = phoneLayout()
+	local cols = phone and 2 or 3
+	local cardH = 218
+	local win, body = Shop.window("Shop", T.gold, STORE, "Shop")
+	-- the window and its category bar are centered together
+	win.Position = UDim2.new(0.5, -(SIDE_W + GAP) / 2, 0.52, 0)
+	local viewH = STORE.Y - 98 -- the body's height (UI.window)
+
+	local scroll: ScrollingFrame? = nil
+	local offsets: { [string]: number } = {}
+	local values: { { label: TextLabel, key: string, def: any } } = {}
+	local entries: { [string]: { label: TextLabel, icon: GuiObject } } = {}
+	local canvasH = 0
+
+	local function maxScroll(): number
+		return math.max(0, canvasH - viewH)
+	end
+	local current = ""
+	local function highlight()
+		if not scroll then
+			return
+		end
+		local y = scroll.CanvasPosition.Y + 40
+		local at = "Featured"
+		for _, cat in CATEGORIES do
+			if offsets[cat.id] and offsets[cat.id] <= y then
+				at = cat.id
+			end
+		end
+		if scroll.CanvasPosition.Y >= maxScroll() - 2 then
+			at = CATEGORIES[#CATEGORIES].id -- scrolled to the end: the last section
+		end
+		if at == current then
+			return
+		end
+		current = at
+		for id, e in entries do
+			e.label.TextColor3 = id == at and T.gold or T.white
+			e.icon.Size = id == at and UDim2.fromOffset(60, 60) or UDim2.fromOffset(50, 50)
+		end
+	end
+	local function jump(id: string, instant: boolean?)
+		local y = offsets[id]
+		if not (scroll and y) then
+			return
+		end
+		local goal = Vector2.new(0, math.min(y, maxScroll()))
+		if instant then
+			scroll.CanvasPosition = goal
+		else
+			TweenService:Create(scroll, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { CanvasPosition = goal }):Play()
+		end
+		highlight()
+	end
+
+	-- category bar: icon + outlined label, no box
+	local side = UI.frame(win, { Name = "Categories", Size = UDim2.fromOffset(SIDE_W, STORE.Y - 20), Position = UDim2.new(1, GAP, 0.5, 0),
+		AnchorPoint = Vector2.new(0, 0.5), BackgroundTransparency = 1 })
+	local sl = Instance.new("UIListLayout")
+	sl.Padding = UDim.new(0, 4)
+	sl.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	sl.VerticalAlignment = Enum.VerticalAlignment.Center
+	sl.SortOrder = Enum.SortOrder.LayoutOrder
+	sl.Parent = side
+	for i, cat in CATEGORIES do
+		local b = Instance.new("TextButton")
+		b.Name = cat.id
+		b.Text = ""
+		b.AutoButtonColor = false
+		b.BackgroundTransparency = 1
+		b.Size = UDim2.fromOffset(SIDE_W, 82)
+		b.LayoutOrder = i
+		b.Parent = side
+		UI.squish(b)
+		local icon = UI.icon(b, cat.icon, { Size = UDim2.fromOffset(50, 50), Position = UDim2.new(0.5, 0, 0, 30), AnchorPoint = Vector2.new(0.5, 0.5) })
+		local label = UI.label(b, "body", cat.id, { Size = UDim2.new(1, 0, 0, 24), Position = UDim2.new(0.5, 0, 1, -2), AnchorPoint = Vector2.new(0.5, 1),
+			StrokeThickness = 3, ZIndex = b.ZIndex + 1 })
+		entries[cat.id] = { label = label, icon = icon }
+		b.Activated:Connect(function()
+			if UI.onClick then
+				UI.onClick()
+			end
+			jump(cat.id)
+		end)
+	end
+
+	local function build()
+		local keep = scroll and scroll.CanvasPosition
+		body:ClearAllChildren()
+		table.clear(values)
+		table.clear(offsets)
+		d = State.data
+		local sc = Shop.list(body, { Size = UDim2.new(1, 8, 1, 0), Position = UDim2.fromOffset(-4, 0), AutomaticCanvasSize = Enum.AutomaticSize.None })
+		scroll = sc
+		local y = 0
+
+		local function header(cat: any)
+			offsets[cat.id] = y
+			local h = UI.frame(sc, { Name = cat.id, Size = UDim2.new(1, 0, 0, 36), Position = UDim2.fromOffset(0, y), BackgroundTransparency = 1 })
+			UI.icon(h, cat.icon, { Size = UDim2.fromOffset(36, 36), Position = UDim2.fromOffset(0, 0) })
+			UI.label(h, "value", cat.id:upper(), { Size = UDim2.new(0, 220, 0, 30), Position = UDim2.fromOffset(44, 3), TextXAlignment = Enum.TextXAlignment.Left,
+				TextColor3 = UI.light(cat.color, 0.25) })
+			UI.frame(h, { Name = "Rule", Size = UDim2.new(1, -230, 0, 3), Position = UDim2.new(1, 0, 0.5, 0), AnchorPoint = Vector2.new(1, 0.5),
+				BackgroundColor3 = cat.color, BackgroundTransparency = 0.55 })
+			y += 36 + 8
+		end
+
+		-- full-width banner: title on top, art left, price right; returns the middle area
+		local function banner(color: Color3, title: string, iconName: string, kind: string, def: any, owned: boolean): Frame
+			local f = UI.card(sc, color, { Size = UDim2.new(1, 0, 0, BANNER_H), Position = UDim2.fromOffset(0, y), BackgroundColor3 = T.navyLight:Lerp(color, 0.32) })
+			bigText(f, title, 40, { Size = UDim2.new(1, -24, 0, 40), Position = UDim2.fromOffset(12, 8), TextColor3 = UI.light(color, 0.35),
+				StrokeColor = UI.dark(color, 0.7), ZIndex = f.ZIndex + 2 })
+			glow(f, UI.light(color, 0.5), 136, { Position = UDim2.fromOffset(96, 96), AnchorPoint = Vector2.new(0.5, 0.5), ZIndex = f.ZIndex })
+			UI.icon(f, iconName, { Size = UDim2.fromOffset(112, 112), Position = UDim2.fromOffset(96, 100), AnchorPoint = Vector2.new(0.5, 0.5), ZIndex = f.ZIndex + 1 })
+			priceButton(f, kind, def, owned, { Size = UDim2.fromOffset(176, 64), Position = UDim2.new(1, -16, 0, 100), AnchorPoint = Vector2.new(1, 0.5),
+				ZIndex = f.ZIndex + 2 })
+			y += BANNER_H + GAP
+			return UI.frame(f, { Name = "Middle", Size = UDim2.new(1, -(180 + 208), 0, BANNER_H - 60), Position = UDim2.fromOffset(180, 52),
+				BackgroundTransparency = 1, ZIndex = f.ZIndex + 1 })
+		end
+
+		-- "x1 > x2" for the doubling passes
+		local function doubling(key: string, title: string, color: Color3)
+			local def = Config.Passes[key]
+			local owned = d.passes[key] == true
+			local mid = banner(color, title, art(key, def), "pass", def, owned)
+			local z = mid.ZIndex
+			bigText(mid, "x1", 76, { Size = UDim2.fromScale(0.4, 0.92), Position = UDim2.fromScale(0, 0.04), Font = UI.NUMFONT, ZIndex = z,
+				TextXAlignment = Enum.TextXAlignment.Right })
+			bigText(mid, ">", 56, { Size = UDim2.fromScale(0.2, 0.7), Position = UDim2.fromScale(0.4, 0.15), Font = UI.NUMFONT, ZIndex = z })
+			bigText(mid, "x2", 76, { Size = UDim2.fromScale(0.4, 0.92), Position = UDim2.fromScale(0.6, 0.04), Font = UI.NUMFONT, ZIndex = z,
+				TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = T.gold, StrokeColor = UI.dark(T.gold, 0.65) })
+		end
+
+		-- a grid of product cards, cols per row
+		local function grid(name: string, items: { { any } }, color: Color3)
+			local rows = math.ceil(#items / cols)
+			local h = rows * cardH + (rows - 1) * GAP
+			local holder = UI.frame(sc, { Name = name, Size = UDim2.new(1, 0, 0, h), Position = UDim2.fromOffset(0, y), BackgroundTransparency = 1 })
+			local g = Instance.new("UIGridLayout")
+			g.CellSize = UDim2.new(1 / cols, -GAP * (cols - 1) / cols, 0, cardH)
+			g.CellPadding = UDim2.fromOffset(GAP, GAP)
+			g.SortOrder = Enum.SortOrder.LayoutOrder
+			g.Parent = holder
+			for i, it in items do
+				local kind, key = it[1], it[2]
+				local def = if kind == "pass" then Config.Passes[key] else Config.Products[key]
+				local owned = kind == "pass" and d.passes[key] == true
+				-- a bright card in the section's color, like the reference's blue tiles
+				local f = UI.card(holder, owned and T.green or UI.dark(color, 0.45), { Name = key, LayoutOrder = i, BackgroundColor3 = UI.dark(color, 0.08) })
+				glow(f, T.white, 112, { Position = UDim2.new(0.5, 0, 0, 58), AnchorPoint = Vector2.new(0.5, 0.5), ZIndex = f.ZIndex })
+				UI.icon(f, art(key, def), { Size = UDim2.fromOffset(96, 96), Position = UDim2.new(0.5, 0, 0, 56), AnchorPoint = Vector2.new(0.5, 0.5),
+					ZIndex = f.ZIndex + 1 })
+				local text = cardValue(key, def, d)
+				local value = bigText(f, text, phone and 36 or 32, { Name = "Value", Size = UDim2.new(1, -16, 0, 34), Position = UDim2.fromOffset(8, 100),
+					StrokeColor = UI.dark(color, 0.7), ZIndex = f.ZIndex + 2 })
+				table.insert(values, { label = value, key = key, def = def })
+				UI.label(f, phone and "body" or "meta", def.desc, { Size = UDim2.new(1, -16, 0, 20), Position = UDim2.fromOffset(8, 134),
+					StrokeColor = UI.dark(color, 0.7), ZIndex = f.ZIndex + 2 })
+				local bottom = { Size = UDim2.new(1, -16, 0, 50), Position = UDim2.new(0.5, 0, 1, -8), AnchorPoint = Vector2.new(0.5, 1), ZIndex = f.ZIndex + 2 }
+				if key == "DoubleOffline" and def.id ~= 0 and (d.offline or 0) <= 0 then
+					Shop.plate(f, "NONE WAITING", T.mute, bottom) -- only doubles welcome-back coins you haven't claimed
+				else
+					priceButton(f, kind, def, owned, bottom)
+				end
+			end
+			y += h + GAP + 8
+		end
+
+		-- FEATURED: the next starter pack, the doubling passes, codes
+		header(CATEGORIES[1])
+		local packKey = d.starterNext
+		local pack = packKey and Config.Products[packKey]
+		if pack then
+			local mid = banner(T.pink, pack.name:upper(), art(packKey, pack), "product", pack, false)
+			local step = table.find(Config.StarterLadder, packKey) or 1
+			UI.chip(mid.Parent :: Frame, ("PACK %d OF %d"):format(step, #Config.StarterLadder), T.pink, { Size = UDim2.fromOffset(112, 26),
+				Position = UDim2.fromOffset(14, 14), ZIndex = mid.ZIndex + 2 })
+			local lines = Instance.new("UIGridLayout")
+			lines.CellSize = UDim2.new(0.5, -6, 0, 30)
+			lines.CellPadding = UDim2.fromOffset(12, 4)
+			lines.VerticalAlignment = Enum.VerticalAlignment.Center
+			lines.SortOrder = Enum.SortOrder.LayoutOrder
+			lines.Parent = mid
+			local i = 0
+			for part in (pack.desc .. " + "):gmatch("(.-)%s*%+%s+") do
+				i += 1
+				local row = UI.frame(mid, { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, LayoutOrder = i, ZIndex = mid.ZIndex })
+				local dot = UI.frame(row, { Size = UDim2.fromOffset(10, 10), Position = UDim2.new(0, 2, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5),
+					BackgroundColor3 = T.gold, ZIndex = mid.ZIndex })
+				UI.corner(dot, 5)
+				UI.label(row, "body", part, { Size = UDim2.new(1, -18, 1, -4), Position = UDim2.fromOffset(18, 2), TextXAlignment = Enum.TextXAlignment.Left,
+					ZIndex = mid.ZIndex })
+			end
+		end
+		doubling("TwoXSpeed", "DOUBLE YOUR SPEED", T.blue)
+		doubling("TwoXCoins", "DOUBLE YOUR CASH", T.green)
+		codesCard(sc, y, 76)
+		y += 76 + GAP + 8
+
+		header(CATEGORIES[2])
+		grid("SpeedPacks", { { "product", "SpeedPack1" }, { "product", "SpeedPack2" }, { "product", "SpeedPack3" }, { "product", "SpeedPack4" } }, CATEGORIES[2].color)
+		header(CATEGORIES[3])
+		grid("MoneyPacks", { { "product", "MoneyPack1" }, { "product", "MoneyPack2" }, { "product", "MoneyPack3" }, { "product", "MoneyPack4" } }, CATEGORIES[3].color)
+		header(CATEGORIES[4])
+		local passes = {}
+		for _, key in PASSES do
+			table.insert(passes, { "pass", key })
+		end
+		grid("Passes", passes, CATEGORIES[4].color)
+		header(CATEGORIES[5])
+		local boosts = {}
+		for _, key in BOOSTS do
+			table.insert(boosts, { "product", key })
+		end
+		grid("Boosts", boosts, CATEGORIES[5].color)
+
+		canvasH = y + 20 -- + the list's padding
+		sc.CanvasSize = UDim2.fromOffset(0, canvasH)
+		sc.CanvasPosition = Vector2.new(0, keep and math.min(keep.Y, maxScroll()) or 0)
+		sc:GetPropertyChangedSignal("CanvasPosition"):Connect(highlight)
+		current = ""
+		highlight()
+	end
+	build()
+	if section then
+		jump(section, true)
+	end
+
+	local lastKey = storeKey(d)
+	local conn
+	conn = State.Changed:Connect(function(new)
+		if open ~= win then
+			conn:Disconnect()
+			return
+		end
+		local key = storeKey(new)
+		if key ~= lastKey then
+			lastKey = key
+			build()
+			return
+		end
+		-- pack amounts follow your speed gain and income live
+		for _, v in values do
+			local text = cardValue(v.key, v.def, new)
+			v.label.Text = text
+		end
+	end)
 end
 
 function Shop.start()

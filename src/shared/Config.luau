@@ -518,7 +518,42 @@ Config.Products = {
 	MegaPack = { iconName = "MegaPack", id = 0, price = 399, name = "Mega Pack", icon = "",
 		desc = "A HUGE Legendary + 2 hours 2x Speed + 1 hour Luck + 10 Shields" },
 	DoubleOffline = { iconName = "Clock", id = 0, price = 25, name = "2x Offline Coins", icon = "", desc = "Double your welcome-back coins" },
+	-- speed / cash packs: they scale with you (Config.packAmount), so they're always worth it
+	SpeedPack1 = { iconName = "SpeedPack1", id = 0, price = 49, name = "Small Speed Pack", icon = "", desc = "10 minutes of your speed gain" },
+	SpeedPack2 = { iconName = "SpeedPack2", id = 0, price = 149, name = "Speed Pack", icon = "", desc = "40 minutes of your speed gain" },
+	SpeedPack3 = { iconName = "SpeedPack3", id = 0, price = 399, name = "Big Speed Pack", icon = "", desc = "2 hours of your speed gain" },
+	SpeedPack4 = { iconName = "SpeedPack4", id = 0, price = 999, name = "Mega Speed Pack", icon = "", desc = "6 hours of your speed gain" },
+	MoneyPack1 = { iconName = "MoneyPack1", id = 0, price = 49, name = "Small Cash Pack", icon = "", desc = "10 minutes of your tank income" },
+	MoneyPack2 = { iconName = "MoneyPack2", id = 0, price = 149, name = "Cash Pack", icon = "", desc = "40 minutes of your tank income" },
+	MoneyPack3 = { iconName = "MoneyPack3", id = 0, price = 399, name = "Big Cash Pack", icon = "", desc = "2 hours of your tank income" },
+	MoneyPack4 = { iconName = "MoneyPack4", id = 0, price = 999, name = "Mega Cash Pack", icon = "", desc = "6 hours of your tank income" },
 }
+
+-- What a speed / cash pack gives: your current speed gain per second (or tank
+-- income per second) times `seconds`, never less than `min` (so a brand-new
+-- player still gets a good jump). The store shows this live and the server
+-- grants exactly this (Market.luau), both through Config.packAmount.
+Config.Packs = {
+	SpeedPack1 = { kind = "speed", seconds = 600, min = 1000 },
+	SpeedPack2 = { kind = "speed", seconds = 2400, min = 4000 },
+	SpeedPack3 = { kind = "speed", seconds = 7200, min = 12000 },
+	SpeedPack4 = { kind = "speed", seconds = 21600, min = 36000 },
+	MoneyPack1 = { kind = "money", seconds = 600, min = 1000 },
+	MoneyPack2 = { kind = "money", seconds = 2400, min = 5000 },
+	MoneyPack3 = { kind = "money", seconds = 7200, min = 20000 },
+	MoneyPack4 = { kind = "money", seconds = 21600, min = 75000 },
+}
+
+-- gain = speed gained per second, income = tank coins per second (as in the
+-- player's state: Game.gain / Game.income)
+function Config.packAmount(key: string, gain: number, income: number): number
+	local pack = Config.Packs[key]
+	if not pack then
+		return 0
+	end
+	local rate = if pack.kind == "speed" then gain else income
+	return math.floor(math.max(pack.min, (rate or 0) * pack.seconds))
+end
 
 -- one-time packs, offered in order: buy one and the next appears
 Config.StarterLadder = { "StarterPack", "ProPack", "MegaPack" }
@@ -575,6 +610,9 @@ Config.Icons = {
 		-- new HUD icons (upload as single images)
 		Friends = "", Coral = "", Settings = "",
 		StarterPack = "", ProPack = "", MegaPack = "",
+		-- store packs (until uploaded they reuse the Speed / MoneyBag art)
+		SpeedPack1 = "", SpeedPack2 = "", SpeedPack3 = "", SpeedPack4 = "",
+		MoneyPack1 = "", MoneyPack2 = "", MoneyPack3 = "", MoneyPack4 = "",
 	},
 	SheetA = "",
 	SheetB = "",
