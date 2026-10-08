@@ -23,12 +23,15 @@ local HUD = require(script.Parent.HUD)
 local SharkView = require(script.Parent.SharkView)
 local Guide = require(script.Parent.Guide)
 local Notify = require(script.Parent.Notify)
+local Prompts = require(script.Parent.Prompts)
 
 local Onboarding = {}
 local C = UI.C
 local player = Players.LocalPlayer
 
 local DONE = 5
+-- the first grab is a tap (Prompts "tap"); after that grabs need a hold
+local TAP_HINT = UI.TOUCH and "Swim to a bubble and TAP the button" or "Swim to a bubble and press E"
 local HOLD_HINT = UI.TOUCH and "Swim to a bubble and HOLD the button" or "Swim to a bubble and HOLD E"
 local step = -1 -- local copy, never behind the server
 
@@ -75,12 +78,17 @@ local function nearestBubble(pos: Vector3): Vector3?
 	return best
 end
 
-local function advance(to: number)
+local function advance(to: number, quiet: boolean?)
 	if to > step then
 		local cheer = CHEERS[to]
 		step = to
 		State.action("tut", to)
-		if cheer and to < DONE then
+		if to == 1 then
+			Prompts.setTeach("hold") -- the first grab was a tap; now learn to hold
+		elseif to >= DONE then
+			Prompts.setTeach(nil)
+		end
+		if cheer and to < DONE and not quiet then
 			Notify.word(cheer, C.green, 0.8)
 			Fx.sound("coin", 0.5, 1.2)
 		end
@@ -88,14 +96,17 @@ local function advance(to: number)
 end
 
 ----------------------------------------------------------------- shark drill (step 3)
--- A slow, client-only Baby shark. It can't hurt you; getting caught just
--- restarts the drill. Paused while a real attack is happening.
+-- A slow, client-only Baby shark. It can't hurt you. Caught once: try again
+-- with an even slower shark and the arrow pointing straight at the sand.
+-- Caught twice: move on ("You'll get it next time!"), no endless retries.
+-- Paused while a real attack is happening.
 local drill = {
 	state = "idle", -- idle | chase | leave | pause
 	shark = nil :: any,
 	t = 0,
 	angle = 0,
 	realAttack = false,
+	catches = 0,
 }
 
 local function drillEnd(result: string)
@@ -136,7 +147,8 @@ local function drillStart(pos: Vector3)
 		end
 		local p = hrp.Position
 		local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-		local speed = math.max((hum and hum.WalkSpeed or 16) * 0.9, 12)
+		local retry = drill.catches > 0
+		local speed = math.max((hum and hum.WalkSpeed or 16) * (retry and 0.7 or 0.9), 10)
 		local t = os.clock() - drill.t
 		local to
 		if t < 3.5 then
@@ -155,7 +167,7 @@ local function drillStart(pos: Vector3)
 		if to.Magnitude > 0.1 then
 			local want = math.atan2(-to.X, -to.Z)
 			local d = (want - sh.yaw + math.pi) % (2 * math.pi) - math.pi
-			local turn = sh.state == "chase" and 2.3 or 5
+			local turn = sh.state == "chase" and (retry and 1.7 or 2.3) or 5
 			sh.yaw += math.clamp(d, -turn * dt, turn * dt)
 		end
 		local pace = sh.state == "chase" and speed or speed * 1.3
@@ -193,16 +205,32 @@ local function drillTick(pos: Vector3): (Vector3?, string?, string?, string?)
 			local head = sh.pos + Vector3.new(-math.sin(sh.yaw), 0, -math.cos(sh.yaw)) * sh.L * 0.38
 			if Vector2.new(pos.X - head.X, pos.Z - head.Z).Magnitude < 3.5 then
 				SharkView.biteLocal(sh)
-				Notify.word("CHOMP! (just practice)", C.red, 1)
 				Fx.shake(3)
-				Notify.toast("A real shark eats what you're carrying. Try again!", C.red)
+				drill.catches += 1
 				drillEnd("caught")
+				if drill.catches >= 2 then
+					-- don't loop on failure: they've seen it, move on
+					Notify.word("You'll get it next time!", C.gold, 1.2)
+					Notify.toast("Sand and islands are always safe from sharks!", C.green)
+					advance(4, true)
+					return nil, nil, nil, nil
+				end
+				Notify.word("CHOMP! (just practice)", C.red, 1)
+				Notify.toast("A real shark eats what you're carrying. Try again: it'll be slower!", C.red)
 				drill.state = "pause"
 				return nil, nil, "Shark drill", "Try again in a moment..."
 			end
 		end
-		local safeAt = Layout.nearestSafe(pos)
+		-- second try: the arrow points straight back at the sand
 		local circling = drill.shark and drill.shark.state == "stalk"
+		if drill.catches > 0 then
+			local sand = Vector3.new(pos.X, Config.BEACH_TOP + 2, Config.SHORE_Z - 6)
+			if circling then
+				return sand, "SAND!", "It's circling you!", "Swim straight back to the SAND!"
+			end
+			return sand, "SAND!", "IT'S CHARGING!", "Swim straight back to the SAND!", C.red
+		end
+		local safeAt = Layout.nearestSafe(pos)
 		if circling then
 			return safeAt + Vector3.new(0, 2, 0), "SAFE!", "It's circling you!", "Get to SAND or an ISLAND (follow the arrow)"
 		end
@@ -240,7 +268,7 @@ local function update()
 			advance(1)
 		else
 			at, label = nearestBubble(pos), "Grab it!"
-			title, sub = "Grab a sea creature", HOLD_HINT
+			title, sub = "Grab a sea creature", TAP_HINT
 		end
 	end
 	if step == 1 then
@@ -299,6 +327,7 @@ function Onboarding.start()
 	if step >= DONE then
 		return
 	end
+	Prompts.setTeach(step == 0 and "tap" or "hold")
 
 	State.Changed:Connect(function(data)
 		if data.tut > step then
@@ -325,6 +354,9 @@ function Onboarding.start()
 			conn:Disconnect()
 			point(nil)
 			tutBanner(nil)
+			if Prompts.teach == "tap" then
+				Prompts.setTeach(nil)
+			end
 			if drill.shark then
 				drillEnd("abort")
 			end

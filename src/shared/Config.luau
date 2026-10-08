@@ -462,7 +462,7 @@ Config.Products = {
 	GoldenBubble = { iconName = "GoldBubble", id = 0, price = 99, name = "Golden Bubble", icon = "🌟",
 		desc = "Rare 70% · Epic 25% · Legendary 5%" },
 	StarterPack = { iconName = "Gift", id = 0, price = 49, name = "Starter Pack", icon = "🎁",
-		desc = "Rare Octopus + 30 min 2x Speed + 3 Shields" },
+		desc = "A Rare creature + 30 min 2x Speed + 3 Shields" },
 	DoubleOffline = { iconName = "Clock", id = 0, price = 25, name = "2x Offline Coins", icon = "⏰", desc = "Double your welcome-back coins" },
 }
 
@@ -544,7 +544,7 @@ Config.Icons = {
 ----------------------------------------------------------------- group chest + daily rewards
 -- Your Roblox group's id. 0 = no group yet: the chest then only asks for a
 -- like (favorite) and still pays out, so it works before the group exists.
-Config.GroupId = 0
+Config.GroupId = 902411651
 Config.GroupChest = { cooldownHours = 12, incomeSeconds = 180, minCoins = 150, boostMinutes = 10 }
 
 -- 7-day streak (claim once every 20h; miss 48h and it starts over at day 1)

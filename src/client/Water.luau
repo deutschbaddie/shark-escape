@@ -71,7 +71,8 @@ type Rider = {
 	spray: ParticleEmitter,
 	trail: Trail,
 	wasWet: boolean,
-	motors: { [string]: Motor6D },
+	joints: { [string]: any }, -- Motor6D or AnimationConstraint, by R15 joint name
+	jointsStale: boolean,
 	animate: LocalScript?,
 	fit: Vector3?,
 	fitKey: string?,
@@ -129,23 +130,20 @@ local function addRider(char: Model)
 	trail.FaceCamera = false
 	trail.Enabled = false
 	trail.Parent = hrp
-	local motors = {}
-	for _, d in char:GetDescendants() do
-		if d:IsA("Motor6D") then
-			motors[d.Name] = d
-		end
-	end
 	local rider: Rider = {
 		char = char, hrp = hrp, hum = hum, foam = foam, spray = spray, trail = trail,
-		wasWet = false, motors = motors, animate = char:FindFirstChild("Animate") :: LocalScript?,
+		wasWet = false, joints = {}, jointsStale = true, animate = char:FindFirstChild("Animate") :: LocalScript?,
 	}
 	riders[char] = rider
-	char.DescendantAdded:Connect(function(d) -- limbs swapped by an appearance load
-		if d:IsA("Motor6D") then
-			motors[d.Name] = d
+	-- limbs swapped by an appearance load, or joints upgraded after spawn
+	local function stale(d: Instance)
+		if Rig.isJoint(d) or d:IsA("Attachment") then
+			rider.jointsStale = true
 			rider.fitKey = nil
 		end
-	end)
+	end
+	char.DescendantAdded:Connect(stale)
+	char.DescendantRemoving:Connect(stale)
 	char.AncestryChanged:Connect(function(_, parent)
 		if not parent then
 			riders[char] = nil
@@ -167,30 +165,49 @@ end
 -- forward kinematics over the real joints). Applied after the Animator each
 -- frame (PreSimulation) so they win; the local player's Animate script is
 -- switched off while riding (Ride.luau), so there's no walk cycle on water.
+local function refreshJoints(r: Rider): { Rig.Joint }
+	local list = Rig.joints(r.char)
+	table.clear(r.joints)
+	for _, j in list do
+		r.joints[j.Name] = j.inst
+	end
+	r.jointsStale = false
+	return list
+end
+
 local function fitOffset(r: Rider, rideId: string, stance: string): Vector3
 	local k = (r.char:GetAttribute("RideScale") :: number?) or 1
 	local key = string.format("%s|%.3f|%.3f|%d", rideId, k, r.hum.HipHeight, os.clock() // 3)
 	if r.fitKey == key and r.fit then
 		return r.fit
 	end
-	local joints = {}
-	for _, m in r.motors do
-		if m.Parent and m.Part0 and m.Part1 then
-			table.insert(joints, m)
-		end
-	end
+	local joints = refreshJoints(r)
 	local fit = Rides.FIT[rideId] or Vector3.zero
 	local drop = r.hum.HipHeight + r.hrp.Size.Y / 2
 	local target = Vector3.new(0, fit.Y * k - drop, fit.Z * k)
-	r.fit = Rig.fit(joints :: any, r.hrp, stance, target) or Vector3.zero
+	r.fit = Rig.fit(joints, r.hrp, stance, target) or Vector3.zero
 	r.fitKey = key
 	return r.fit
+end
+
+local function resetPose(r: Rider)
+	for _, j in r.joints do
+		if j.Parent then
+			j.Transform = CFrame.new()
+		end
+	end
 end
 
 RunService.PreSimulation:Connect(function()
 	local t = os.clock()
 	for char, r in riders do
-		if r.wasWet and r.motors.Waist then -- R15 only
+		if not r.wasWet then
+			continue
+		end
+		if r.jointsStale then
+			refreshJoints(r)
+		end
+		if r.joints.Waist then -- R15 only
 			local speed = (r.hrp.AssemblyLinearVelocity * Vector3.new(1, 0, 1)).Magnitude
 			local sway = math.clamp(speed / 60, 0.3, 1.5)
 			local rideId = (char:GetAttribute("Ride") :: string?) or "Noodle"
@@ -198,9 +215,9 @@ RunService.PreSimulation:Connect(function()
 			local pose = Rig.POSES[stance] or Rig.POSES.stand
 			local offset = fitOffset(r, rideId, stance)
 			for name, fn in pose do
-				local m = r.motors[name]
-				if m then
-					m.Transform = name == "Root" and CFrame.new(offset) * fn(t, sway) or fn(t, sway)
+				local j = r.joints[name]
+				if j and j.Parent then
+					j.Transform = name == "Root" and CFrame.new(offset) * fn(t, sway) or fn(t, sway)
 				end
 			end
 		end
@@ -217,9 +234,7 @@ local function updateRiders(dt: number)
 		if wet ~= r.wasWet then
 			r.wasWet = wet
 			if not wet then
-				for _, m in r.motors do
-					m.Transform = CFrame.new()
-				end
+				resetPose(r)
 			end
 			if wet then
 				Fx.splash(Vector3.new(pos.X, 0.4, pos.Z), 0.9)

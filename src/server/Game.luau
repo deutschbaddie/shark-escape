@@ -271,13 +271,7 @@ function Game.attachRide(s: Session)
 	char:SetAttribute("Ride", id) -- clients pick the pose + handling from this
 	local model = Rides.build(id)
 	-- size the ride to the body (rides are modelled for the default R15 legs)
-	local joints = {}
-	for _, d in char:GetDescendants() do
-		if d:IsA("Motor6D") and d.Part0 and d.Part1 then
-			table.insert(joints, d)
-		end
-	end
-	local leg = Rig.legLength(joints :: any, hrp)
+	local leg = Rig.legLength(Rig.joints(char), hrp)
 	local k = leg and math.clamp(leg / Rig.REF_LEG, 0.8, 1.35) or 1
 	char:SetAttribute("RideScale", k)
 	if math.abs(k - 1) > 0.02 then

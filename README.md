@@ -15,7 +15,8 @@ Rojo project. Untested in Studio so far.
    If you've changed code since opening Studio, close and reopen the place first (Studio caches modules).
 3. Game Settings: **Max Players = 8** (there are 8 docks), and turn on **Studio access to API
    services** so saving works while testing. Avatars are set to **R15** by the Rojo project
-   (`StarterPlayer.GameSettingsAvatar`); ride poses need R15.
+   (`StarterPlayer.GameSettingsAvatar`); ride poses need R15. Both joint types work: Motor6D rigs and
+   Avatar Joint Upgrade rigs (AnimationConstraints, the default for new games).
 
 ## Uploads (one time)
 - **Icons, one by one:** Studio > Asset Manager > Import each PNG in `assets/icons/single/`, right-click >
@@ -33,6 +34,8 @@ Rojo project. Untested in Studio so far.
   sizes; prints any overlap and draws `tools/preview/rides.png`.
 - `python3 tools/preview/ui.py <path-to-luau>`: lays out the real HUD + notifications at desktop,
   Studio, phone and tablet sizes (`tools/preview/ui_*.png`) and flags tiny text or anything off-screen.
+- `python3 tools/balance/steer.py <path-to-luau>`: runs the real ride steering and compares U-turns,
+  turning round from a stop and 90-degree carves with the old controller.
 
 ## Sharks (rigged, hand-built)
 - `python3 tools/shark_gen.py` writes `assets/sharks/Shark*.glb` (6 variants, 9 bones each).
@@ -43,10 +46,10 @@ Rojo project. Untested in Studio so far.
 
 ## Before publishing
 - Create the gamepasses and dev products and put their ids in `src/shared/Config.luau` (0 means "Soon").
-- Put your group's id in `Config.GroupId`. The CLAIM chest in the plaza then asks players to join it (and like the
-  game) for a reward every 12 h. With 0 it only asks for a like.
+- The group chest uses `Config.GroupId` (set to the game's group, 902411651): the CLAIM chest in the plaza asks
+  players to join it (and like the game) for a reward every 12 h. With 0 it only asks for a like.
 - Pick the sounds listed in ASSETS.md (music, ride loops, UI, shark) and paste their ids into `Config.Sounds`.
-- Choose sounds from the Creator Store and put their ids in `Config.Sounds`. Record every asset id in ASSETS.md.
+  Record every asset id in ASSETS.md.
 
 ## Look
 - Studded simulator style: checkered stud walls with a grass topper down both sides of the ocean

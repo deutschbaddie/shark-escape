@@ -2,6 +2,19 @@
 -- like its ride. Each ride has its own feel (Config.RideFeel): how fast it
 -- gets going, how it coasts, turns, slides, leans, bobs and hops.
 -- Only drives the local character; poses for everyone live in Water.luau.
+--
+-- Steering is camera-relative like walking (push the stick where you want
+-- to go), tuned so it never fights you:
+--   carve     the nose turns toward your input; speed follows the nose (a
+--             little slides out, more on low-grip rides), turns are quicker
+--             when slow
+--   whip      ask for the way you came while moving: brake, spin round in
+--             under half a second, then launch back to full speed
+--   reverse   ask for the way behind you from a stop: the ride backs up
+--             (a tap = a little reverse); keep holding and it swings its
+--             nose round and drives off (a J-turn)
+--   latch     after a whip the target stays put until the stick moves, so a
+--             Follow camera swinging round (phones) can't make you circle
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -29,13 +42,29 @@ type Rig = {
 
 local rig: Rig? = nil
 local active = false
-local heading = 0
 local roll = 0
 local vy = 0
 local airborne = false
 local hopQueued = false
 local controls: any = nil
 local lastPos: Vector3? = nil
+
+-- steering tuning (see the header)
+local TURN_BOOST = 1.4 -- on top of each ride's turn rate
+local SLOW_TURN = 1.7 -- turn-rate multiplier at a standstill (1 at full speed)
+local CARRY = 0.85 -- share of a turn the speed follows (the rest slides out)
+local WHIP_AT = math.rad(110) -- input this far off the nose = turn around
+local WHIP_DONE = math.rad(25)
+local WHIP_RATE = 7.5 -- rad/s at least (180 degrees in ~0.4 s)
+local WHIP_SPEED = 0.35 -- brake to this share of top speed while spinning
+local BRAKE = 0.2 -- seconds from full speed to a stop when braking hard
+local LAUNCH = 0.6 -- seconds of double acceleration after a whip
+local REVERSE_AT = math.rad(140) -- input this far off the nose from a stop = reverse
+local REVERSE_SPEED = 0.45
+local REVERSE_SWING = 0.4 -- hold reverse this long and the nose swings round
+
+export type Steer = { heading: number, whip: boolean, launch: number, reverse: number, latchYaw: number?, latchMv: Vector3? }
+local steerState: Steer = { heading = 0, whip = false, launch = 0, reverse = 0 }
 
 local function getControls()
 	if controls then
@@ -50,22 +79,23 @@ local function getControls()
 	return controls
 end
 
--- input as a flat world direction (camera relative), magnitude 0..1
-local function moveInput(hum: Humanoid): Vector3
+-- input as a flat world direction (camera relative), magnitude 0..1, plus
+-- the raw stick/keys (camera space) so a whip can hold its target
+local function moveInput(hum: Humanoid): (Vector3, Vector3?)
 	local c = getControls()
 	local mv = c and c:GetMoveVector() or Vector3.zero
 	if mv.Magnitude < 0.01 then
 		local md = hum.MoveDirection
-		return Vector3.new(md.X, 0, md.Z)
+		return Vector3.new(md.X, 0, md.Z), nil
 	end
 	local cam = Workspace.CurrentCamera
 	local look = cam.CFrame.LookVector * Vector3.new(1, 0, 1)
 	local right = cam.CFrame.RightVector * Vector3.new(1, 0, 1)
 	if look.Magnitude < 0.01 then
-		return Vector3.zero
+		return Vector3.zero, nil
 	end
 	local d = right.Unit * mv.X + look.Unit * -mv.Z
-	return d.Magnitude > 1 and d.Unit or d
+	return d.Magnitude > 1 and d.Unit or d, mv
 end
 
 local function yawOf(v: Vector3): number
@@ -82,6 +112,101 @@ local function approach(v: number, target: number, step: number): number
 		return math.min(v + step, target)
 	end
 	return math.max(v - step, target)
+end
+
+local function wrap(a: number): number
+	return (a + math.pi) % (2 * math.pi) - math.pi
+end
+
+-- One step of steering + throttle. Pure (no instances) so
+-- tools/balance/steer.py can simulate it. v = current flat velocity; returns the new flat velocity, the
+-- yaw rate (for leaning) and "whip" when a turn-around just started.
+function Ride.steer(st: Steer, input: Vector3, mv: Vector3?, v: Vector3, feel: Config.RideFeel, top: number, dt: number): (Vector3, number, string?)
+	local m = math.min(input.Magnitude, 1)
+	local fwd0 = Vector3.new(-math.sin(st.heading), 0, -math.cos(st.heading))
+	local speed = v:Dot(fwd0)
+	local speedK = math.clamp(speed / top, 0, 1)
+	local event = nil
+
+	-- where the stick points (held fixed during a whip while the stick is)
+	local want = m > 0.05 and yawOf(input) or nil
+	if st.latchYaw and mv and st.latchMv and (mv - st.latchMv).Magnitude < 0.35 then
+		want = st.latchYaw
+	else
+		st.latchYaw, st.latchMv = nil, nil
+	end
+	local off = want and math.abs(wrap(want - st.heading)) or 0
+
+	-- modes
+	if not want then
+		st.whip, st.reverse = false, 0
+	elseif st.whip then
+		if off < WHIP_DONE then
+			-- done; the target stays latched until the stick moves, so a
+			-- camera swinging round behind you doesn't turn you back again
+			st.whip = false
+			st.launch = LAUNCH
+		end
+	elseif st.reverse > 0 or (off > REVERSE_AT and speed < top * 0.3) then
+		if off > WHIP_AT then
+			st.reverse += dt
+			if st.reverse > REVERSE_SWING then -- J-turn: swing the nose round
+				st.whip, st.reverse = true, 0
+				st.latchYaw, st.latchMv = want, mv
+				event = "whip"
+			end
+		else
+			st.reverse = 0
+		end
+	elseif off > WHIP_AT then
+		st.whip = true
+		st.latchYaw, st.latchMv = want, mv
+		event = "whip"
+	end
+	st.launch = math.max(st.launch - dt, 0)
+
+	-- turn the nose
+	local before = st.heading
+	if want and st.reverse == 0 then
+		local rate = feel.turn * TURN_BOOST * (SLOW_TURN - (SLOW_TURN - 1) * speedK)
+		if st.whip then
+			rate = math.max(rate * 2, WHIP_RATE)
+		end
+		st.heading = turnToward(st.heading, want, rate * dt)
+	end
+	local turned = wrap(st.heading - before)
+
+	-- forward speed follows the nose round a carve (not while backing up)
+	local flat = v
+	if speed > 0 then
+		flat = CFrame.Angles(0, turned * CARRY, 0) * flat
+	end
+	local fwd = Vector3.new(-math.sin(st.heading), 0, -math.cos(st.heading))
+	local side = Vector3.new(math.cos(st.heading), 0, -math.sin(st.heading))
+	local vf, vs = flat:Dot(fwd), flat:Dot(side)
+
+	-- throttle
+	local target, rate
+	if st.reverse > 0 then
+		target = -top * REVERSE_SPEED * m
+		rate = top / math.max(feel.accel, 0.3)
+	elseif st.whip then
+		target = math.min(vf, top * WHIP_SPEED)
+		rate = top / BRAKE
+	else
+		local align = want and math.clamp(math.cos(off) * 0.5 + 0.5, 0, 1) or 0
+		target = top * m * align
+		if target > vf then
+			rate = (top / feel.accel) * (st.launch > 0 and 2 or 1)
+		elseif vf < 0 then
+			rate = top / BRAKE -- stop backing up at once
+		else
+			rate = top / feel.coast
+		end
+	end
+	vf = approach(vf, target, rate * dt)
+	vs *= math.exp(-feel.grip * dt)
+	return fwd * vf + side * vs, turned / math.max(dt, 1e-3), event
 end
 
 ----------------------------------------------------------------- animation on/off
@@ -132,7 +257,7 @@ end
 local function enter(r: Rig)
 	active = true
 	local look = r.hrp.CFrame.LookVector
-	heading = yawOf(look)
+	steerState = { heading = yawOf(look), whip = false, launch = 0, reverse = 0 }
 	roll, vy, airborne = 0, 0, false
 	r.hum.PlatformStand = true
 	r.lv.MaxForce = r.hrp.AssemblyMass * 900
@@ -178,33 +303,22 @@ local function step(dt: number)
 	end
 	-- teleported (gate bounce, respawn): take the new facing
 	if lastPos and (pos - lastPos).Magnitude > 40 then
-		heading = yawOf(hrp.CFrame.LookVector)
+		steerState = { heading = yawOf(hrp.CFrame.LookVector), whip = false, launch = 0, reverse = 0 }
 	end
 	lastPos = pos
 	local feel = Config.feel(r.char:GetAttribute("Ride") :: string?)
 	local top = math.max(hum.WalkSpeed, 8)
 	local t = os.clock()
 
-	-- steering: the ride turns toward your input at its own rate
-	local input = moveInput(hum)
-	local m = math.min(input.Magnitude, 1)
-	local before = heading
-	if m > 0.05 then
-		heading = turnToward(heading, yawOf(input), feel.turn * dt)
+	-- steering + throttle (Ride.steer)
+	local input, mv = moveInput(hum)
+	local flat, yawRate, event = Ride.steer(steerState, input, mv, hrp.AssemblyLinearVelocity * Vector3.new(1, 0, 1), feel, top, dt)
+	local heading = steerState.heading
+	local vf = flat:Dot(Vector3.new(-math.sin(heading), 0, -math.cos(heading)))
+	if event == "whip" and not airborne then
+		Fx.splash(Vector3.new(pos.X, 0.4, pos.Z), 1.1)
+		Fx.sound("splash", 0.35, 1.25)
 	end
-	local yawRate = ((heading - before + math.pi) % (2 * math.pi) - math.pi) / math.max(dt, 1e-3)
-	local fwd = Vector3.new(-math.sin(heading), 0, -math.cos(heading))
-	local side = Vector3.new(math.cos(heading), 0, -math.sin(heading))
-
-	-- throttle along the nose, slide sideways until grip catches it
-	local v = hrp.AssemblyLinearVelocity
-	local vf = v:Dot(fwd)
-	local vs = v:Dot(side)
-	local align = m > 0.05 and math.clamp(input.Unit:Dot(fwd) * 0.5 + 0.5, 0, 1) or 0
-	local target = top * m * align
-	local rate = (target > vf) and (top / feel.accel) or (top / feel.coast)
-	vf = approach(vf, target, rate * dt)
-	vs *= math.exp(-feel.grip * dt)
 
 	-- height: bob on the surface, or fall back down after a hop
 	local base = rest(r)
@@ -229,7 +343,7 @@ local function step(dt: number)
 	else
 		vy = (targetY - pos.Y) * 10
 	end
-	r.lv.VectorVelocity = fwd * vf + side * vs + Vector3.new(0, vy, 0)
+	r.lv.VectorVelocity = flat + Vector3.new(0, vy, 0)
 
 	-- attitude: lean into turns, nose up at speed, idle wobble
 	local speedK = math.clamp(vf / top, 0, 1)

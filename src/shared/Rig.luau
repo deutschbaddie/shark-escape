@@ -7,8 +7,44 @@
 
 local Rig = {}
 
--- what Rig.solve needs from a joint (a Motor6D has all of these)
-export type Joint = { Name: string, Part0: any, Part1: any, C0: CFrame, C1: CFrame }
+-- what Rig.solve needs from a joint; `inst` is the real joint to pose
+export type Joint = { Name: string, Part0: any, Part1: any, C0: CFrame, C1: CFrame, inst: any? }
+
+-- R15 joint name by the body part it moves. Avatar Joint Upgrade characters
+-- (the default for new games) spawn with AnimationConstraints instead of
+-- Motor6Ds, so joints are found by class and named by the part they drive.
+local JOINT_OF = {
+	LowerTorso = "Root", UpperTorso = "Waist", Head = "Neck",
+	LeftUpperArm = "LeftShoulder", LeftLowerArm = "LeftElbow", LeftHand = "LeftWrist",
+	RightUpperArm = "RightShoulder", RightLowerArm = "RightElbow", RightHand = "RightWrist",
+	LeftUpperLeg = "LeftHip", LeftLowerLeg = "LeftKnee", LeftFoot = "LeftAnkle",
+	RightUpperLeg = "RightHip", RightLowerLeg = "RightKnee", RightFoot = "RightAnkle",
+}
+
+function Rig.isJoint(d: Instance): boolean
+	return d:IsA("Motor6D") or d:IsA("AnimationConstraint")
+end
+
+-- every animatable joint in a character, Motor6D or AnimationConstraint
+-- (C0/C1 are read fresh: rig attachments move when body scale changes)
+function Rig.joints(char: Instance): { Joint }
+	local out = {}
+	for _, d in char:GetDescendants() do
+		local p0, p1, c0, c1
+		if d:IsA("Motor6D") then
+			p0, p1, c0, c1 = d.Part0, d.Part1, d.C0, d.C1
+		elseif d:IsA("AnimationConstraint") then
+			local a0, a1 = d.Attachment0, d.Attachment1
+			if a0 and a1 then
+				p0, p1, c0, c1 = a0.Parent, a1.Parent, a0.CFrame, a1.CFrame
+			end
+		end
+		if p0 and p1 and p0:IsA("BasePart") and p1:IsA("BasePart") then
+			table.insert(out, { Name = JOINT_OF[p1.Name] or d.Name, Part0 = p0, Part1 = p1, C0 = c0, C1 = c1, inst = d })
+		end
+	end
+	return out
+end
 export type PoseFn = (number, number) -> CFrame
 
 local A = CFrame.Angles
