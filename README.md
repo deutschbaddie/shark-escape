@@ -36,6 +36,8 @@ Rojo project. Untested in Studio so far.
   Studio, phone and tablet sizes (`tools/preview/ui_*.png`) and flags tiny text or anything off-screen.
 - `python3 tools/balance/steer.py <path-to-luau>`: runs the real ride steering and compares U-turns,
   turning round from a stop and 90-degree carves with the old controller.
+- `python3 tools/audio/check.py <path-to-luau> [sound-folder]`: checks every sound slot (files, layers,
+  loops inside the files) and lists the files that still need an id.
 
 ## Sharks (rigged, hand-built)
 - `python3 tools/shark_gen.py` writes `assets/sharks/Shark*.glb` (6 variants, 9 bones each).
@@ -48,8 +50,10 @@ Rojo project. Untested in Studio so far.
 - Create the gamepasses and dev products and put their ids in `src/shared/Config.luau` (0 means "Soon").
 - The group chest uses `Config.GroupId` (set to the game's group, 902411651): the CLAIM chest in the plaza asks
   players to join it (and like the game) for a reward every 12 h. With 0 it only asks for a like.
-- Pick the sounds listed in ASSETS.md (music, ride loops, UI, shark) and paste their ids into `Config.Sounds`.
-  Record every asset id in ASSETS.md.
+- Sounds: upload the 33 sound files listed in ASSETS.md exactly as they are (as the game's owner) and put their ids
+  in `Config.SoundFiles`; `python3 tools/audio/upload.py --key <api key> --group 902411651 --dir <folder>` does
+  both. All trimming, looping, pitch and EQ happen in the game (`Config.SoundSlots`), so files never need
+  re-uploading. The music is `Config.Sounds.music`.
 
 ## Look
 - Studded simulator style: checkered stud walls with a grass topper down both sides of the ocean

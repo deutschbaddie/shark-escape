@@ -7,8 +7,8 @@ local SoundService = game:GetService("SoundService")
 local Debris = game:GetService("Debris")
 local Workspace = game:GetService("Workspace")
 
-local Config = require(game.ReplicatedStorage.Shared.Config)
 local UI = require(script.Parent.UI)
+local Sounds = require(script.Parent.Sounds)
 
 local Fx = {}
 
@@ -23,27 +23,35 @@ Fx.TEX = {
 }
 
 ----------------------------------------------------------------- sound
-function Fx.sound(name: string, volume: number?, pitch: number?, at: Vector3?)
-	local id = Config.Sounds[name]
-	if not id or id == "" then
+-- one-shot by slot name (Config.SoundSlots via Sounds.luau). `at` makes it
+-- 3D: a world position, or a part/attachment it follows (a rider's root)
+local UI_SOUNDS = { uiClick = true, uiOpen = true, uiClose = true, uiError = true, uiToast = true, uiTakeover = true }
+function Fx.sound(name: string, volume: number?, pitch: number?, at: (Vector3 | Instance)?)
+	if not Sounds.has(name) then
 		return
 	end
-	local s = Instance.new("Sound")
-	s.SoundId = id
-	s.Volume = volume or 0.6
-	s.PlaybackSpeed = pitch or 1
-	if at then
+	local group = UI_SOUNDS[name] and "UI" or "Effects"
+	if typeof(at) == "Vector3" then
 		local a = Instance.new("Attachment")
 		a.WorldPosition = at
 		a.Parent = Workspace.Terrain
-		s.RollOffMaxDistance = 300
-		s.Parent = a
-		Debris:AddItem(a, 6)
+		local s = Sounds.play(name, volume, pitch, a, group)
+		if s then
+			s.RollOffMode = Enum.RollOffMode.InverseTapered
+			s.RollOffMinDistance = 12
+			s.RollOffMaxDistance = 300
+		end
+		Debris:AddItem(a, 8)
+	elseif typeof(at) == "Instance" then
+		local s = Sounds.play(name, volume, pitch, at, group)
+		if s then
+			s.RollOffMode = Enum.RollOffMode.InverseTapered
+			s.RollOffMinDistance = 12
+			s.RollOffMaxDistance = 200
+		end
 	else
-		s.Parent = SoundService
-		Debris:AddItem(s, 6)
+		Sounds.play(name, volume, pitch, SoundService, group)
 	end
-	s:Play()
 end
 
 ----------------------------------------------------------------- 3D bursts

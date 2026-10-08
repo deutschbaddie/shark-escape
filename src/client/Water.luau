@@ -240,6 +240,8 @@ local function updateRiders(dt: number)
 				Fx.splash(Vector3.new(pos.X, 0.4, pos.Z), 0.9)
 				if char == myChar then
 					Fx.sound("splash", 0.5, 1 + math.random() * 0.2)
+				else
+					Fx.sound("splash", 0.45, 1 + math.random() * 0.2, Vector3.new(pos.X, 1, pos.Z)) -- 3D
 				end
 			end
 			local run = r.hrp:FindFirstChild("Running")

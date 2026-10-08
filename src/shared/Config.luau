@@ -560,7 +560,8 @@ Config.Daily = {
 Config.DAILY_GAP_HOURS, Config.DAILY_RESET_HOURS = 20, 48
 
 Config.Sounds = {
-	-- built-in Roblox client sounds (rbxasset://) - no upload needed
+	-- built-in Roblox client sounds (rbxasset://): used until the uploaded
+	-- files below have ids, so the game is never silent
 	splash = "rbxasset://sounds/impact_water.mp3",
 	swim = "rbxasset://sounds/action_swim.mp3",
 	chomp = "rbxasset://sounds/impact_explosion_03.mp3",
@@ -568,50 +569,141 @@ Config.Sounds = {
 	buy = "rbxasset://sounds/electronicpingshort.wav",
 	grab = "rbxasset://sounds/impact_water.mp3",
 
-	-- everything below is empty until you upload/pick it (ASSETS.md has the list)
-	-- music (looped, crossfaded by Audio.luau)
-	musicBeach = "", -- on land: dock, plaza, shops
-	musicOcean = "", -- out on the water, calm
-	musicDeep = "", -- Deep Blue + The Abyss
-	musicHunt = "", -- shark warning + hunt
-	-- ambience (looped)
-	ambWaves = "",
-	ambGulls = "",
-	-- UI
-	uiClick = "",
-	uiOpen = "",
-	uiClose = "",
-	uiError = "",
-	uiToast = "",
-	uiTakeover = "",
-	-- catching + money
-	grabRare = "",
-	legendary = "",
-	lucky = "",
-	discover = "",
-	deposit = "",
-	-- progression
-	rideNew = "",
-	zoneUnlock = "",
-	rebirth = "",
-	-- shark
-	sharkAlarm = "",
-	sharkCharge = "",
-	dodge = "",
-	spat = "",
-	-- ride loops (pitch and volume follow your speed)
-	rideSplash = "",
-	rideDuck = "",
-	rideKick = "",
-	rideSurf = "",
-	rideBubbles = "",
-	rideMotor = "",
-	rideJetSki = "",
-	rideBoat = "",
-	rideDolphin = "",
-	rideRocket = "",
-	duckSqueak = "",
+	-- music (Audio.luau). One track for the whole game; give a place its own
+	-- track by filling its slot (the hunt slot, if empty, ducks the main track)
+	music = "rbxassetid://1846088038",
+	musicBeach = "",
+	musicOcean = "",
+	musicDeep = "",
+	musicHunt = "",
 }
+
+-- 1) The Roblox id of every uploaded sound file (upload them exactly as they
+--    are; the names are the file names). Paste the number, with or without
+--    "rbxassetid://". Empty = that sound uses its built-in fallback or is
+--    silent. Sources and licenses: ASSETS.md.
+Config.SoundFiles = {
+	["mixkit-soap-bubble-sound-2925"] = "",
+	["mixkit-explainer-video-pops-whoosh-light-pop-3005"] = "",
+	["mixkit-boing-hit-sound-2894"] = "",
+	["mixkit-dry-pop-up-notification-alert-2356"] = "",
+	["mixkit-movie-whoosh-impact-presentation-2903"] = "",
+	["mixkit-water-bubble-1317"] = "",
+	["mixkit-sea-water-splash-1198"] = "",
+	["mixkit-fairy-magic-sparkle-871"] = "",
+	["mixkit-successful-horns-fanfare-722"] = "",
+	["mixkit-melodic-bonus-collect-1938"] = "",
+	["mixkit-page-forward-single-chime-1107"] = "",
+	["mixkit-liquid-bubble-3000"] = "",
+	["mixkit-clinking-coins-1993"] = "",
+	["mixkit-money-bag-drop-1989"] = "",
+	["184438__capslok__cash-register-fake"] = "",
+	["mixkit-unlock-new-item-game-notification-254"] = "",
+	["mixkit-achievement-completed-2068"] = "",
+	["mixkit-facility-alarm-sound-999"] = "",
+	["mixkit-aggressive-beast-roar-13"] = "",
+	["528962__steenish__crunch"] = "",
+	["445118__breviceps__cartoon-splat"] = "",
+	["mixkit-arrow-whoosh-1491"] = "",
+	["350917__csaszi__rubber-duck-csg"] = "",
+	["456151__jfournier18__dolphin-noise"] = "",
+	["mixkit-sea-swimming-loop-1181"] = "",
+	["188199__splicesound__paddle-boat-on-water-2"] = "",
+	["443870__eardeer__water_flow_dam_close_loop"] = "",
+	["mixkit-deep-water-bubbles-1321"] = "",
+	["454199__kyles__speed-boat-outboard-motor-medium-high-gear-waves-splash"] = "",
+	["212441__wjauch__jetski"] = "",
+	["171106__qubodup__rocket-flight-loop"] = "",
+	["mixkit-sea-waves-loop-1196"] = "",
+	["seagulls_distant"] = "",
+}
+
+-- 2) What every game sound plays. All editing happens in the game with
+--    Roblox's own sound settings and effects, so files never need re-uploading:
+--      from/to   play only that part of the file (seconds)
+--      loop      loop just that part (points picked where the waveform lines up)
+--      gain      loudness match between files (measured from the files), times
+--                the volume the game asks for
+--      pitch     playback speed (lower = deeper and slower)
+--      eq        { low, mid, high } in dB (EqualizerSoundEffect)
+--      fade      fade out over the last N seconds
+--      layers    other entries played with it at the same time
+--      every     ride loops only: { entry, min gap s, max gap s, volume } now and then
+--      fallback  entry to use while this one's file has no id
+export type SoundSlot = {
+	file: string, from: number?, to: number?, loop: { number }?, gain: number?, pitch: number?,
+	eq: { number }?, fade: number?, layers: { string }?, every: { any }?, fallback: string?,
+}
+local F = {
+	soap = "mixkit-soap-bubble-sound-2925", pop = "mixkit-explainer-video-pops-whoosh-light-pop-3005",
+	boing = "mixkit-boing-hit-sound-2894", dryPop = "mixkit-dry-pop-up-notification-alert-2356",
+	whoosh = "mixkit-movie-whoosh-impact-presentation-2903", bubble = "mixkit-water-bubble-1317",
+	splash = "mixkit-sea-water-splash-1198", sparkle = "mixkit-fairy-magic-sparkle-871",
+	fanfare = "mixkit-successful-horns-fanfare-722", bonus = "mixkit-melodic-bonus-collect-1938",
+	chime = "mixkit-page-forward-single-chime-1107", liquid = "mixkit-liquid-bubble-3000",
+	coins = "mixkit-clinking-coins-1993", bag = "mixkit-money-bag-drop-1989",
+	register = "184438__capslok__cash-register-fake", unlock = "mixkit-unlock-new-item-game-notification-254",
+	achieve = "mixkit-achievement-completed-2068", alarm = "mixkit-facility-alarm-sound-999",
+	roar = "mixkit-aggressive-beast-roar-13", crunch = "528962__steenish__crunch",
+	splat = "445118__breviceps__cartoon-splat", arrow = "mixkit-arrow-whoosh-1491",
+	duck = "350917__csaszi__rubber-duck-csg", dolphin = "456151__jfournier18__dolphin-noise",
+	swim = "mixkit-sea-swimming-loop-1181", paddle = "188199__splicesound__paddle-boat-on-water-2",
+	flow = "443870__eardeer__water_flow_dam_close_loop", deep = "mixkit-deep-water-bubbles-1321",
+	boat = "454199__kyles__speed-boat-outboard-motor-medium-high-gear-waves-splash", jetski = "212441__wjauch__jetski",
+	rocket = "171106__qubodup__rocket-flight-loop", waves = "mixkit-sea-waves-loop-1196", gulls = "seagulls_distant",
+}
+Config.SoundSlots = {
+	-- UI
+	uiClick = { file = F.soap, from = 0, to = 0.13, gain = 0.45 },
+	uiOpen = { file = F.pop, gain = 0.4 },
+	uiClose = { file = F.pop, pitch = 0.8, gain = 0.4 }, -- the open pop, lower
+	uiError = { file = F.boing, from = 0, to = 0.5, gain = 0.21, fade = 0.1 },
+	uiToast = { file = F.dryPop, gain = 0.81 },
+	uiTakeover = { file = F.whoosh, from = 0.1, to = 2.6, gain = 0.46, fade = 0.5 },
+	-- catching + money
+	grab = { file = F.bubble, gain = 1.06, layers = { "grabSplash" } },
+	grabSplash = { file = F.splash, from = 0.45, to = 1.0, gain = 0.46, fade = 0.15 },
+	grabRare = { file = F.sparkle, gain = 0.69 },
+	legendary = { file = F.fanfare, gain = 0.69 },
+	lucky = { file = F.bonus, gain = 0.56 },
+	discover = { file = F.chime, gain = 0.61 },
+	deposit = { file = F.liquid, from = 0, to = 0.6, gain = 0.43 },
+	coin = { file = F.coins, from = 0.03, to = 0.75, gain = 0.73 },
+	collect = { file = F.bag, from = 0.08, to = 0.5, gain = 1.1, fallback = "coin" },
+	buy = { file = F.register, from = 0.05, to = 1.6, gain = 1.75, fade = 0.3 },
+	-- progression
+	rideNew = { file = F.unlock, gain = 0.95 },
+	zoneUnlock = { file = F.achieve, gain = 2.39 },
+	rebirth = { file = F.achieve, pitch = 0.84, gain = 2.39, layers = { "rebirthWhoosh" } },
+	rebirthWhoosh = { file = F.whoosh, from = 0.1, to = 2.6, gain = 0.23, fade = 0.5 },
+	-- shark
+	sharkAlarm = { file = F.alarm, from = 0, to = 2.0, gain = 0.58, fade = 0.25 },
+	sharkCharge = { file = F.roar, pitch = 0.78, eq = { 2, 0, -10 }, gain = 0.42, layers = { "chargeSplash" } },
+	chargeSplash = { file = F.splash, from = 0.45, to = 1.3, gain = 0.56, fade = 0.2 },
+	chomp = { file = F.crunch, pitch = 0.8, gain = 1.27, layers = { "chompSplat" } },
+	chompSplat = { file = F.splat, pitch = 0.85, gain = 0.21 },
+	dodge = { file = F.arrow, from = 0.1, to = 0.5, gain = 0.44 },
+	spat = { file = F.splat, gain = 0.46 },
+	splash = { file = F.splash, from = 0.45, to = 1.3, gain = 1.12, fade = 0.2 },
+	-- rides (3D loops; pitch and volume follow speed)
+	duckSqueak = { file = F.duck, from = 0.08, to = 0.66, gain = 0.82 },
+	dolphinCall = { file = F.dolphin, from = 0.43, to = 2.58, gain = 0.31 },
+	rideSplash = { file = F.swim, loop = { 2.782, 8.443 }, gain = 0.72 },
+	rideKick = { file = F.swim, loop = { 1.426, 4.198 }, pitch = 1.12, gain = 0.72 },
+	rideDuck = { file = F.paddle, loop = { 40.008, 43.98 }, gain = 0.73, every = { "duckSqueak", 5, 10, 0.3 } },
+	rideSurf = { file = F.flow, loop = { 9.95, 14.215 }, eq = { -6, 0, 2 }, gain = 0.36 },
+	rideBubbles = { file = F.deep, loop = { 0, 1.12 }, gain = 0.33 },
+	rideMotor = { file = F.boat, loop = { 2.015, 4.801 }, pitch = 0.82, gain = 0.48 },
+	rideJetSki = { file = F.jetski, loop = { 7.476, 9.306 }, gain = 0.74 },
+	rideBoat = { file = F.boat, loop = { 5.548, 8.76 }, gain = 0.42 },
+	rideDolphin = { file = F.swim, loop = { 2.782, 8.443 }, pitch = 1.05, gain = 0.72, every = { "dolphinCall", 4, 8, 0.45 } },
+	rideRocket = { file = F.rocket, gain = 2.9 }, -- already a seamless loop
+	-- ambience
+	ambWaves = { file = F.waves, gain = 0.67 }, -- open-sea bed (a seamless loop)
+	ambShore = { file = F.waves, loop = { 25.95, 36.203 }, pitch = 1.08, eq = { -8, 0, 2 }, gain = 0.79 }, -- small waves on the sand
+	ambGulls = { file = F.gulls, loop = { 0.036, 29.93 }, gain = 25 }, -- a very quiet recording
+	ambTank = { file = F.deep, loop = { 0, 2.4 }, pitch = 0.7, eq = { 0, 0, -8 }, gain = 0.26 }, -- a bloop every few seconds
+} :: { [string]: SoundSlot }
 
 -- which loop each ride plays, and its base pitch
 Config.RideSound = {

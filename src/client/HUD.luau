@@ -624,7 +624,7 @@ handlers.collect = function(d)
 		Fx.confetti(pos, { C.money, C.gold })
 		Fx.popup3D(pos + Vector3.new(0, 5, 0), "+$" .. UI.short(d.amount), C.money, true)
 	end
-	Fx.sound("coin", 0.7)
+	Fx.sound("collect", 0.7)
 	UI.pop(coinsLabel, 1.35)
 end
 
