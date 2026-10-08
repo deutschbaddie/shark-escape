@@ -330,6 +330,60 @@ function Water.setSafeGlow(on: boolean)
 	end
 end
 
+-- island shelter (SharkView drives it): the ring of an island you're sheltering
+-- on drains green -> yellow -> red, then flashes red once it can't protect you
+local RING_GREEN = Color3.fromRGB(80, 255, 140)
+local RING_YELLOW = Color3.fromRGB(255, 220, 60)
+local RING_RED = Color3.fromRGB(255, 50, 60)
+local ringByIsland: { [number]: BasePart } = {}
+local ringScanAt = -1e9
+
+local function islandRing(i: number): BasePart?
+	local ring = ringByIsland[i]
+	if ring and ring.Parent then
+		return ring
+	end
+	if os.clock() - ringScanAt < 2 then
+		return nil
+	end
+	ringScanAt = os.clock()
+	for _, model in CollectionService:GetTagged("Island") do
+		local r = model:FindFirstChild("SafeRing", true)
+		if r and r:IsA("BasePart") then
+			local best, bestD = nil, math.huge
+			for j, island in Layout.Islands do
+				local d = Vector2.new(r.Position.X - island.pos.X, r.Position.Z - island.pos.Z).Magnitude
+				if d < bestD then
+					best, bestD = j, d
+				end
+			end
+			if best and bestD < 4 then
+				ringByIsland[best] = r
+			end
+		end
+	end
+	return ringByIsland[i]
+end
+
+-- frac = share of the shelter left (0 = used up), nil = back to normal
+function Water.setIslandShelter(i: number, frac: number?)
+	local ring = islandRing(i)
+	if not ring then
+		return
+	end
+	if frac == nil then
+		ring.Color = RING_GREEN
+	elseif frac > 0.5 then
+		ring.Color = RING_YELLOW:Lerp(RING_GREEN, (frac - 0.5) * 2)
+	elseif frac > 0 then
+		ring.Color = RING_RED:Lerp(RING_YELLOW, frac * 2)
+	else
+		local pulse = 0.5 + 0.5 * math.sin(os.clock() * 12)
+		ring.Color = RING_RED:Lerp(Color3.fromRGB(90, 0, 10), pulse)
+		ring.Transparency = 0.1
+	end
+end
+
 function Water.start()
 	for _, p in Players:GetPlayers() do
 		trackPlayer(p)

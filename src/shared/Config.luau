@@ -415,14 +415,21 @@ Config.Codes = {
 
 ----------------------------------------------------------------- sharks
 Config.Shark = {
-	cycle = 80, -- seconds between attacks (calm time is most of it)
+	cycle = 80, -- average seconds between attacks (HUD fallback; real gaps are random)
 	firstAttack = 70,
 	warning = 5, -- "SHARK INCOMING" countdown: time to get to sand
-	hunt = 22,
+	hunt = 22, -- average hunt (HUD fallback)
+	-- randomized so hunts can't be timed to the second
+	calmMin = 50, calmMax = 92, -- calm between the end of a hunt and the next warning
+	huntMin = 18, huntMax = 28,
+	doubleChance = 0.25, -- two sharks at once (zones from doubleFromZone out)
+	doubleFromZone = 3,
 	spawnDistance = 46,
-	-- a hunting shark circles you once (a tightening spiral), then charges.
-	-- The charge is always faster than you: reach sand / an island, or swerve
-	-- at the last second (it turns slowly at full speed) and it overshoots.
+	-- a hunting shark circles you once (a tightening spiral), charges, then
+	-- LUNGES: it leaps out of the water at where you'll be (your velocity x
+	-- the flight time). A red ring marks the landing spot the moment it
+	-- jumps: hold course and it lands on you; whip, turn hard or hop and it
+	-- splashes down empty ("DODGED!") and has to come round again.
 	stalk = 2.6, -- seconds of circling before the first charge
 	recircle = 1.3, -- after a miss
 	stalkRadius = 24,
@@ -431,11 +438,53 @@ Config.Shark = {
 	chargeVsPlayer = 1.22, -- ...and never slower than this x your top speed
 	chargeRadius = 26, -- turning circle while charging (studs): same feel at any speed
 	chargeGiveUp = 4,
+	lungeRange = 22, -- commits to the leap this close (studs)...
+	lungeRangeMax = 32, -- ...a bit further when you're fast
+	lungeMinCharge = 0.5, -- seconds of charging ("IT'S CHARGING!") before it can leap
+	lungeLead = 1.0, -- aims at your velocity x flight time x this
+	lungeHop = 3, -- this high above the water at landing = you hopped over it
+	lungeGap = 1.4, -- two sharks on you: the second waits this long after a landing
 	maxHunters = 24,
 	newPlayerGrace = 150, -- seconds before a brand-new player can be hunted
 	eatenTime = 3.0, -- length of the bite cutscene before you wash up
 	frenzyLuck = 0.3, -- extra chance to bump a grab up a rarity while it hunts
+	-- islands are shelter, not a bunker: each island covers you this long per
+	-- hunt (a different island = a fresh timer), then the shark can reach you
+	islandShelter = 9,
+	islandWarn = 3, -- "Island sinking! Move!" this many seconds before
+	-- a carried creature wriggles free if you take too long to bring it home
+	freshBase = 45, -- seconds (Lagoon)...
+	freshPerZone = 3, -- ...+ this per zone deeper (Abyss: 60)
+	freshWarn = 10,
 }
+
+-- lunge tuning for a player whose top speed is `speed`, vs a shark of length
+-- L: flight time (s), bite radius (studs), commit range (studs). Slow players
+-- get a longer flight and a tighter bite so a late swerve still works.
+function Config.lunge(speed: number, L: number): (number, number, number)
+	local k = math.clamp((speed - 16) / 234, 0, 1)
+	local time = 1.0 - 0.2 * k
+	local radius = math.clamp(L * 0.35, 5, 7.5) * (0.85 + 0.15 * k)
+	local range = math.clamp(Config.Shark.lungeRange + speed * 0.04, Config.Shark.lungeRange, Config.Shark.lungeRangeMax)
+	return time, radius, range
+end
+
+-- how far a rider going `speed` (changing at `accel` studs/s^2, capped at 0
+-- and `top`) travels in `time`: where the lunge aims along your course
+function Config.lungeTravel(speed: number, accel: number, top: number, time: number): number
+	local goal = accel >= 0 and math.max(top, speed) or 0
+	if math.abs(accel) < 1e-3 then
+		return speed * time
+	end
+	local reach = math.clamp((goal - speed) / accel, 0, time)
+	return speed * reach + 0.5 * accel * reach * reach + goal * (time - reach)
+end
+
+-- how long a carried creature stays in your hands from zone zoneId
+function Config.freshTime(zoneId: string?): number
+	local zone = zoneId and Config.zoneById(zoneId)
+	return Config.Shark.freshBase + (zone and zone.index - 1 or 0) * Config.Shark.freshPerZone
+end
 
 ----------------------------------------------------------------- rebirth
 Config.Rebirth = { speed = 25000, mult = 1.5 }

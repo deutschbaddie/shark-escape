@@ -6,11 +6,13 @@
 --             One at a time, in order.
 --   word      a punchy center word (LUCKY!, DODGED!, PTOOEY!). Shares center
 --             stage with takeovers and never stacks (one waits, extras drop).
---   banner    the top-center title (plain outlined text, like "🌴 Lagoon 🌴").
---             One at a time: the highest priority shows,
---             the rest wait their turn. Sticky ones (shark status, tutorial
---             step) stay until cleared and briefly give way to newer ones.
---   toast     small outlined lines under the banner. Two at most.
+--   banner    the top-center message. A compact navy card (tutorial step
+--             with its "1/5" chip, shark status, tank full...) or, for
+--             `big` ones (zone titles), plain hero text. One at a time: the
+--             highest priority shows, the rest wait their turn. Sticky ones
+--             (shark status, tutorial step) stay until cleared and briefly
+--             give way to newer ones. `compact` folds a card to one slim line.
+--   toast     small navy pills with an accent edge under the banner. Two at most.
 --   status    the quiet line at the very top (distance at sea, $/day offline).
 -- Timers pause while something bigger is up, so nothing is missed.
 
@@ -26,10 +28,23 @@ Notify.onTakeover = nil :: ((boolean) -> ())?
 
 local player = Players.LocalPlayer
 local C = UI.C
+local T = UI.T
+local SP = UI.SP
 
-export type BannerOpts = { sub: string?, color: Color3?, priority: number?, time: number?, key: string?, sticky: boolean?, big: boolean? }
+export type BannerOpts = {
+	sub: string?,
+	color: Color3?,
+	priority: number?,
+	time: number?,
+	key: string?,
+	sticky: boolean?,
+	big: boolean?,
+	step: string?, -- tutorial step chip ("1/5")
+	compact: boolean?, -- fold the card to one slim line
+	icon: string?, -- UI.icon name shown on the card's left
+}
 type Banner = BannerOpts & { text: string, left: number, order: number, born: number }
-type Center = { kind: string, text: string, sub: string?, color: Color3, time: number }
+type Center = { kind: string, text: string, sub: string?, color: Color3, time: number, icon: string? }
 
 local gui: ScreenGui
 local top: Frame
@@ -41,6 +56,7 @@ local stage: Frame
 local banners: { Banner } = {}
 local shownBanner: Banner? = nil
 local bannerFrame: Frame? = nil
+local bannerRefresh: ((Banner) -> ())? = nil
 local order = 0
 
 local toastQueue: { { text: string, color: Color3 } } = {}
@@ -55,17 +71,43 @@ local function suppressed(): boolean
 end
 
 ----------------------------------------------------------------- build
--- Every line is plain outlined text (no pill, no box), in a fixed-height row
--- that the text scales to fit: long lines shrink instead of getting cut off.
-local WIDTH = 1000
-local function label(parent: Instance, text: string, height: number, color: Color3?, font: Enum.Font?): TextLabel
-	local t = UI.outlined(parent, text, { TextScaled = true, Size = UDim2.fromOffset(WIDTH, height),
-		TextColor3 = color or C.white, Font = font or UI.FONT })
+-- The top column stays inside the middle of the screen, clear of the
+-- resource pills (left) and the shark widget (right).
+local WIDTH = 760
+local SUB_COLOR = Color3.fromRGB(225, 235, 255)
+
+-- plain hero text in a fixed-height row the text scales to fit (big titles)
+local function label(parent: Instance, text: string, height: number, color: Color3?): TextLabel
+	local t = UI.outlined(parent, text, { TextScaled = true, Size = UDim2.fromOffset(WIDTH, height), TextColor3 = color or C.white, Font = UI.TYPE.hero[2] })
 	local stroke = t:FindFirstChildOfClass("UIStroke")
 	if stroke then
-		stroke.Thickness = height >= 50 and 4.5 or (height >= 36 and 3.5 or 2.5)
+		stroke.Thickness = height >= 50 and 3.5 or (height >= 30 and 2.5 or UI.S.text)
 	end
 	return t
+end
+
+-- one line of text that sizes its own width (cards, toasts)
+local function line(parent: Instance, text: string, size: number, color: Color3?, order_: number?): TextLabel
+	return UI.outlined(parent, text, { TextScaled = false, TextSize = size, AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.fromOffset(0, size + 4),
+		TextColor3 = color or C.white, Font = UI.TYPE.body[2], TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = order_ or 0 })
+end
+
+local function hlist(parent: Instance, gap: number): UIListLayout
+	local l = Instance.new("UIListLayout")
+	l.FillDirection = Enum.FillDirection.Horizontal
+	l.VerticalAlignment = Enum.VerticalAlignment.Center
+	l.SortOrder = Enum.SortOrder.LayoutOrder
+	l.Padding = UDim.new(0, gap)
+	l.Parent = parent
+	return l
+end
+
+local function padding(parent: Instance, l: number, r: number)
+	local p = Instance.new("UIPadding")
+	p.PaddingLeft = UDim.new(0, l)
+	p.PaddingRight = UDim.new(0, r)
+	p.Parent = parent
+	return p
 end
 
 local function build()
@@ -79,21 +121,23 @@ local function build()
 
 	-- top column: status, banner, toasts (each collapses when empty)
 	top = UI.frame(gui, { Name = "Top", Size = UDim2.fromOffset(WIDTH, 0), AutomaticSize = Enum.AutomaticSize.Y,
-		Position = UDim2.new(0.5, 0, 0, 4), AnchorPoint = Vector2.new(0.5, 0), BackgroundTransparency = 1 })
+		Position = UDim2.new(0.5, 0, 0, SP[2]), AnchorPoint = Vector2.new(0.5, 0), BackgroundTransparency = 1 })
 	local list = Instance.new("UIListLayout")
 	list.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	list.SortOrder = Enum.SortOrder.LayoutOrder
-	list.Padding = UDim.new(0, 6)
+	list.Padding = UDim.new(0, SP[2] - 2)
 	list.Parent = top
-	statusLabel = label(top, "", 24, C.white)
-	statusLabel.LayoutOrder = 1
-	statusLabel.Visible = false
+	statusLabel = UI.label(top, "meta", "", { Size = UDim2.fromOffset(WIDTH, 20), LayoutOrder = 1, Visible = false, TextColor3 = T.mute })
+	local sc = statusLabel:FindFirstChildOfClass("UITextSizeConstraint")
+	if sc then
+		sc.MaxTextSize = 20 -- small, but still readable on a phone
+	end
 	bannerSlot = UI.frame(top, { Name = "Banner", Size = UDim2.fromOffset(WIDTH, 0), BackgroundTransparency = 1, LayoutOrder = 2, Visible = false })
 	toastSlot = UI.frame(top, { Name = "Toasts", Size = UDim2.fromOffset(WIDTH, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1, LayoutOrder = 3 })
 	local tl = Instance.new("UIListLayout")
 	tl.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	tl.SortOrder = Enum.SortOrder.LayoutOrder
-	tl.Padding = UDim.new(0, 2)
+	tl.Padding = UDim.new(0, SP[1])
 	tl.Parent = toastSlot
 
 	-- center stage: takeovers and words
@@ -108,25 +152,120 @@ function Notify.status(text: string?, color: Color3?)
 	if show and statusLabel.Text ~= text then
 		statusLabel.Text = text :: string
 	end
-	statusLabel.TextColor3 = color or C.white
+	-- quiet: the given color, pulled toward the muted tone
+	statusLabel.TextColor3 = (color or C.white):Lerp(T.mute, 0.35)
 end
 
 ----------------------------------------------------------------- banners
-local function bannerHeights(b: Banner): (number, number)
-	local title = b.big and 64 or 46
-	return title, b.sub and 26 or 0
+local function cardHeight(b: Banner): number
+	if b.compact then
+		return 36
+	end
+	return b.sub and 64 or 48
+end
+
+local function slotHeight(b: Banner): number
+	if b.big then
+		return 52 + (b.sub and 26 or 0)
+	end
+	return cardHeight(b)
+end
+
+-- zone titles: plain hero text over the world, no box
+local function bigBanner(b: Banner): (Frame, (Banner) -> ())
+	local f = UI.frame(bannerSlot, { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1 })
+	local title = label(f, b.text, 52, b.color or C.white)
+	title.Name = "Title"
+	local sub = label(f, b.sub or "", 26, SUB_COLOR)
+	sub.Name = "Sub"
+	sub.Position = UDim2.fromOffset(0, 52)
+	return f, function(nb: Banner)
+		title.Text, title.TextColor3 = nb.text, nb.color or C.white
+		sub.Text, sub.Visible = nb.sub or "", nb.sub ~= nil
+	end
+end
+
+-- the compact card: [step chip | icon]  TITLE / short sub line
+local function cardBanner(b: Banner): (Frame, (Banner) -> ())
+	local f = UI.frame(bannerSlot, { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1 })
+	local card = UI.frame(f, { Name = "Card", Size = UDim2.fromOffset(0, cardHeight(b)), AutomaticSize = Enum.AutomaticSize.X, Position = UDim2.fromScale(0.5, 0),
+		AnchorPoint = Vector2.new(0.5, 0), BackgroundColor3 = T.navy, BackgroundTransparency = 0.06 })
+	UI.corner(card, UI.R.card)
+	local edge = UI.stroke(card, T.line, UI.S.card)
+	local g = Instance.new("UIGradient")
+	g.Rotation = 90
+	g.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(190, 196, 220))
+	g.Parent = card
+	local pad = padding(card, SP[2], SP[4])
+	hlist(card, SP[3] - 2)
+
+	local chip = UI.frame(card, { Name = "Step", Size = UDim2.fromOffset(56, 46), BackgroundColor3 = T.blue, LayoutOrder = 1 })
+	local chipCorner = UI.corner(chip, UI.R.button)
+	UI.stroke(chip, UI.dark(T.blue, 0.4), UI.S.card)
+	local cg = Instance.new("UIGradient")
+	cg.Rotation = 90
+	cg.Color = ColorSequence.new(UI.light(T.blue, 0.2), UI.dark(T.blue, 0.15))
+	cg.Parent = chip
+	local chipLabel = UI.label(chip, "value", "", { Size = UDim2.new(1, -8, 1, -8), Position = UDim2.fromOffset(4, 4), StrokeColor = UI.dark(T.blue, 0.55) })
+	local icon: GuiObject? = nil
+	if b.icon then
+		icon = UI.icon(card, b.icon, { Size = UDim2.fromOffset(42, 42), LayoutOrder = 1 })
+	end
+
+	local words = UI.frame(card, { Name = "Words", Size = UDim2.fromOffset(0, 46), AutomaticSize = Enum.AutomaticSize.X, BackgroundTransparency = 1, LayoutOrder = 2 })
+	local wl = Instance.new("UIListLayout")
+	wl.SortOrder = Enum.SortOrder.LayoutOrder
+	wl.VerticalAlignment = Enum.VerticalAlignment.Center
+	wl.Parent = words
+	local title = line(words, "", 26, C.white, 1)
+	title.Name = "Title"
+	local sub = line(words, "", 18, SUB_COLOR, 2)
+	sub.Name = "Sub"
+
+	local wasCompact: boolean? = nil
+	local function refresh(nb: Banner)
+		local compact = nb.compact == true
+		local tutorial = nb.step ~= nil
+		local accent = nb.color or (tutorial and T.gold or T.white)
+		card.Size = UDim2.fromOffset(0, cardHeight(nb))
+		edge.Color = nb.color and UI.dark(nb.color, 0.05) or (tutorial and T.blue or T.line)
+		-- the tutorial title shouts in caps; folded, it's a calm one-liner
+		title.Text = (tutorial and not compact) and nb.text:upper() or nb.text
+		title.TextColor3 = accent
+		title.TextSize = compact and 19 or 26
+		title.Size = UDim2.fromOffset(0, compact and 24 or 30)
+		sub.Text = nb.sub or ""
+		sub.Visible = nb.sub ~= nil and not compact
+		words.Size = UDim2.fromOffset(0, compact and 26 or 46)
+		chip.Visible = tutorial
+		chipLabel.Text = nb.step or ""
+		chip.LayoutOrder = compact and 3 or 1
+		chip.Size = compact and UDim2.fromOffset(46, 28) or UDim2.fromOffset(56, 46)
+		chipCorner.CornerRadius = UDim.new(0, compact and UI.R.chip or UI.R.button)
+		pad.PaddingLeft = UDim.new(0, compact and SP[4] or SP[2])
+		pad.PaddingRight = UDim.new(0, compact and SP[2] or SP[4])
+		if icon then
+			icon.Visible = not tutorial and not compact
+		end
+		bannerSlot.Size = UDim2.fromOffset(WIDTH, cardHeight(nb))
+		if wasCompact ~= nil and wasCompact ~= compact then
+			UI.pop(card, compact and 0.92 or 1.06)
+		end
+		wasCompact = compact
+	end
+	refresh(b)
+	return f, refresh
 end
 
 local function bannerUI(b: Banner): Frame
-	local th, sh = bannerHeights(b)
-	bannerSlot.Size = UDim2.fromOffset(WIDTH, th + sh)
-	local f = UI.frame(bannerSlot, { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1 })
-	local title = label(f, b.text, th, b.color or C.white)
-	title.Name = "Title"
-	local sub = label(f, b.sub or "", 26, Color3.fromRGB(235, 242, 255))
-	sub.Name = "Sub"
-	sub.Position = UDim2.fromOffset(0, th)
-	sub.Visible = b.sub ~= nil
+	bannerSlot.Size = UDim2.fromOffset(WIDTH, slotHeight(b))
+	local f, refresh
+	if b.big then
+		f, refresh = bigBanner(b)
+	else
+		f, refresh = cardBanner(b)
+	end
+	bannerRefresh = refresh
 	return f
 end
 
@@ -151,6 +290,7 @@ local function swapBanner()
 	local old = bannerFrame
 	if old then
 		bannerFrame = nil
+		bannerRefresh = nil
 		UI.fade(old, false, 0.15)
 		task.delay(0.16, function()
 			old:Destroy()
@@ -167,12 +307,12 @@ local function swapBanner()
 				if f.Parent then
 					f.Visible = true
 					UI.fade(f, true, 0.18)
-					UI.pop(f, 1.08)
+					UI.pop(f, 1.06)
 				end
 			end)
 		else
 			UI.fade(f, true, 0.18)
-			UI.pop(f, 1.12)
+			UI.pop(f, 1.1)
 		end
 	end
 end
@@ -183,22 +323,17 @@ function Notify.banner(text: string, opts: BannerOpts?)
 	if o.key then
 		for _, b in banners do
 			if b.key == o.key then
-				local changed = b.text ~= text or b.sub ~= o.sub or b.color ~= o.color
-				local resized = (b.sub == nil) ~= (o.sub == nil)
-				b.text, b.sub, b.color = text, o.sub, o.color
+				local changed = b.text ~= text or b.sub ~= o.sub or b.color ~= o.color or b.step ~= o.step or b.compact ~= o.compact
+				b.text, b.sub, b.color, b.step, b.compact = text, o.sub, o.color, o.step, o.compact
+				b.icon = o.icon or b.icon
 				b.priority = o.priority or b.priority
 				if not b.sticky then
 					b.left = o.time or 2.4
 				end
-				if changed and b == shownBanner and bannerFrame then
-					local f = bannerFrame :: Frame
-					local t = f:FindFirstChild("Title") :: TextLabel
-					local s = f:FindFirstChild("Sub") :: TextLabel
-					t.Text, t.TextColor3 = text, o.color or C.white
-					s.Text, s.Visible = o.sub or "", o.sub ~= nil
-					if resized then
-						local th, sh = bannerHeights(b)
-						bannerSlot.Size = UDim2.fromOffset(WIDTH, th + sh)
+				if changed and b == shownBanner and bannerFrame and bannerRefresh then
+					bannerRefresh(b)
+					if b.big then
+						bannerSlot.Size = UDim2.fromOffset(WIDTH, slotHeight(b))
 					end
 				end
 				return
@@ -208,6 +343,7 @@ function Notify.banner(text: string, opts: BannerOpts?)
 	order += 1
 	table.insert(banners, {
 		text = text, sub = o.sub, color = o.color, priority = o.priority or 1, key = o.key, sticky = o.sticky, big = o.big,
+		step = o.step, compact = o.compact, icon = o.icon,
 		left = o.time or 2.4, order = order, born = os.clock(),
 	})
 	swapBanner()
@@ -223,14 +359,28 @@ function Notify.clear(key: string)
 end
 
 ----------------------------------------------------------------- toasts
+-- a small navy pill; the accent edge carries the message's color
+local function toastUI(text: string, color: Color3): Frame
+	local f = UI.frame(toastSlot, { Name = "Toast", Size = UDim2.fromOffset(0, 32), AutomaticSize = Enum.AutomaticSize.X, BackgroundColor3 = T.navyDark,
+		BackgroundTransparency = 0.12 })
+	UI.corner(f, 16)
+	UI.stroke(f, UI.dark(color, 0.1), UI.S.subtle)
+	padding(f, SP[2] + 2, SP[3] + 2)
+	hlist(f, SP[2])
+	local edge = UI.frame(f, { Name = "Edge", Size = UDim2.fromOffset(6, 18), BackgroundColor3 = color, LayoutOrder = 1 })
+	UI.corner(edge, 3)
+	line(f, text, 18, UI.light(color, 0.55), 2)
+	return f
+end
+
 local pumpToasts: () -> ()
 local function showToast(item: { text: string, color: Color3 })
 	toastsUp += 1
 	Fx.sound("uiToast", 0.3)
-	local t = label(toastSlot, item.text, 28, item.color)
+	local t = toastUI(item.text, item.color)
 	t.LayoutOrder = -os.clock() * 100 // 1 -- newest on top
 	UI.fade(t, true, 0.15)
-	UI.pop(t, 1.15)
+	UI.pop(t, 1.1)
 	task.spawn(function()
 		local left = 2.6
 		while left > 0 do
@@ -292,35 +442,47 @@ local function playCenter(item: Center)
 	end
 	local holder = UI.frame(stage, { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1 })
 	if big then
-		-- a soft dark band behind the words so they read over anything
-		local band = UI.frame(holder, { Size = UDim2.new(1, 0, 0, 190), Position = UDim2.fromScale(0.5, 0.5), AnchorPoint = Vector2.new(0.5, 0.5),
-			BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45 })
+		-- a soft navy band behind the words so they read over anything,
+		-- with thin lines in the moment's color
+		local band = UI.frame(holder, { Name = "Band", Size = UDim2.new(1, 0, 0, 180), Position = UDim2.fromScale(0.5, 0.5), AnchorPoint = Vector2.new(0.5, 0.5),
+			BackgroundColor3 = T.navyDark, BackgroundTransparency = 0.3 })
+		local fade = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.25, 0), NumberSequenceKeypoint.new(0.75, 0),
+			NumberSequenceKeypoint.new(1, 1) })
 		local g = Instance.new("UIGradient")
-		g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.25, 0.2),
-			NumberSequenceKeypoint.new(0.75, 0.2), NumberSequenceKeypoint.new(1, 1) })
+		g.Transparency = fade
 		g.Parent = band
+		for _, y in { 0, 1 } do
+			local edge = UI.frame(band, { Size = UDim2.new(1, 0, 0, 4), Position = UDim2.fromScale(0, y), AnchorPoint = Vector2.new(0, y), BackgroundColor3 = item.color })
+			local eg = Instance.new("UIGradient")
+			eg.Transparency = fade
+			eg.Parent = edge
+		end
 	end
-	local title = UI.outlined(holder, item.text, { Size = UDim2.new(0.92, 0, 0, big and 104 or 84), Position = UDim2.new(0.5, 0, 0.5, big and -16 or 0),
-		AnchorPoint = Vector2.new(0.5, 0.5), Font = UI.NUMFONT, TextColor3 = item.color, Rotation = big and 0 or -3 })
+	local title = UI.outlined(holder, item.text, { Size = UDim2.new(0.8, 0, 0, big and 96 or 80), Position = UDim2.new(0.5, 0, 0.5, big and -16 or 0),
+		AnchorPoint = Vector2.new(0.5, 0.5), Font = UI.TYPE.hero[2], TextColor3 = item.color, Rotation = big and 0 or -3, StrokeColor = T.navyDark })
 	local stroke = title:FindFirstChildOfClass("UIStroke")
 	if stroke then
-		stroke.Thickness = 5
+		stroke.Thickness = 4
 	end
 	local shine = Instance.new("UIGradient")
 	shine.Rotation = 90
-	shine.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(205, 205, 205))
+	shine.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(210, 210, 210))
 	shine.Parent = title
+	if big and item.icon then
+		UI.icon(holder, item.icon, { Size = UDim2.fromOffset(110, 110), Position = UDim2.new(0.1, 0, 0.5, -16), AnchorPoint = Vector2.new(0.5, 0.5), Rotation = -8 })
+	end
 	if big and item.sub then
-		UI.outlined(holder, item.sub, { Size = UDim2.new(0.8, 0, 0, 34), Position = UDim2.new(0.5, 0, 0.5, 58), AnchorPoint = Vector2.new(0.5, 0.5) })
+		UI.label(holder, "body", item.sub, { Size = UDim2.new(0.7, 0, 0, 30), Position = UDim2.new(0.5, 0, 0.5, 52), AnchorPoint = Vector2.new(0.5, 0.5),
+			TextColor3 = SUB_COLOR })
 	end
 	local scale = Instance.new("UIScale")
-	scale.Scale = big and 1.9 or 2.2
+	scale.Scale = big and 1.6 or 2
 	scale.Parent = holder
 	UI.fade(holder, true, 0.15)
-	TweenService:Create(scale, TweenInfo.new(0.32, Enum.EasingStyle.Back), { Scale = 1 }):Play()
+	TweenService:Create(scale, TweenInfo.new(0.3, Enum.EasingStyle.Back), { Scale = 1 }):Play()
 	task.wait(item.time)
 	UI.fade(holder, false, 0.3)
-	TweenService:Create(scale, TweenInfo.new(0.3, Enum.EasingStyle.Quad), { Scale = big and 0.9 or 0.7 }):Play()
+	TweenService:Create(scale, TweenInfo.new(0.3, Enum.EasingStyle.Quad), { Scale = big and 0.92 or 0.7 }):Play()
 	task.wait(0.3)
 	holder:Destroy()
 end
@@ -361,8 +523,9 @@ runCenter = function()
 end
 
 -- the big moment: center stage, everything else steps aside
-function Notify.takeover(text: string, sub: string?, color: Color3?, time: number?)
-	table.insert(centerQueue, { kind = "takeover", text = text, sub = sub, color = color or C.gold, time = time or 1.7 })
+-- (icon: an optional UI.icon name shown beside the title)
+function Notify.takeover(text: string, sub: string?, color: Color3?, time: number?, icon: string?)
+	table.insert(centerQueue, { kind = "takeover", text = text, sub = sub, color = color or C.gold, time = time or 1.7, icon = icon })
 	runCenter()
 end
 

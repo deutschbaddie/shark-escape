@@ -14,6 +14,7 @@ local TankView = require(script.TankView)
 local Travel = require(script.Travel)
 local Audio = require(script.Audio)
 local Rewards = require(script.Rewards)
+local Settings = require(script.Settings)
 require(script.SharkView)
 
 Water.start()
@@ -38,6 +39,8 @@ HUD.onTank = Tank.toggle -- your collection opens anywhere
 HUD.onDaily = Rewards.openDaily
 HUD.atRideShop = Shop.atRideShop
 HUD.onRebirth = Hub.confirmRebirth
+HUD.onSettings = Settings.toggle
+Settings.start()
 HUD.start()
 Hub.start()
 Rewards.start()

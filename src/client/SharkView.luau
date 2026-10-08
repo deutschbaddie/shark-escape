@@ -2,6 +2,9 @@
 -- Real sharks: rigged .glb imports in ReplicatedStorage/Assets/Sharks, driven
 -- bone-by-bone in code (swim wave, menacing jaw, bite lunge, dive, breach).
 -- Missing imports fall back to a part-built shark so the game always runs.
+-- Also the shark-side cues: the lunge (red landing ring + the leap through
+-- the air + "SWERVE!"), island shelter running out, and a carried creature
+-- wriggling free.
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -18,6 +21,9 @@ local Creatures = require(Shared.Creatures)
 local Fx = require(script.Parent.Fx)
 local UI = require(script.Parent.UI)
 local Guide = require(script.Parent.Guide)
+local Notify = require(script.Parent.Notify)
+local Water = require(script.Parent.Water)
+local State = require(script.Parent.State)
 local TweenService = game:GetService("TweenService")
 
 local SharkView = {}
@@ -25,7 +31,7 @@ local SharkView = {}
 local player = Players.LocalPlayer
 local VARIANTS = { "Baby", "Hammerhead", "Tiger", "GreatWhite", "Mecha", "Megalodon" }
 -- wire codes from server Sharks.luau ("chase" = the charge)
-local STATE_NAMES = { "chase", "circle", "leave", "bite", "stalk", "overshoot" }
+local STATE_NAMES = { "chase", "circle", "leave", "bite", "stalk", "overshoot", "lunge" }
 local BONES = { "Root", "Head", "Jaw", "Spine2", "Spine3", "Spine4", "Tail", "PecL", "PecR" }
 
 local folder = Instance.new("Folder")
@@ -308,6 +314,7 @@ local function angleLerp(a: number, b: number, t: number): number
 end
 
 local updateDanger: (number) -> ()
+local updateShelter: (number) -> ()
 
 ----------------------------------------------------------------- your shark
 -- While a shark is hunting YOU: a red ring on the water shows its circle and
@@ -332,7 +339,7 @@ end
 
 function SharkView.myHunter(): any
 	for id, sh in sharks do
-		if id > 0 and sh.victim == player.UserId and (sh.state == "stalk" or sh.state == "chase" or sh.state == "overshoot") then
+		if id > 0 and sh.victim == player.UserId and (sh.state == "stalk" or sh.state == "chase" or sh.state == "overshoot" or sh.state == "lunge") then
 			return sh
 		end
 	end
@@ -355,6 +362,9 @@ updateDanger = function(now: number)
 	local p = hrp.Position
 	local r = Vector2.new(me.pos.X - p.X, me.pos.Z - p.Z).Magnitude
 	local charging = me.state == "chase"
+	if me.state == "lunge" then
+		r = 0 -- in the air: the landing ring is the cue now
+	end
 	local pulse = 0.5 + 0.5 * math.sin(now * (charging and 18 or 6))
 	-- a dashed red ring on the water at the shark's distance (spinning slowly)
 	local segLen = 2 * math.pi * r / SEGMENTS * 0.6
@@ -362,7 +372,7 @@ updateDanger = function(now: number)
 		local a = (i / SEGMENTS) * math.pi * 2 + now * 0.4
 		seg.Size = Vector3.new(segLen, 0.15, charging and 0.9 or 0.6)
 		seg.CFrame = CFrame.new(p.X + math.cos(a) * r, 0.2, p.Z + math.sin(a) * r) * CFrame.Angles(0, -a + math.pi / 2, 0)
-		seg.Transparency = (charging and 0.05 or 0.3) + pulse * 0.25
+		seg.Transparency = r < 1 and 1 or (charging and 0.05 or 0.3) + pulse * 0.25
 	end
 	local safeAt = Layout.nearestSafe(p)
 	Guide.set("danger", safeAt + Vector3.new(0, 2, 0), "SAFE!")
@@ -389,9 +399,10 @@ RunService.RenderStepped:Connect(function(dt)
 		animate(sh, dt, now)
 		local fin = sh.pos + Vector3.new(-math.sin(sh.yaw), 0, -math.cos(sh.yaw)) * sh.L * 0.1
 		sh.wake.CFrame = CFrame.new(fin.X, 0.15, fin.Z) * CFrame.Angles(0, sh.yaw, 0)
-		sh.wakeEmitter.Enabled = sh.sinkT < 0.5 or not (sh.state == "leave" or sh.dived)
+		sh.wakeEmitter.Enabled = (sh.sinkT < 0.5 or not (sh.state == "leave" or sh.dived)) and not (sh.extra and sh.extra.airborne)
 	end
 	updateDanger(now)
+	updateShelter(dt)
 end)
 
 ----------------------------------------------------------------- server feed
@@ -449,6 +460,10 @@ local function leap(sh: Shark, at: Vector3)
 	local p0 = sh.pos
 	local d = flat(at - p0)
 	local dir = d.Magnitude > 1 and d.Unit or Vector3.new(-math.sin(sh.yaw), 0, -math.cos(sh.yaw))
+	if d.Magnitude < L * 0.6 then
+		-- it just lunged down onto you: rear back up out of its own splash
+		p0 = flat(at) - dir * L * 0.6
+	end
 	local p1 = flat(at) - dir * L * 0.3
 	local yaw = math.atan2(-dir.X, -dir.Z)
 	local t0 = os.clock()
@@ -652,6 +667,278 @@ local function eatenCinematic(sh: Shark?, at: Vector3, carried: { r: string, m: 
 	end)
 end
 
+----------------------------------------------------------------- the lunge
+-- The shark commits: a red target ring on the water where it will land (it
+-- closes in as the shark comes down), and the shark bursts out of the water
+-- and arcs through the air to it. The server decides bite or miss on landing.
+local MARK_SEGS = 18
+local RED = Color3.fromRGB(255, 50, 60)
+
+local function lungeMarker(at: Vector3, radius: number, dur: number)
+	local parts: { Part } = {}
+	local function part(size: Vector3): Part
+		local p = Instance.new("Part")
+		p.Name = "LungeMark"
+		p.Anchored = true
+		p.CanCollide = false
+		p.CanQuery = false
+		p.CanTouch = false
+		p.CastShadow = false
+		p.Material = Enum.Material.Neon
+		p.Color = RED
+		p.Size = size
+		p.Parent = folder
+		table.insert(parts, p)
+		return p
+	end
+	-- the bite zone (a flat disc) and a dashed ring closing in on it
+	local disc = part(Vector3.new(0.12, radius * 2, radius * 2))
+	disc.Shape = Enum.PartType.Cylinder
+	disc.CFrame = CFrame.new(at.X, 0.22, at.Z) * CFrame.Angles(0, 0, math.pi / 2)
+	local segs = {}
+	for i = 1, MARK_SEGS do
+		segs[i] = part(Vector3.new(1, 0.18, 0.8))
+	end
+	local t0 = os.clock()
+	local conn
+	conn = RunService.RenderStepped:Connect(function()
+		local t = os.clock() - t0
+		if t > dur + 0.35 then
+			conn:Disconnect()
+			for _, p in parts do
+				p:Destroy()
+			end
+			return
+		end
+		local k = math.clamp(t / dur, 0, 1)
+		local pulse = 0.5 + 0.5 * math.sin(t * 22)
+		disc.Transparency = t > dur and 0.85 or 0.5 + 0.2 * pulse
+		local r = radius * (2.8 - 1.8 * k * k)
+		local segLen = 2 * math.pi * r / MARK_SEGS * 0.55
+		for i, seg in segs do
+			local a = (i / MARK_SEGS) * math.pi * 2 - t * 1.5
+			seg.Size = Vector3.new(segLen, 0.18, 0.8 + 0.4 * k)
+			seg.CFrame = CFrame.new(at.X + math.cos(a) * r, 0.3, at.Z + math.sin(a) * r) * CFrame.Angles(0, -a + math.pi / 2, 0)
+			seg.Transparency = t > dur and 1 or 0.1 * pulse
+		end
+	end)
+end
+
+-- spray streaming off the shark while it's in the air
+local function sprayTrail(L: number): (Part, ParticleEmitter)
+	local p = Instance.new("Part")
+	p.Anchored = true
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.Transparency = 1
+	p.Size = Vector3.new(1, 1, 1)
+	p.Parent = folder
+	local e = Instance.new("ParticleEmitter")
+	e.Texture = Fx.TEX.smoke
+	e.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(190, 240, 255))
+	e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, L * 0.06), NumberSequenceKeypoint.new(1, L * 0.16) })
+	e.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.25), NumberSequenceKeypoint.new(1, 1) })
+	e.Lifetime = NumberRange.new(0.4, 0.8)
+	e.Rate = 70
+	e.Speed = NumberRange.new(2, 6)
+	e.SpreadAngle = Vector2.new(180, 180)
+	e.Acceleration = Vector3.new(0, -70, 0)
+	e.Parent = p
+	return p, e
+end
+
+-- the leap itself: out of the water at `from`, through the air, down at `to`
+local function lungeArc(sh: Shark, from: Vector3, to: Vector3, dur: number)
+	local L = sh.L
+	local d = flat(to - from)
+	local dir = d.Magnitude > 1 and d.Unit or Vector3.new(-math.sin(sh.yaw), 0, -math.cos(sh.yaw))
+	local yaw = math.atan2(-dir.X, -dir.Z)
+	local height = math.clamp(d.Magnitude * 0.2, L * 0.45, L * 1.5)
+	local prev = sh.extra and sh.extra.update -- a local shark's own brain, handed back after
+	local t0 = os.clock()
+	local landed = false
+	local spray, emitter = sprayTrail(L)
+	sh.pos = flat(from)
+	Fx.splash(Vector3.new(from.X, 0.5, from.Z), math.clamp(L / 8, 1, 3.5))
+	Fx.sound("splash", 0.8, 0.75, Vector3.new(from.X, 1, from.Z))
+	sh.extra = {
+		airborne = true,
+		update = function(s: Shark, dt: number, now: number)
+			local e = s.extra :: any
+			local t = now - t0
+			s.yaw = angleLerp(s.yaw, yaw, math.min(dt * 16, 1))
+			s.state = "lunge"
+			if t < dur then
+				local k = t / dur
+				s.pos = flat(from):Lerp(flat(to), k)
+				e.y = math.sin(k * math.pi) * height
+				e.pitch = 0.85 * math.cos(k * math.pi) -- nose up, then down
+				e.jaw = k > 0.45 and 0.95 * math.min(1, (k - 0.45) * 3) or 0.15
+				spray.CFrame = CFrame.new(s.pos.X, e.y, s.pos.Z)
+				return
+			end
+			if not landed then
+				landed = true
+				e.airborne = false
+				emitter.Enabled = false
+				task.delay(1, spray.Destroy, spray)
+				Fx.splash(Vector3.new(to.X, 0.5, to.Z), math.clamp(L / 5, 1.5, 5))
+				Fx.ring(Vector3.new(to.X, 0.5, to.Z), Color3.fromRGB(255, 255, 255), L * 1.6)
+				Fx.sound("splash", 1, 0.65, Vector3.new(to.X, 1, to.Z))
+			end
+			-- nose-first back into the water, then back to the server feed
+			local tk = t - dur
+			s.pos = flat(to) + dir * tk * L * 0.8
+			e.y = -tk * L * 1.1
+			e.pitch = -0.6
+			e.jaw = math.max(0, 0.6 * (1 - tk / 0.3))
+			if tk > 0.3 then
+				s.extra = prev and { update = prev } or nil
+			end
+		end,
+	}
+end
+
+local function myRoot(): BasePart?
+	local char = player.Character
+	return char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+end
+
+local function onLunge(data: any)
+	local sh = sharks[data.id]
+	local to = Vector3.new(data.lx or 0, 0, data.lz or 0)
+	local dur = data.t or 0.9
+	lungeMarker(to, data.r or 5, dur)
+	if sh then
+		lungeArc(sh, Vector3.new(data.x or sh.pos.X, 0, data.z or sh.pos.Z), to, dur)
+	end
+	if data.victim == player.UserId then
+		Notify.word("SWERVE!", UI.C.red, 0.6)
+		Fx.shake(1.2)
+		Fx.flash(RED, 0.2, 0.8)
+	end
+end
+
+-- practice sharks (onboarding) can lunge too: same ring + arc, client only.
+-- Returns when it lands; the caller decides bite (SharkView.biteLocal) or miss.
+function SharkView.lungeLocal(sh: any, to: Vector3, dur: number, radius: number)
+	lungeMarker(to, radius, dur)
+	lungeArc(sh, sh.pos, to, dur)
+	Notify.word("SWERVE!", UI.C.red, 0.6)
+end
+
+----------------------------------------------------------------- island shelter
+-- Server: each island shelters you ~9 s per hunt. Mirror the countdown here
+-- (only while you stand on it) to drain its ring and warn you to move.
+local shelter = {
+	i = nil :: number?,
+	left = {} :: { [number]: number },
+	max = Config.Shark.islandShelter,
+	shown = false,
+	painted = {} :: { [number]: boolean },
+}
+
+local function shelterReset()
+	for i in shelter.painted do
+		Water.setIslandShelter(i, nil)
+	end
+	shelter.i = nil
+	table.clear(shelter.left)
+	table.clear(shelter.painted)
+	if shelter.shown then
+		shelter.shown = false
+		Notify.clear("island")
+	end
+end
+
+updateShelter = function(dt: number)
+	local i = shelter.i
+	if not i then
+		return
+	end
+	local hrp = myRoot()
+	local island = Layout.Islands[i]
+	local on = hrp ~= nil and island ~= nil and Layout.islandAt(hrp.Position, 0.5) == island
+	if not on then
+		if shelter.shown then
+			shelter.shown = false
+			Notify.clear("island")
+		end
+		return
+	end
+	local left = math.max((shelter.left[i] or shelter.max) - dt, 0)
+	shelter.left[i] = left
+	shelter.painted[i] = true
+	Water.setIslandShelter(i, left / shelter.max)
+	if left <= Config.Shark.islandWarn then
+		shelter.shown = true
+		local sub = left > 0 and ("Shelter ends in %d · hop to another island or the sand"):format(math.ceil(left))
+			or "The shark can reach you here!"
+		Notify.banner("Island sinking! Move!", { key = "island", priority = 6, time = 0.6, color = UI.C.red, sub = sub })
+	end
+end
+
+----------------------------------------------------------------- carried creature escaping
+local escapeRun = 0
+
+local function creatureName(d: any): string
+	return Config.fullName(d.z, d.r, d.m, d.s)
+end
+
+local function onEscaping(d: any)
+	escapeRun += 1
+	local run = escapeRun
+	local name = creatureName(d)
+	local ends = os.clock() + (d.left or Config.Shark.freshWarn)
+	task.spawn(function()
+		while run == escapeRun do
+			local left = ends - os.clock()
+			local data = State.data
+			if left <= 0 or not (data and data.carrying) then
+				break
+			end
+			Notify.banner(("Your %s is wriggling free!"):format(name),
+				{ key = "fresh", priority = 6, time = 0.5, color = UI.C.gold, sub = ("Get it to your tank in %d s!"):format(math.ceil(left)) })
+			task.wait(0.25)
+		end
+		if run == escapeRun then
+			Notify.clear("fresh")
+		end
+	end)
+end
+
+Remotes.get("Notify").OnClientEvent:Connect(function(kind, d)
+	d = d or {}
+	if kind == "shelter" then
+		if typeof(d.i) == "number" then
+			shelter.i = d.i
+			shelter.left[d.i] = d.left or Config.Shark.islandShelter
+			shelter.max = d.max or Config.Shark.islandShelter
+		end
+	elseif kind == "shelterOut" then
+		if typeof(d.i) == "number" then
+			shelter.left[d.i] = 0
+		end
+		Fx.sound("splash", 0.6, 0.6)
+	elseif kind == "escaping" then
+		onEscaping(d)
+	elseif kind == "escaped" then
+		escapeRun += 1
+		Notify.clear("fresh")
+		Notify.word("IT GOT AWAY!", UI.C.red, 1)
+		Notify.toast(("Your %s slipped back into the sea"):format(creatureName(d)), UI.C.red)
+		local hrp = myRoot()
+		if hrp then
+			Fx.splash(Vector3.new(hrp.Position.X, 0.5, hrp.Position.Z), 1.2)
+		end
+		Fx.sound("splash", 0.7, 1.4)
+	elseif kind == "deposit" or kind == "lost" then
+		escapeRun += 1
+		Notify.clear("fresh")
+	end
+end)
+
 ----------------------------------------------------------------- shark events
 local function exclaim(sh: Shark)
 	local bb = Instance.new("BillboardGui")
@@ -669,6 +956,24 @@ local function exclaim(sh: Shark)
 end
 
 Remotes.get("SharkEvent").OnClientEvent:Connect(function(kind, data)
+	data = data or {}
+	if kind == "lunge" then
+		onLunge(data)
+		return
+	end
+	if kind == "hunt" then
+		shelterReset()
+		local hrp = myRoot()
+		local zone = hrp and Config.zoneAt(hrp.Position.Z)
+		if data.double and zone and zone.index >= (data.doubleFrom or 3) then
+			Notify.toast("Two sharks are hunting out here!", UI.C.red)
+		end
+		return
+	end
+	if kind == "clear" then
+		shelterReset()
+		return
+	end
 	if kind == "charge" then
 		local sh = sharks[data.id]
 		if sh then

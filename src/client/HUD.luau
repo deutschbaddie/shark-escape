@@ -1,16 +1,21 @@
--- The always-on screen in the Steal-an-Egg style: small, bright, studded,
--- one obvious next thing.
---   left:          Shop / Index / Rides buttons + the Slow Mode box
---   right:         small squares: Tank, Rebirth, offers and active boosts
---                  (time left above the square)
---   bottom-left:   speed (sneaker) and money, Friend Boost
---   bottom-center: +speed/s and tank $/s, zone goal bar, next ride button
---   bottom-right:  next shark attack
--- Every message goes through Notify: one hierarchy, nothing piles up.
+-- The always-on screen. Small, bright, one obvious next thing, built from the
+-- design system in UI.luau (tokens, pills, nav buttons, cards, bars).
+--   top-left:      resource pills: Speed (red), Cash (green), Friend Boost
+--                  (+ invite) with the Settings gear; under them the two nav
+--                  buttons, Index (blue) and Rides (orange)
+--   top-right:     shark event widget ("Shark in 57s", "HUNTING 12s")
+--   right:         square buttons: Gift, Tank, Shop; Rebirth / pass offer and
+--                  the timed boosts (time left on a chip) in columns beside
+--   bottom-center: the progression card: next zone + bar, tank stats and
+--                  the next ride with its price / BUY button
+-- Mobile: the left column stays above the thumbstick, the right column above
+-- the jump button, and the bottom card is centered and narrow enough to sit
+-- between them. Every message goes through Notify: one hierarchy.
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 local MarketplaceService = game:GetService("MarketplaceService")
 
 local Shared = game.ReplicatedStorage.Shared
@@ -28,27 +33,42 @@ local Notify = require(script.Parent.Notify)
 
 local HUD = {}
 local C = UI.C
+local T = UI.T
+local SP = UI.SP
 local player = Players.LocalPlayer
 
 local gui: ScreenGui
+local uiScale: UIScale
+local speedPill: Frame
 local speedLabel: TextLabel
+local cashPill: Frame
 local coinsLabel: TextLabel
 local gainLabel: TextLabel
 local tankLabel: TextLabel
+local incomeLabel: TextLabel
 local friendLabel: TextLabel
+local progress: Frame -- the bottom card
+local zoneLabel: TextLabel
+local goalTrack: Frame
 local goalFill: Frame
 local goalText: TextLabel
-local rideBtn: TextButton
-local ridePrice: TextLabel
+local rideRow: TextButton
+local rideName: TextLabel
+local rideGain: TextLabel
+local rideBtn: TextButton -- the price / BUY button
 local rideFill: Frame
-local carryChip: TextLabel
+local rideTrack: Frame
+local carryChip: Frame
+local carryLabel: TextLabel
 local vignette: Frame
 local menuButtons: { [string]: TextButton } = {}
-local boostSquares: { [string]: { holder: Frame, button: TextButton, timer: TextLabel } } = {}
+local boostSquares: { [string]: { holder: Frame, button: TextButton, timer: TextLabel, chip: Frame } } = {}
 local timerPill: Frame
+local timerPrefix: TextLabel
 local timerLabel: TextLabel
 local stopRidePulse: (() -> ())? = nil
-local setSlow: ((boolean) -> ())? = nil
+local boostCol: Frame
+local extraCol: Frame
 
 HUD.onRides = nil :: (() -> ())?
 HUD.onShop = nil :: (() -> ())?
@@ -57,6 +77,7 @@ HUD.atRideShop = nil :: (() -> boolean)?
 HUD.onRebirth = nil :: (() -> ())?
 HUD.onTank = nil :: (() -> ())?
 HUD.onDaily = nil :: (() -> ())?
+HUD.onSettings = nil :: (() -> ())?
 HUD.takeover = false
 
 function HUD.goToRideShop()
@@ -69,19 +90,304 @@ local function call(fn: (() -> ())?)
 	end
 end
 
------------------------------------------------------------------ build
-local function square(parent: Instance, icon: string, color: Color3, order: number, onClick: () -> ()): TextButton
-	return UI.iconButton(parent, icon, "", color, onClick, { Size = UDim2.fromOffset(62, 62), LayoutOrder = order })
+-- sizes on the 1280x720 design canvas
+local SQ = 60 -- right-side squares
+local COL_W = 190 -- left column (pills + nav)
+local NAV_H = 54
+local TIMER_W = 250 -- shark widget
+local CARD_W = 600 -- bottom progression card
+local CARD_H = 146
+local CARD_H_NO_RIDE = 86
+
+----------------------------------------------------------------- small local helpers
+local function list(parent: Instance, horizontal: boolean?, gap: number?): UIListLayout
+	local l = Instance.new("UIListLayout")
+	l.FillDirection = horizontal and Enum.FillDirection.Horizontal or Enum.FillDirection.Vertical
+	l.SortOrder = Enum.SortOrder.LayoutOrder
+	l.Padding = UDim.new(0, gap or SP[2])
+	l.Parent = parent
+	return l
 end
 
--- a square with a little timer over it (active boosts, like the reference potion)
+local function tween(inst: Instance, time: number, goal: { [string]: any }, style: Enum.EasingStyle?, dir: Enum.EasingDirection?)
+	local t = TweenService:Create(inst, TweenInfo.new(time, style or Enum.EasingStyle.Quad, dir or Enum.EasingDirection.Out), goal)
+	t:Play()
+	return t
+end
+
+-- recolor a UI.bar fill (keeps its gradient in step with the color)
+local function paintFill(fill: Frame, color: Color3)
+	if fill.BackgroundColor3 == color then
+		return
+	end
+	fill.BackgroundColor3 = color
+	local g = fill:FindFirstChildOfClass("UIGradient")
+	if g then
+		g.Color = ColorSequence.new(UI.light(color, 0.3), UI.dark(color, 0.08))
+	end
+end
+
+-- "+1 Speed" / "+$5": a short float off the side of a pill
+local lastFloat: { [string]: number } = {}
+local function floatText(anchor: GuiObject, key: string, text: string, color: Color3)
+	local now = os.clock()
+	if now - (lastFloat[key] or 0) < 0.6 then
+		return
+	end
+	lastFloat[key] = now
+	local l = UI.label(anchor, "body", text, { Name = "Float", Size = UDim2.fromOffset(120, 24), Position = UDim2.new(1, SP[2], 0.5, 0),
+		AnchorPoint = Vector2.new(0, 0.5), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = color, ZIndex = anchor.ZIndex + 5,
+		Rotation = -6 })
+	UI.pop(l, 1.3)
+	tween(l, 0.8, { Position = UDim2.new(1, SP[2] + 10, 0.5, -26) })
+	UI.fade(l, false, 0.8)
+	task.delay(0.85, function()
+		l:Destroy()
+	end)
+end
+
+-- canvas (design units) point of a screen point
+local function toCanvas(v: Vector2): Vector2
+	local s = uiScale and uiScale.Scale or 1
+	local o = gui.AbsolutePosition
+	return Vector2.new((v.X - o.X) / s, (v.Y - o.Y) / s)
+end
+
+-- a caught creature flies from you into the Tank button
+local function flyToTank(color: Color3)
+	local tank = menuButtons.Tank
+	if not (tank and tank.Visible and gui.Enabled) then
+		return
+	end
+	local from = Vector2.new(0, 0)
+	local ok = pcall(function()
+		local char = player.Character
+		local hrp = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+		local cam = Workspace.CurrentCamera
+		if hrp and cam then
+			local p = cam:WorldToViewportPoint(hrp.Position + Vector3.new(0, 2, 0))
+			from = toCanvas(Vector2.new(p.X, p.Y))
+		else
+			error("no character")
+		end
+	end)
+	if not ok then
+		from = toCanvas(gui.AbsolutePosition + gui.AbsoluteSize * Vector2.new(0.5, 0.55))
+	end
+	local to = toCanvas(tank.AbsolutePosition + tank.AbsoluteSize * 0.5)
+	local dot = UI.frame(gui, { Name = "Fly", Size = UDim2.fromOffset(30, 30), Position = UDim2.fromOffset(from.X, from.Y), AnchorPoint = Vector2.new(0.5, 0.5),
+		BackgroundColor3 = color, ZIndex = 20 })
+	UI.corner(dot, 15)
+	UI.stroke(dot, T.white, UI.S.card)
+	UI.pop(dot, 1.6)
+	tween(dot, 0.55, { Position = UDim2.fromOffset(to.X, to.Y), Size = UDim2.fromOffset(14, 14) }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+	task.delay(0.56, function()
+		dot:Destroy()
+		UI.pop(tank, 1.18)
+	end)
+end
+
+----------------------------------------------------------------- build
+local function square(parent: Instance, icon: string, color: Color3, order: number, onClick: () -> ()): TextButton
+	return UI.iconButton(parent, icon, "", color, onClick, { Size = UDim2.fromOffset(SQ, SQ), LayoutOrder = order })
+end
+
+-- a square with its time left on a small chip over its bottom edge (active boosts)
 local function timedSquare(parent: Instance, key: string, icon: string, color: Color3, order: number)
-	local holder = UI.frame(parent, { Name = key, Size = UDim2.fromOffset(66, 84), BackgroundTransparency = 1, LayoutOrder = order, Visible = false })
-	local timer = UI.outlined(holder, "", { Size = UDim2.new(1, 16, 0, 18), Position = UDim2.new(0.5, 0, 0, 0), AnchorPoint = Vector2.new(0.5, 0), TextColor3 = C.orange })
+	local holder = UI.frame(parent, { Name = key, Size = UDim2.fromOffset(SQ, SQ + SP[2]), BackgroundTransparency = 1, LayoutOrder = order, Visible = false })
 	local b = UI.iconButton(holder, icon, "", color, function()
 		call(HUD.onShop)
-	end, { Size = UDim2.fromOffset(62, 62), Position = UDim2.new(0.5, 0, 1, 0), AnchorPoint = Vector2.new(0.5, 1) })
-	boostSquares[key] = { holder = holder, button = b, timer = timer }
+	end, { Size = UDim2.fromOffset(SQ, SQ) })
+	local chip = UI.frame(holder, { Name = "Time", Size = UDim2.fromOffset(SQ + 10, 24), Position = UDim2.new(0.5, 0, 1, 0), AnchorPoint = Vector2.new(0.5, 1),
+		BackgroundColor3 = T.navyDark, ZIndex = 6 })
+	UI.corner(chip, UI.R.chip)
+	UI.stroke(chip, UI.dark(color, 0.2), UI.S.subtle)
+	local timer = UI.label(chip, "body", "", { Size = UDim2.new(1, -6, 1, -4), Position = UDim2.fromOffset(3, 2), ZIndex = 7 })
+	boostSquares[key] = { holder = holder, button = b, timer = timer, chip = chip }
+end
+
+local function column(parent: Instance, order: number, align: Enum.VerticalAlignment): Frame
+	local f = UI.frame(parent, { Name = "Col" .. order, Size = UDim2.new(0, SQ + 4, 1, 0), BackgroundTransparency = 1, LayoutOrder = order })
+	local l = list(f, false, SP[3])
+	l.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	l.VerticalAlignment = align
+	return f
+end
+
+local function rideClicked()
+	local d = State.data
+	local nxt = d and HUD.nextRide(d)
+	if nxt and d.coins >= nxt.price and HUD.atRideShop and HUD.atRideShop() then
+		State.action("buyRide", nxt.id)
+	else
+		HUD.goToRideShop()
+	end
+end
+
+local function buildLeft()
+	-- one column under the Roblox top bar: pills, then the two nav buttons
+	local left = UI.frame(gui, { Name = "Left", Size = UDim2.fromOffset(COL_W + 60, 300), Position = UDim2.fromOffset(SP[2] + 6, SP[2]),
+		BackgroundTransparency = 1 })
+	list(left, false, SP[2])
+
+	-- speed: the number that matters most
+	local sp, spv = UI.pill(left, "Sneaker", T.red, { Name = "Speed", Size = UDim2.fromOffset(COL_W, 44), LayoutOrder = 1 })
+	speedPill, speedLabel = sp, spv
+	speedLabel.TextColor3 = UI.light(T.gold, 0.25)
+	speedLabel.Size = UDim2.new(1, -112, 1, -10)
+	-- what you gain every second, small on the right of the pill
+	gainLabel = UI.label(sp, "body", "+1/s", { Name = "Gain", Size = UDim2.new(0, 60, 0, 20), Position = UDim2.new(1, -12, 0.5, -2),
+		AnchorPoint = Vector2.new(1, 0.5), TextXAlignment = Enum.TextXAlignment.Right, ZIndex = sp.ZIndex + 2, StrokeColor = UI.dark(T.red, 0.6) })
+
+	local cp, cpv = UI.pill(left, "Cash", T.green, { Name = "Cash", Size = UDim2.fromOffset(COL_W, 44), LayoutOrder = 2 })
+	cashPill, coinsLabel = cp, cpv
+	coinsLabel.TextColor3 = UI.light(T.gold, 0.55)
+
+	-- friend boost (+ invite)
+	local fp, fpv = UI.pill(left, "Friends", T.navyLight, { Name = "Friends", Size = UDim2.fromOffset(COL_W, 34), LayoutOrder = 3 })
+	friendLabel = fpv
+	friendLabel.Size = UDim2.new(1, -72, 1, -8)
+	friendLabel.Position = UDim2.new(0, 36, 0.5, -2)
+	local fi = fp:FindFirstChild("Icon") :: GuiObject
+	fi.Position = UDim2.new(0, -6, 0.5, -2)
+	local invite = UI.button(fp, "+", T.green, function()
+		pcall(function()
+			game:GetService("SocialService"):PromptGameInvite(player)
+		end)
+	end, { Name = "Invite", Size = UDim2.fromOffset(28, 28), Position = UDim2.new(1, 2, 0.5, -1), AnchorPoint = Vector2.new(1, 0.5), ZIndex = fp.ZIndex + 3 })
+	local il = invite:FindFirstChild("Label") :: TextLabel
+	il.Size = UDim2.new(1, -4, 1, -8)
+
+	-- navigation: Index and Rides, the same size and build
+	local nav = UI.frame(left, { Name = "Nav", Size = UDim2.fromOffset(COL_W, NAV_H * 2 + SP[2]), BackgroundTransparency = 1, LayoutOrder = 4 })
+	list(nav, false, SP[2])
+	menuButtons.Index = UI.navButton(nav, "Index", "Index", T.blue, function()
+		call(HUD.onIndex)
+	end, { Size = UDim2.fromOffset(COL_W, NAV_H), LayoutOrder = 1 })
+	menuButtons.Rides = UI.navButton(nav, "Rides", "Rides", T.orange, function()
+		call(HUD.onRides)
+	end, { Size = UDim2.fromOffset(COL_W, NAV_H), LayoutOrder = 2 })
+	-- a little air between the resources and the buttons
+	local pad = Instance.new("UIPadding")
+	pad.PaddingTop = UDim.new(0, SP[1])
+	pad.Parent = nav
+	nav.Size = UDim2.fromOffset(COL_W, NAV_H * 2 + SP[2] + SP[1])
+end
+
+local function buildRight()
+	-- shark event widget (top-right)
+	timerPill = UI.frame(gui, { Name = "Timer", Size = UDim2.fromOffset(TIMER_W, 50), Position = UDim2.new(1, -(SP[2] + 6), 0, SP[2]), AnchorPoint = Vector2.new(1, 0),
+		BackgroundColor3 = T.navyDark, BackgroundTransparency = 0.08 })
+	UI.corner(timerPill, 25)
+	local ts = UI.stroke(timerPill, UI.dark(T.red, 0.15), UI.S.card)
+	ts.Name = "Edge"
+	UI.icon(timerPill, "Shark", { Size = UDim2.fromOffset(58, 58), Position = UDim2.new(0, -6, 0.5, -3), AnchorPoint = Vector2.new(0, 0.5), ZIndex = timerPill.ZIndex + 2 })
+	local words = UI.frame(timerPill, { Name = "Words", Size = UDim2.new(1, -66, 1, 0), Position = UDim2.fromOffset(58, 0), BackgroundTransparency = 1 })
+	local wl = list(words, true, 6)
+	wl.VerticalAlignment = Enum.VerticalAlignment.Center
+	timerPrefix = UI.label(words, "body", "Shark in", { Size = UDim2.fromOffset(84, 26), LayoutOrder = 1, TextXAlignment = Enum.TextXAlignment.Right })
+	timerLabel = UI.label(words, "value", "", { Size = UDim2.fromOffset(96, 30), LayoutOrder = 2, TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = T.red })
+
+	-- settings: a small gear tucked beside the shark widget
+	menuButtons.Settings = UI.iconButton(gui, "Settings", "", T.navyLight, function()
+		call(HUD.onSettings)
+	end, { Name = "Settings", Size = UDim2.fromOffset(38, 38), Position = UDim2.new(1, -(SP[2] + 6 + TIMER_W + SP[2]), 0, SP[2] + 6), AnchorPoint = Vector2.new(1, 0) })
+
+	-- square buttons: main column (Gift, Tank, Shop) on the edge, extras beside it
+	local right = UI.frame(gui, { Name = "Right", Size = UDim2.fromOffset((SQ + 4) * 3 + SP[3] * 2, 300), BackgroundTransparency = 1,
+		Position = UDim2.new(1, -(SP[2] + 6), 0.5, 0), AnchorPoint = Vector2.new(1, 0.5) })
+	local rl = list(right, true, SP[3])
+	rl.HorizontalAlignment = Enum.HorizontalAlignment.Right
+	local align = UI.TOUCH and Enum.VerticalAlignment.Top or Enum.VerticalAlignment.Center
+	local boosts = column(right, 1, align)
+	local extra = column(right, 2, align)
+	local main = column(right, 3, align)
+	boostCol, extraCol = boosts, extra
+	menuButtons.Daily = square(main, "Gift", T.pink, 1, function()
+		call(HUD.onDaily)
+	end)
+	menuButtons.Tank = square(main, "Tank", T.blue, 2, function()
+		call(HUD.onTank)
+	end)
+	menuButtons.Shop = square(main, "Shop", T.green, 3, function()
+		UI.clearBadge(menuButtons.Shop)
+		call(HUD.onShop)
+	end)
+	menuButtons.Shop.Visible = false
+	menuButtons.Rebirth = square(extra, "Rebirth", T.purple, 1, function()
+		call(HUD.onRebirth)
+	end)
+	menuButtons.Rebirth.Visible = false
+	menuButtons.Offer = square(extra, "X2Speed", T.gold, 2, function() end)
+	menuButtons.Offer.Visible = false
+	timedSquare(boosts, "Shield", "Shield", C.sky, 1)
+	timedSquare(boosts, "Boost", "Boost", T.purple, 2)
+	timedSquare(boosts, "Luck", "Potion", T.green, 3)
+
+	if UI.TOUCH then
+		-- stay clear of the jump button: hang from under the shark widget
+		right.AnchorPoint = Vector2.new(1, 0)
+		right.Position = UDim2.new(1, -(SP[2] + 6), 0, 50 + SP[2] + SP[4])
+		right.Size = UDim2.fromOffset((SQ + 4) * 3 + SP[3] * 2, SQ * 3 + SP[3] * 2 + SP[2])
+	end
+end
+
+local function buildBottom()
+	-- the progression card: next zone, bar, tank stats, next ride
+	progress = UI.card(gui, UI.dark(T.blue, 0.15), { Name = "Progress", Size = UDim2.fromOffset(CARD_W, CARD_H), Position = UDim2.new(0.5, 0, 1, -SP[2]),
+		AnchorPoint = Vector2.new(0.5, 1), BackgroundColor3 = T.navy })
+	UI.icon(progress, "Coral", { Name = "ZoneIcon", Size = UDim2.fromOffset(54, 54), Position = UDim2.fromOffset(4, -10), ZIndex = progress.ZIndex + 3 })
+	zoneLabel = UI.label(progress, "hero", "", { Name = "Zone", Size = UDim2.new(0.5, -60, 0, 32), Position = UDim2.fromOffset(62, SP[2] - 2),
+		TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = T.white })
+	local zc = zoneLabel:FindFirstChildOfClass("UITextSizeConstraint")
+	if zc then
+		zc.MaxTextSize = 28
+	end
+	incomeLabel = UI.label(progress, "body", "", { Name = "Income", Size = UDim2.fromOffset(110, 24), Position = UDim2.new(1, -SP[3], 0, SP[2] + 2),
+		AnchorPoint = Vector2.new(1, 0), TextXAlignment = Enum.TextXAlignment.Right, TextColor3 = C.money })
+	tankLabel = UI.label(progress, "body", "", { Name = "Active", Size = UDim2.fromOffset(110, 20), Position = UDim2.new(1, -(SP[3] + 116), 0, SP[2] + 4),
+		AnchorPoint = Vector2.new(1, 0), TextXAlignment = Enum.TextXAlignment.Right, TextColor3 = T.mute })
+	local back, gf, gl = UI.bar(progress, T.blue, { Name = "Goal", Size = UDim2.new(1, -(62 + SP[3]), 0, 28), Position = UDim2.fromOffset(62, 44) })
+	goalTrack, goalFill, goalText = back, gf, gl
+
+	-- the next ride: a gold slab with the price / BUY button on its right
+	rideRow = UI.button(progress, "", T.gold, rideClicked, { Name = "Ride", Size = UDim2.new(1, -SP[3] * 2, 0, 62), Position = UDim2.new(0.5, 0, 1, -SP[2]),
+		AnchorPoint = Vector2.new(0.5, 1) })
+	local face = rideRow:FindFirstChild("Face") :: Frame
+	UI.icon(face, "Rides", { Name = "RideIcon", Size = UDim2.fromOffset(58, 58), Position = UDim2.new(0, SP[1], 0.5, -2), AnchorPoint = Vector2.new(0, 0.5),
+		ZIndex = rideRow.ZIndex + 2 })
+	rideName = UI.label(face, "body", "", { Name = "RideName", Size = UDim2.new(1, -(72 + 150), 0, 26), Position = UDim2.fromOffset(70, 5),
+		TextXAlignment = Enum.TextXAlignment.Left, ZIndex = rideRow.ZIndex + 2, StrokeColor = UI.dark(T.gold, 0.6) })
+	UI.icon(face, "Sneaker", { Size = UDim2.fromOffset(20, 20), Position = UDim2.fromOffset(70, 33), ZIndex = rideRow.ZIndex + 2 })
+	rideGain = UI.label(face, "body", "", { Name = "RideGain", Size = UDim2.new(1, -(96 + 150), 0, 20), Position = UDim2.fromOffset(94, 33),
+		TextXAlignment = Enum.TextXAlignment.Left, ZIndex = rideRow.ZIndex + 2, StrokeColor = UI.dark(T.gold, 0.6) })
+	rideBtn = UI.button(face, "", T.green, rideClicked, { Name = "Price", Size = UDim2.fromOffset(136, 46), Position = UDim2.new(1, -SP[2], 0.5, 0),
+		AnchorPoint = Vector2.new(1, 0.5), ZIndex = rideRow.ZIndex + 3 })
+	local pface = rideBtn:FindFirstChild("Face") :: Frame
+	UI.icon(pface, "Cash", { Size = UDim2.fromOffset(30, 30), Position = UDim2.new(0, SP[2], 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), ZIndex = rideBtn.ZIndex + 2 })
+	local plab = rideBtn:FindFirstChild("Label") :: TextLabel
+	plab.Size = UDim2.new(1, -52, 1, -18)
+	plab.Position = UDim2.new(0, 42, 0.5, -3)
+	plab.AnchorPoint = Vector2.new(0, 0.5)
+	-- how close you are to affording it
+	local rb = UI.frame(pface, { Size = UDim2.new(1, -20, 0, 4), Position = UDim2.new(0, 10, 1, -6), BackgroundColor3 = T.navyDark, BackgroundTransparency = 0.5,
+		ZIndex = rideBtn.ZIndex + 2 })
+	UI.corner(rb, 2)
+	rideTrack = rb
+	rideFill = UI.frame(rb, { Size = UDim2.fromScale(0, 1), BackgroundColor3 = T.white, ZIndex = rideBtn.ZIndex + 3 })
+	UI.corner(rideFill, 2)
+
+	-- carrying: a small pill above the card
+	carryChip = UI.frame(gui, { Name = "Carry", Size = UDim2.fromOffset(0, 30), AutomaticSize = Enum.AutomaticSize.X, Position = UDim2.new(0.5, 0, 1, -(CARD_H + SP[2] * 2)),
+		AnchorPoint = Vector2.new(0.5, 1), BackgroundColor3 = T.navyDark, BackgroundTransparency = 0.12, Visible = false })
+	UI.corner(carryChip, 15)
+	local cs = UI.stroke(carryChip, T.gold, UI.S.card)
+	cs.Name = "Accent"
+	local cpad = Instance.new("UIPadding")
+	cpad.PaddingLeft = UDim.new(0, SP[3])
+	cpad.PaddingRight = UDim.new(0, SP[3])
+	cpad.Parent = carryChip
+	carryLabel = UI.outlined(carryChip, "", { Size = UDim2.fromOffset(0, 30), AutomaticSize = Enum.AutomaticSize.X, TextScaled = false, TextSize = 18 })
 end
 
 local function build()
@@ -90,110 +396,11 @@ local function build()
 	gui.ResetOnSpawn = false
 	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	gui.Parent = player:WaitForChild("PlayerGui")
-	UI.autoScale(gui)
+	uiScale = UI.autoScale(gui)
 
-	-- left: menu buttons + Slow Mode
-	local menu = UI.frame(gui, { Name = "Menu", Size = UDim2.fromOffset(180, 250), Position = UDim2.new(0, 10, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), BackgroundTransparency = 1 })
-	local list = Instance.new("UIListLayout")
-	list.Padding = UDim.new(0, 8)
-	list.SortOrder = Enum.SortOrder.LayoutOrder
-	list.VerticalAlignment = Enum.VerticalAlignment.Center
-	list.Parent = menu
-	local size = UDim2.fromOffset(170, 56)
-	menuButtons.Shop = UI.wideButton(menu, "Shop", "Shop", C.green, function()
-		UI.clearBadge(menuButtons.Shop)
-		call(HUD.onShop)
-	end, { Size = size, LayoutOrder = 1, Visible = false })
-	menuButtons.Index = UI.wideButton(menu, "Index", "Index", C.index, function()
-		call(HUD.onIndex)
-	end, { Size = size, LayoutOrder = 2 })
-	menuButtons.Rides = UI.wideButton(menu, "Rides", "Rides", C.orange, function()
-		call(HUD.onRides)
-	end, { Size = size, LayoutOrder = 3 })
-	local _, set = UI.toggle(menu, "Slow Mode", false, function(on)
-		State.action("slowMode", on)
-	end, { LayoutOrder = 4 })
-	setSlow = set
-
-	-- right: small squares
-	local right = UI.frame(gui, { Name = "Right", Size = UDim2.fromOffset(70, 420), Position = UDim2.new(1, -10, 0.5, 0), AnchorPoint = Vector2.new(1, 0.5), BackgroundTransparency = 1 })
-	local rl = Instance.new("UIListLayout")
-	rl.Padding = UDim.new(0, 8)
-	rl.HorizontalAlignment = Enum.HorizontalAlignment.Right
-	rl.VerticalAlignment = Enum.VerticalAlignment.Center
-	rl.SortOrder = Enum.SortOrder.LayoutOrder
-	rl.Parent = right
-	menuButtons.Daily = square(right, "Gift", C.pink, 0, function()
-		call(HUD.onDaily)
-	end)
-	menuButtons.Tank = square(right, "Tank", C.orange, 1, function()
-		call(HUD.onTank)
-	end)
-	menuButtons.Rebirth = square(right, "Rebirth", C.green, 2, function()
-		call(HUD.onRebirth)
-	end)
-	menuButtons.Rebirth.Visible = false
-	menuButtons.Offer = square(right, "X2Speed", C.red, 3, function() end)
-	menuButtons.Offer.Visible = false
-	timedSquare(right, "Shield", "Shield", C.sky, 4)
-	timedSquare(right, "Boost", "Boost", C.purple, 5)
-	timedSquare(right, "Luck", "Potion", C.green, 6)
-
-	-- bottom-left: speed + money (the font's own $), friend boost
-	local stats = UI.frame(gui, { Name = "Stats", Size = UDim2.fromOffset(250, 124), Position = UDim2.new(0, 12, 1, -8), AnchorPoint = Vector2.new(0, 1), BackgroundTransparency = 1 })
-	UI.icon(stats, "Sneaker", { Size = UDim2.fromOffset(46, 46), Position = UDim2.fromOffset(0, 0) })
-	speedLabel = UI.outlined(stats, "0", { Size = UDim2.fromOffset(196, 42), Position = UDim2.fromOffset(52, 3), TextXAlignment = Enum.TextXAlignment.Left, Font = UI.NUMFONT })
-	local sg = Instance.new("UIGradient")
-	sg.Color = ColorSequence.new(Color3.fromRGB(255, 214, 60), Color3.fromRGB(255, 120, 20))
-	sg.Rotation = 90
-	sg.Parent = speedLabel
-	coinsLabel = UI.outlined(stats, "$0", { Size = UDim2.fromOffset(246, 42), Position = UDim2.fromOffset(2, 50), TextXAlignment = Enum.TextXAlignment.Left, Font = UI.NUMFONT, TextColor3 = C.money })
-	friendLabel = UI.outlined(stats, "Friend Boost +0%", { Size = UDim2.fromOffset(170, 20), Position = UDim2.fromOffset(3, 99), TextXAlignment = Enum.TextXAlignment.Left })
-	local invite = UI.button(stats, "+", C.green, function()
-		pcall(function()
-			game:GetService("SocialService"):PromptGameInvite(player)
-		end)
-	end, { Size = UDim2.fromOffset(28, 28), Position = UDim2.fromOffset(178, 95) })
-	invite.Name = "Invite"
-	local il = invite:FindFirstChild("Label") :: TextLabel
-	il.Size = UDim2.new(1, -4, 1, -4)
-
-	-- bottom-center: gain line, goal bar, next ride
-	local bottom = UI.frame(gui, { Name = "Bottom", Size = UDim2.fromOffset(380, 120), Position = UDim2.new(0.5, 0, 1, -8), AnchorPoint = Vector2.new(0.5, 1), BackgroundTransparency = 1 })
-	gainLabel = UI.outlined(bottom, "+1 SPEED/S", { Size = UDim2.fromOffset(186, 20), Position = UDim2.fromOffset(2, 0), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = C.gold })
-	tankLabel = UI.outlined(bottom, "", { Size = UDim2.fromOffset(186, 20), Position = UDim2.new(1, -2, 0, 0), AnchorPoint = Vector2.new(1, 0), TextXAlignment = Enum.TextXAlignment.Right, TextColor3 = C.money })
-	local _, gf, gl = UI.bar(bottom, C.blue, { Size = UDim2.new(1, 0, 0, 32), Position = UDim2.fromOffset(0, 24) })
-	goalFill, goalText = gf, gl
-	goalText.TextXAlignment = Enum.TextXAlignment.Left
-	rideBtn = UI.button(bottom, "", C.gold, function()
-		local d = State.data
-		local nxt = d and HUD.nextRide(d)
-		if nxt and d.coins >= nxt.price and HUD.atRideShop and HUD.atRideShop() then
-			State.action("buyRide", nxt.id)
-		else
-			HUD.goToRideShop()
-		end
-	end, { Size = UDim2.new(1, 0, 0, 56), Position = UDim2.fromOffset(0, 64) })
-	local rlab = rideBtn:FindFirstChild("Label") :: TextLabel
-	rlab.Size = UDim2.new(1, -16, 0, 25)
-	rlab.Position = UDim2.new(0.5, 0, 0, 4)
-	rlab.AnchorPoint = Vector2.new(0.5, 0)
-	ridePrice = UI.outlined(rideBtn, "", { Size = UDim2.new(1, -16, 0, 18), Position = UDim2.new(0.5, 0, 0, 29), AnchorPoint = Vector2.new(0.5, 0), ZIndex = rideBtn.ZIndex + 1 })
-	local rb = UI.frame(rideBtn, { Size = UDim2.new(1, -20, 0, 4), Position = UDim2.new(0, 10, 1, -8), BackgroundColor3 = Color3.fromRGB(0, 0, 0), BackgroundTransparency = 0.5, ZIndex = rideBtn.ZIndex + 1 })
-	UI.corner(rb, 2)
-	rideFill = UI.frame(rb, { Size = UDim2.fromScale(0, 1), BackgroundColor3 = C.white, ZIndex = rb.ZIndex + 1 })
-	UI.corner(rideFill, 2)
-
-	carryChip = UI.outlined(gui, "", { Size = UDim2.fromOffset(520, 24), Position = UDim2.new(0.5, 0, 1, -136), AnchorPoint = Vector2.new(0.5, 1), Visible = false })
-
-	-- bottom-right: next shark attack ("in 1m 40s" over a soft fade)
-	timerPill = UI.frame(gui, { Name = "Timer", Size = UDim2.fromOffset(250, 58), Position = UDim2.new(1, 0, 1, 0), AnchorPoint = Vector2.new(1, 1),
-		BackgroundColor3 = Color3.fromRGB(0, 0, 0), BackgroundTransparency = 0.45 })
-	local fade = Instance.new("UIGradient")
-	fade.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.35, 0.35), NumberSequenceKeypoint.new(1, 0.25) })
-	fade.Parent = timerPill
-	UI.icon(timerPill, "Shark", { Size = UDim2.fromOffset(46, 46), Position = UDim2.new(0, 46, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5) })
-	timerLabel = UI.outlined(timerPill, "", { Size = UDim2.new(1, -108, 0, 34), Position = UDim2.new(0, 98, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), TextXAlignment = Enum.TextXAlignment.Left, Font = UI.NUMFONT })
+	buildLeft()
+	buildRight()
+	buildBottom()
 
 	-- shark alert vignette
 	vignette = UI.frame(Fx.screen(), { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Name = "Vignette", ZIndex = 2 })
@@ -206,20 +413,6 @@ local function build()
 		g.Parent = f
 	end
 	vignette.Visible = false
-
-	-- touch screens: the thumbstick and jump button own the bottom corners,
-	-- so the numbers go top-left and the timer top-right
-	if UI.TOUCH then
-		stats.AnchorPoint = Vector2.new(0, 0)
-		stats.Position = UDim2.fromOffset(12, 4)
-		timerPill.AnchorPoint = Vector2.new(1, 0)
-		timerPill.Position = UDim2.new(1, 0, 0, 4)
-		menu.Position = UDim2.new(0, 10, 0.5, 20)
-		right.Position = UDim2.new(1, -10, 0.46, 0)
-		right.Size = UDim2.fromOffset(70, 330)
-		bottom.Position = UDim2.new(0.5, 0, 1, -6)
-		carryChip.Position = UDim2.new(0.5, 0, 1, -132)
-	end
 end
 
 ----------------------------------------------------------------- helpers
@@ -245,6 +438,7 @@ function HUD.hint(text: string?)
 	end
 end
 
+-- the tutorial asks for attention on the buy button (stops when you can't afford it)
 function HUD.pulseRide(on: boolean)
 	if on and not stopRidePulse then
 		stopRidePulse = UI.pulse(rideBtn)
@@ -272,7 +466,7 @@ local function unclaimed(d: any): number
 	return n
 end
 
--- the best pass you don't own yet, as a red square (only once the shop is open)
+-- the best pass you don't own yet, as a gold square (only once the shop is open)
 local function updateOffer(d: any)
 	local want: string? = nil
 	if d.playtime >= Config.SHOP_UNLOCK_SECONDS then
@@ -289,11 +483,12 @@ local function updateOffer(d: any)
 	if want and b:GetAttribute("Key") ~= want then
 		b:SetAttribute("Key", want)
 		local pass = Config.Passes[want]
-		local old = b:FindFirstChild("Icon")
+		local face = b:FindFirstChild("Face") or b
+		local old = face:FindFirstChild("Icon")
 		if old then
 			old:Destroy()
 		end
-		UI.icon(b, pass.iconName or "X2Speed", { Size = UDim2.fromScale(0.74, 0.74), Position = UDim2.fromScale(0.5, 0.47), AnchorPoint = Vector2.new(0.5, 0.5), ZIndex = b.ZIndex + 1 })
+		UI.icon(face, pass.iconName or "X2Speed", { Size = UDim2.fromScale(0.78, 0.78), Position = UDim2.fromScale(0.5, 0.5), AnchorPoint = Vector2.new(0.5, 0.5), ZIndex = b.ZIndex + 1 })
 		UI.badge(b, "R$")
 	end
 end
@@ -307,20 +502,30 @@ local function offerClicked()
 end
 
 ----------------------------------------------------------------- render state
-local lastSlow = false
 local shopShown = false
+local lastSpeed: number? = nil
+local lastCoins: number? = nil
+local lastAfford = false
+local lastDaily = false
+local lastRide: string? = nil
 local function render(d: any)
+	-- resources (+ a little float when they go up)
+	if lastSpeed and d.speed > lastSpeed then
+		floatText(speedPill, "speed", ("+%s Speed"):format(UI.short(d.speed - lastSpeed)), UI.light(T.gold, 0.2))
+	end
+	if lastCoins and d.coins > lastCoins then
+		floatText(cashPill, "cash", "+$" .. UI.short(d.coins - lastCoins), C.money)
+	end
+	lastSpeed, lastCoins = d.speed, d.coins
 	speedLabel.Text = UI.short(d.speed)
 	coinsLabel.Text = "$" .. UI.short(d.coins)
 	local mult = Config.Rebirth.mult ^ d.rebirths
-	gainLabel.Text = mult > 1 and ("+%s SPEED/S (x%s)"):format(UI.short(d.gain), string.format("%g", math.floor(mult * 100 + 0.5) / 100))
-		or ("+%s SPEED/S"):format(UI.short(d.gain))
-	tankLabel.Text = ("%d/%d Active  +$%s/s"):format(d.active, d.slots, UI.short(d.income))
-	friendLabel.Text = ("Friend Boost +%d%%"):format(math.floor(d.friendBoost * 100 + 0.5))
-	if setSlow and d.slow ~= lastSlow then
-		lastSlow = d.slow
-		setSlow(d.slow)
-	end
+	gainLabel.Text = mult > 1 and ("+%s/s x%s"):format(UI.short(d.gain), string.format("%g", math.floor(mult * 100 + 0.5) / 100))
+		or ("+%s/s"):format(UI.short(d.gain))
+	tankLabel.Text = ("%d/%d Active"):format(d.active, d.slots)
+	incomeLabel.Text = ("+$%s/s"):format(UI.short(d.income))
+	friendLabel.Text = ("Friends +%d%%"):format(math.floor(d.friendBoost * 100 + 0.5))
+
 	-- "!" on the Tank when a stored creature would earn more than an active one
 	local minActive, bestStored = math.huge, 0
 	for _, c in d.creatures do
@@ -335,18 +540,24 @@ local function render(d: any)
 	else
 		UI.clearBadge(menuButtons.Tank)
 	end
-	-- daily reward waiting
-	if (d.dailyWait or 1) <= 0 then
+	-- daily reward waiting: one pop when it becomes ready
+	local dailyReady = (d.dailyWait or 1) <= 0
+	if dailyReady then
 		UI.badge(menuButtons.Daily)
+		if not lastDaily then
+			UI.pop(menuButtons.Daily, 1.2)
+		end
 	else
 		UI.clearBadge(menuButtons.Daily)
 	end
+	lastDaily = dailyReady
 	-- boosts: square + time left
 	local function boost(key: string, on: boolean, timerText: string?, badge: string?)
 		local sq = boostSquares[key]
 		sq.holder.Visible = on
 		sq.timer.Text = timerText or ""
-		sq.holder.Size = UDim2.fromOffset(66, timerText and 84 or 62) -- no empty gap when there's no timer
+		sq.chip.Visible = timerText ~= nil
+		sq.holder.Size = UDim2.fromOffset(SQ, timerText and SQ + SP[2] or SQ) -- no empty gap when there's no timer
 		if badge then
 			UI.badge(sq.button, badge)
 		end
@@ -354,9 +565,12 @@ local function render(d: any)
 	boost("Shield", d.shields > 0, nil, tostring(d.shields))
 	boost("Boost", d.boostLeft > 0, UI.timeWords(d.boostLeft))
 	boost("Luck", d.luckLeft > 0, UI.timeWords(d.luckLeft))
+	-- empty side columns fold away so the squares sit together
+	boostCol.Visible = d.shields > 0 or d.boostLeft > 0 or d.luckLeft > 0
 
 	-- goal: next zone gate, or rebirth
 	local gate = Config.nextGate(d.speed)
+	local frac
 	if gate then
 		local prevGate = 0
 		for _, z in Config.Zones do
@@ -364,15 +578,26 @@ local function render(d: any)
 				prevGate = z.gate
 			end
 		end
-		goalText.Text = ("%s   %s / %s"):format(gate.name, UI.short(d.speed), UI.short(gate.gate))
-		goalFill.Size = UDim2.fromScale(math.clamp((d.speed - prevGate) / (gate.gate - prevGate), 0.02, 1), 1)
-		goalFill.BackgroundColor3 = C.blue
+		zoneLabel.Text = gate.name
+		goalText.Text = ("%s / %s"):format(UI.short(d.speed), UI.short(gate.gate))
+		frac = math.clamp((d.speed - prevGate) / (gate.gate - prevGate), 0.02, 1)
+		paintFill(goalFill, T.blue)
 	else
 		local ready = d.speed >= Config.Rebirth.speed
-		goalText.Text = ready and "REBIRTH READY!" or ("Rebirth at %s speed"):format(UI.short(Config.Rebirth.speed))
-		goalFill.Size = UDim2.fromScale(math.clamp(d.speed / Config.Rebirth.speed, 0.02, 1), 1)
-		goalFill.BackgroundColor3 = C.green
+		zoneLabel.Text = "Rebirth"
+		goalText.Text = ready and "REBIRTH READY!" or ("%s / %s"):format(UI.short(d.speed), UI.short(Config.Rebirth.speed))
+		frac = math.clamp(d.speed / Config.Rebirth.speed, 0.02, 1)
+		paintFill(goalFill, T.green)
 	end
+	UI.setBar(goalFill, frac)
+	-- almost there: the bar's edge and number turn gold
+	local near = frac >= 0.85
+	local edge = goalTrack:FindFirstChildOfClass("UIStroke")
+	if edge then
+		edge.Color = near and T.gold or T.navyDark
+	end
+	goalText.TextColor3 = near and UI.light(T.gold, 0.3) or T.white
+
 	menuButtons.Rebirth.Visible = d.speed >= Config.Rebirth.speed
 	local shopOpen = d.playtime >= Config.SHOP_UNLOCK_SECONDS or d.rides.Duck == true
 	if shopOpen and not menuButtons.Shop.Visible then
@@ -391,32 +616,48 @@ local function render(d: any)
 
 	-- next ride
 	local nxt = HUD.nextRide(d)
-	rideBtn.Visible = nxt ~= nil
+	rideRow.Visible = nxt ~= nil
+	local h = nxt and CARD_H or CARD_H_NO_RIDE
+	progress.Size = UDim2.fromOffset(CARD_W, h)
+	carryChip.Position = UDim2.new(0.5, 0, 1, -(h + SP[2] * 2))
 	if nxt then
 		local afford = d.coins >= nxt.price
 		local here = HUD.atRideShop and HUD.atRideShop()
-		UI.setText(rideBtn, afford and (here and ("BUY %s!"):format(nxt.name:upper()) or ("GET %s!"):format(nxt.name:upper())) or nxt.name)
-		ridePrice.Text = ("+%d speed/s  ·  $%s"):format(nxt.gain or 0, UI.short(nxt.price))
+		rideName.Text = nxt.name
+		rideGain.Text = ("+%d speed/s"):format(nxt.gain or 0)
+		UI.setText(rideBtn, afford and (here and "BUY" or "GET") or ("$" .. UI.short(nxt.price)))
 		rideFill.Size = UDim2.fromScale(math.clamp(d.coins / nxt.price, 0, 1), 1)
-		rideBtn.BackgroundColor3 = afford and C.green or C.gold
-		HUD.pulseRide(afford)
+		rideTrack.Visible = not afford
+		if afford and (not lastAfford or lastRide ~= nxt.id) then
+			UI.pop(rideBtn, 1.15) -- one pulse when it becomes affordable
+		end
+		if not afford then
+			HUD.pulseRide(false)
+		end
+		lastAfford, lastRide = afford, nxt.id
 		if afford then
 			UI.badge(menuButtons.Rides)
 		else
 			UI.clearBadge(menuButtons.Rides)
 		end
+	else
+		HUD.pulseRide(false)
+		UI.clearBadge(menuButtons.Rides)
 	end
 
 	-- carrying
 	if d.carrying then
 		local r = Config.rarity(d.carrying.r)
 		carryChip.Visible = true
-		carryChip.TextColor3 = r.color
-		carryChip.Text = ("%s → bring it home to your tank!"):format(Config.fullName(d.carrying.z, d.carrying.r, d.carrying.m, d.carrying.s))
+		carryLabel.TextColor3 = r.color
+		local accent = carryChip:FindFirstChild("Accent") :: UIStroke
+		accent.Color = r.color
+		carryLabel.Text = ("%s: bring it home to your tank!"):format(Config.fullName(d.carrying.z, d.carrying.r, d.carrying.m, d.carrying.s))
 	else
 		carryChip.Visible = false
 	end
 	updateOffer(d)
+	extraCol.Visible = menuButtons.Rebirth.Visible or menuButtons.Offer.Visible
 end
 
 ----------------------------------------------------------------- per-frame: status line, zone titles, shark state, timer
@@ -425,9 +666,6 @@ local phaseEnds = os.clock() + Config.Shark.firstAttack
 local lastZone: string? = nil
 local quietTitlesUntil = 0 -- no "Shark Beach" title right after you wash up
 local menuOpen = false
-
--- one emoji either side of each zone's title (all widely supported)
-local ZONE_EMOJI = { Lagoon = "", Reef = "", Kelp = "", Shipwreck = "", Deep = "", Abyss = "" }
 
 local function myPos(): Vector3?
 	local char = player.Character
@@ -474,20 +712,72 @@ local function sharkLine(pos: Vector3)
 		end
 	else
 		local mine = SharkView.myHunter()
-		if mine and mine.state == "chase" then
-			text, sub, color = "IT'S CHARGING!", "Swerve at the last second, or reach sand!", C.red
+		if mine and mine.state == "lunge" then
+			text, sub, color = "IT'S JUMPING! SWERVE!", "Turn hard, now!", C.red
+		elseif mine and mine.state == "chase" then
+			text, sub, color = "IT'S CHARGING!", "Swerve late, or reach sand!", C.red
 		elseif mine and mine.state == "overshoot" then
-			text, sub, color = "IT MISSED! IT'S TURNING BACK", "Now's your chance: get to sand or an island", C.gold
+			text, sub, color = "IT MISSED!", "Now: get to sand or an island", C.gold
 		elseif mine and mine.state == "stalk" then
 			text, sub, color = "A SHARK IS CIRCLING YOU!", "Follow the arrow to safety", C.red
 		elseif safe then
-			text, sub, color = ("Safe here · sharks leave in %d"):format(left), nil, C.green
+			local onIsland = Layout.inWater(pos)
+			text, sub, color = ("Safe here · sharks leave in %d"):format(left), onIsland and "Islands only shelter you for a few seconds" or nil, C.green
 		else
-			text, sub, color = "SHARKS ARE HUNTING!", "Catches are luckier right now... if you dare", C.gold
+			text, sub, color = "SHARKS ARE HUNTING!", "Catches are luckier now... if you dare", C.gold
 		end
 	end
-	Notify.banner(text, { key = "shark", sticky = true, priority = 5, sub = sub, color = color })
+	Notify.banner(text, { key = "shark", sticky = true, priority = 5, sub = sub, color = color, icon = "Shark" })
 	vignette.Visible = not safe and not player:GetAttribute("Cinematic")
+end
+
+-- the shark widget: calm countdown, a soft pulse under 10 s, a shake at 5 s
+local shownSecond = -1
+local shownPhase = ""
+local function shake(f: GuiObject)
+	task.spawn(function()
+		for i, r in { -4, 4, -3, 3, 0 } do
+			tween(f, 0.05, { Rotation = r })
+			task.wait(i == 5 and 0 or 0.05)
+		end
+	end)
+end
+
+local function updateTimer()
+	local left = math.max(0, phaseEnds - os.clock())
+	local sec = math.ceil(left)
+	if sec == shownSecond and phase == shownPhase then
+		return
+	end
+	local newPhase = phase ~= shownPhase
+	shownSecond, shownPhase = sec, phase
+	local edge = timerPill:FindFirstChild("Edge") :: UIStroke
+	if phase == "calm" then
+		timerPrefix.Text = "Shark in"
+		timerLabel.Text = UI.timeWords(left)
+		local urgent = sec <= 10
+		timerLabel.TextColor3 = urgent and UI.light(T.red, 0.1) or T.red
+		timerPill.BackgroundColor3 = urgent and UI.dark(T.red, 0.7) or T.navyDark
+		edge.Color = urgent and T.red or UI.dark(T.red, 0.15)
+		edge.Thickness = urgent and UI.S.cta or UI.S.card
+		if urgent and sec > 0 then
+			UI.pop(timerPill, sec <= 5 and 1.08 or 1.04)
+			if sec == 5 then
+				shake(timerPill)
+			end
+		end
+	else
+		timerPrefix.Text = phase == "warning" and "INCOMING" or "HUNTING"
+		timerLabel.Text = ("%ds"):format(sec)
+		timerLabel.TextColor3 = T.white
+		timerPill.BackgroundColor3 = UI.dark(T.red, 0.25)
+		edge.Color = UI.light(T.red, 0.3)
+		edge.Thickness = UI.S.cta
+		if newPhase then
+			UI.pop(timerPill, 1.15)
+			shake(timerPill)
+		end
+	end
 end
 
 local function frame()
@@ -499,11 +789,10 @@ local function frame()
 		if id ~= lastZone then
 			if lastZone ~= nil and os.clock() > quietTitlesUntil then
 				if zone then
-					local e = ZONE_EMOJI[zone.id] or ""
-					Notify.banner(("%s %s %s"):format(e, zone.name, e), { key = "zone", priority = 2, time = 2.4, big = true,
+					Notify.banner(zone.name, { key = "zone", priority = 2, time = 2.4, big = true,
 						color = zone.water:Lerp(Color3.new(1, 1, 1), 0.35), sub = ("%s waters"):format((zone.shark:gsub("(%l)(%u)", "%1 %2"))) })
 				else
-					Notify.banner("Shark Beach ", { key = "zone", priority = 2, time = 2, big = true, color = Color3.fromRGB(255, 220, 120), sub = "Sand is always safe" })
+					Notify.banner("Shark Beach", { key = "zone", priority = 2, time = 2, big = true, color = Color3.fromRGB(255, 220, 120), sub = "Sand is always safe" })
 				end
 			end
 			lastZone = id
@@ -512,16 +801,34 @@ local function frame()
 			sharkLine(pos)
 		end
 	end
-	local left = math.max(0, phaseEnds - os.clock())
-	if phase == "calm" then
-		timerLabel.Text = "in " .. UI.timeWords(left)
-		timerLabel.TextColor3 = left < 10 and C.gold or C.white
-		timerPill.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-	else
-		timerLabel.Text = (phase == "warning" and "COMING " or "HUNTING ") .. math.ceil(left)
-		timerLabel.TextColor3 = C.white
-		timerPill.BackgroundColor3 = C.red
+	updateTimer()
+end
+
+----------------------------------------------------------------- unlock moment on the progress card (UI only)
+local function unlockBurst()
+	local flash = UI.frame(progress, { Name = "Flash", Size = UDim2.fromScale(1, 1), BackgroundColor3 = T.white, BackgroundTransparency = 0.2, ZIndex = 30 })
+	UI.corner(flash, UI.R.card)
+	tween(flash, 0.5, { BackgroundTransparency = 1 })
+	UI.pop(progress, 1.08)
+	local colors = { T.gold, T.blue, T.white, T.green }
+	for i = 1, 14 do
+		local a = (i / 14) * math.pi * 2 + math.random() * 0.3
+		local s = math.random(8, 14)
+		local bit = UI.frame(progress, { Size = UDim2.fromOffset(s, s), Position = UDim2.new(0.5, 0, 0, 58), AnchorPoint = Vector2.new(0.5, 0.5),
+			BackgroundColor3 = colors[i % #colors + 1], Rotation = math.random(0, 90), ZIndex = 31 })
+		UI.corner(bit, 3)
+		local dist = math.random(110, 220)
+		tween(bit, 0.6, { Position = UDim2.new(0.5, math.cos(a) * dist, 0, 58 + math.sin(a) * dist * 0.45), Rotation = bit.Rotation + 180,
+			BackgroundTransparency = 1 })
 	end
+	task.delay(0.65, function()
+		flash:Destroy()
+		for _, c in progress:GetChildren() do
+			if c:IsA("Frame") and c.ZIndex == 31 then
+				c:Destroy()
+			end
+		end
+	end)
 end
 
 ----------------------------------------------------------------- notifications
@@ -538,6 +845,7 @@ handlers.grab = function(d)
 		Fx.popup3D(pos + Vector3.new(0, 5, 0), ("+$%s/s"):format(UI.short(d.v)), r.color)
 	end
 	Fx.sound("grab", 0.6, 1 + r.index * 0.05)
+	flyToTank(r.color)
 	-- the bigger the catch, the bigger the moment
 	if r.index >= 5 then
 		Notify.takeover("LEGENDARY!", name, r.color, 1.8)
@@ -558,14 +866,34 @@ end
 handlers.discover = function()
 	newDiscovery = true
 	Fx.sound("discover", 0.55)
-	UI.pop(menuButtons.Index, 1.3)
+	local b = menuButtons.Index
+	UI.pop(b, 1.2)
+	local old = b:FindFirstChild("New")
+	if old then
+		old:Destroy()
+	end
+	local chip = UI.chip(b, "NEW!", T.gold, { Name = "New", Size = UDim2.fromOffset(54, 22), Position = UDim2.new(1, 4, 1, -2), AnchorPoint = Vector2.new(1, 0.5),
+		ZIndex = b.ZIndex + 6, Rotation = -6 })
+	for _, c in chip:GetDescendants() do
+		if c:IsA("GuiObject") then
+			c.ZIndex = b.ZIndex + 7
+		end
+	end
+	UI.pop(chip, 1.5)
+	task.delay(5, function()
+		if chip.Parent then
+			UI.fade(chip, false, 0.3)
+			task.wait(0.32)
+			chip:Destroy()
+		end
+	end)
 end
 
 handlers.indexClaim = function(d)
 	Notify.word("CLAIMED!", C.orange, 0.9)
 	Notify.toast(("+$%s  +%s speed"):format(UI.short(d.coins), UI.short(d.speed)), C.green)
-	UI.pop(coinsLabel, 1.3)
-	UI.pop(speedLabel, 1.3)
+	UI.pop(cashPill, 1.15)
+	UI.pop(speedPill, 1.15)
 	Fx.sound("coin", 0.7)
 end
 
@@ -602,14 +930,14 @@ handlers.code = function(d)
 		Notify.toast(table.concat(bits, "  "), C.green)
 		Fx.sound("coin", 0.7)
 	else
-		Notify.toast("" .. tostring(d.text), C.red)
+		Notify.toast(tostring(d.text), C.red)
 		Fx.sound("uiError", 0.6)
 	end
 end
 
 handlers.tankFull = function(d)
 	Notify.banner(("Tank full! %d dead fish"):format(d.max or 10), { key = "tankFull", priority = 2, time = 4, color = C.red,
-		sub = "Sell some at the SELL hut, or equip them" })
+		sub = "Sell some at the SELL hut, or equip them", icon = "Tank" })
 	Fx.sound("uiError", 0.6)
 	local pad = Travel.padPos("Sell")
 	if pad then
@@ -621,7 +949,7 @@ handlers.sold = function(d)
 	Notify.word(("SOLD %d!"):format(d.count), C.green, 0.9)
 	Notify.toast("+$" .. UI.short(d.coins), C.money)
 	Fx.sound("buy", 0.7)
-	UI.pop(coinsLabel, 1.3)
+	UI.pop(cashPill, 1.15)
 end
 
 handlers.collect = function(d)
@@ -631,7 +959,7 @@ handlers.collect = function(d)
 		Fx.popup3D(pos + Vector3.new(0, 5, 0), "+$" .. UI.short(d.amount), C.money, true)
 	end
 	Fx.sound("collect", 0.7)
-	UI.pop(coinsLabel, 1.35)
+	UI.pop(cashPill, 1.15)
 end
 
 handlers.ride = function(d)
@@ -643,8 +971,8 @@ handlers.ride = function(d)
 	end
 	Fx.sound("buy", 0.8)
 	Fx.sound("rideNew", 0.8)
-	Notify.takeover("NEW RIDE!", ("%s · +%s speed every second"):format(ride and ride.name or "", UI.short(d.gain)), C.gold, 1.6)
-	UI.pop(gainLabel, 1.5)
+	Notify.takeover("NEW RIDE!", ("%s · +%s speed every second"):format(ride and ride.name or "", UI.short(d.gain)), C.gold, 1.6, "Rides")
+	UI.pop(speedPill, 1.15)
 end
 
 handlers.rideShop = function()
@@ -658,12 +986,13 @@ end
 handlers.unlock = function(d)
 	local zone = Config.zoneById(d.zone)
 	if zone then
-		Notify.takeover(zone.name:upper() .. "!", "New zone unlocked · rarer creatures, bigger sharks", C.gold, 1.8)
+		Notify.takeover(zone.name:upper() .. "!", "New zone unlocked · rarer creatures, bigger sharks", C.gold, 1.8, "Coral")
 		Fx.sound("zoneUnlock", 0.8)
 		local pos = myPos()
 		if pos then
 			Fx.confetti(pos)
 		end
+		unlockBurst()
 	end
 end
 
@@ -695,7 +1024,8 @@ handlers.spat = function()
 	if d and d.playtime >= Config.SHOP_UNLOCK_SECONDS and Config.Products.Shield.id ~= 0 then
 		local b = UI.button(gui, "Shield next time  R$" .. Config.Products.Shield.price, C.sky, function()
 			MarketplaceService:PromptProductPurchase(player, Config.Products.Shield.id)
-		end, { Size = UDim2.fromOffset(260, 44), Position = UDim2.new(0.5, 0, 1, -168), AnchorPoint = Vector2.new(0.5, 1) })
+		end, { Size = UDim2.fromOffset(260, 44), Position = UDim2.new(0.5, 0, 1, -(progress.Size.Y.Offset + SP[2] * 2 + 40)), AnchorPoint = Vector2.new(0.5, 1) })
+		UI.pop(b, 1.15)
 		task.delay(6, function()
 			b:Destroy()
 		end)
@@ -709,7 +1039,7 @@ end
 handlers.rebirth = function(d)
 	Fx.flash(Color3.new(1, 1, 1), 0.8, 0)
 	Fx.sound("rebirth", 0.8)
-	Notify.takeover("REBIRTH!", ("Permanent x%s speed gain"):format(tostring(Config.Rebirth.mult ^ d.rebirths)), C.green, 2)
+	Notify.takeover("REBIRTH!", ("Permanent x%s speed gain"):format(tostring(Config.Rebirth.mult ^ d.rebirths)), C.green, 2, "Rebirth")
 end
 
 handlers.purchase = function(d)
@@ -735,7 +1065,7 @@ local function onPhase(kind: string, data: any)
 		phase, phaseEnds = "warning", os.clock() + (data.duration or 5)
 		local pos = myPos()
 		local exposed = pos ~= nil and not Layout.isSafe(pos)
-		Notify.takeover("SHARK INCOMING!", exposed and "Get to sand or an island!" or "Stay on the sand and you're safe", C.red, 1.4)
+		Notify.takeover("SHARK INCOMING!", exposed and "Get to sand or an island!" or "Stay on the sand and you're safe", C.red, 1.4, "Shark")
 		Water.setSafeGlow(true)
 		Fx.sound("sharkAlarm", 0.8)
 		-- the horizon breach: a shark leaps where you can see it
@@ -782,6 +1112,7 @@ function HUD.start()
 	if State.data then
 		render(State.data)
 	end
+	updateTimer()
 	RunService.Heartbeat:Connect(frame)
 	-- opening the Roblox menu (usually to leave): show what the tank earns offline
 	local GuiService = game:GetService("GuiService")

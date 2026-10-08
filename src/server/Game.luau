@@ -38,10 +38,14 @@ export type Session = {
 	friendBoost: number, -- +coins from friends in this server (0..0.5)
 	slow: boolean, -- Slow Mode on
 	offline: number, -- welcome-back coins waiting to be claimed
+	carryUntil: number?, -- os.clock() when the carried creature wriggles free
+	carryWarned: boolean?,
 }
 
 Game.sessions = {} :: { [Player]: Session }
 Game.frenzy = false -- set by Sharks while a hunt is on
+-- set by Sharks: has this player used up their shelter on this island?
+Game.islandExposed = nil :: ((Session, Layout.Island) -> boolean)?
 
 local StateRemote = Remotes.get("State")
 local NotifyRemote = Remotes.get("Notify")
@@ -252,6 +256,7 @@ function Game.push(s: Session)
 		tut = p.tut,
 		shields = p.shields,
 		carrying = s.carrying,
+		freshLeft = s.carryUntil and math.max(0, s.carryUntil - os.clock()) or nil, -- seconds before it escapes
 		passes = s.passes,
 		boostLeft = math.max(0, p.boostUntil - now),
 		luckLeft = math.max(0, p.luckUntil - now),
@@ -326,6 +331,11 @@ function Game.setCarry(s: Session, c: Data.Creature?)
 	if s.carryModel then
 		s.carryModel:Destroy()
 		s.carryModel = nil
+	end
+	if c ~= s.carrying then
+		-- a fresh catch only stays in your hands so long (not during the tutorial)
+		s.carryUntil = (c and s.profile.tut >= 5) and os.clock() + Config.freshTime(c.z) or nil
+		s.carryWarned = false
 	end
 	s.carrying = c
 	local char = s.player.Character
@@ -516,7 +526,16 @@ function Game.huntable(s: Session): boolean
 	if s.profile.tut < 5 and os.clock() - s.joinedAt < Config.Shark.newPlayerGrace then
 		return false
 	end
-	return not Layout.isSafe(hrp.Position)
+	local pos = hrp.Position
+	if not Layout.inWater(pos) then
+		return false -- the beach is home: always safe
+	end
+	-- islands shelter you for a while each hunt (Sharks keeps the timers)
+	local island = Layout.islandAt(pos, 0.5)
+	if island then
+		return Game.islandExposed ~= nil and Game.islandExposed(s, island)
+	end
+	return true
 end
 
 -- returns "shield" or "eaten"
@@ -1019,6 +1038,22 @@ local function fastTick()
 						Game.notify(s.player, "tankFull", { max = Config.Tank.maxDead })
 					end
 				end
+			end
+		end
+		-- a carried creature doesn't wait forever: bring it home in time
+		local c = s.carrying
+		if c and s.carryUntil then
+			if not wet and Game.activeCount(s) >= tankSlots(s) and Game.deadCount(s) >= Config.Tank.maxDead then
+				s.carryUntil += 0.125 -- tank full: it waits while you sort that out on the sand
+			end
+			local left = s.carryUntil - os.clock()
+			if left <= Config.Shark.freshWarn and not s.carryWarned then
+				s.carryWarned = true
+				Game.notify(s.player, "escaping", { left = math.max(0, left), r = c.r, m = c.m, z = c.z, s = c.s })
+			end
+			if left <= 0 and not hrp.Anchored then
+				Game.notify(s.player, "escaped", { r = c.r, m = c.m, z = c.z, s = c.s })
+				Game.setCarry(s, nil)
 			end
 		end
 		-- hard gates: past a wall you haven't unlocked? back to the shore

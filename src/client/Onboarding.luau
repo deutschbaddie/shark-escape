@@ -31,17 +31,40 @@ local player = Players.LocalPlayer
 
 local DONE = 5
 -- the first grab is a tap (Prompts "tap"); after that grabs need a hold
-local TAP_HINT = UI.TOUCH and "Swim to a bubble and TAP the button" or "Swim to a bubble and press E"
-local HOLD_HINT = UI.TOUCH and "Swim to a bubble and HOLD the button" or "Swim to a bubble and HOLD E"
+local TAP_HINT = UI.TOUCH and "Swim to a bubble, then tap" or "Swim to a bubble, press E"
+local HOLD_HINT = UI.TOUCH and "Swim to a bubble, then hold" or "Swim to a bubble, hold E"
 local step = -1 -- local copy, never behind the server
 
--- the tutorial banner: "STEP 2 of 5 · Bring it home" + what to do
+-- the tutorial card: [2/5] BRING IT HOME / what to do. Once you're doing it
+-- (moving, swimming or carrying) it folds to a slim "Bring it home  2/5"
+-- line so it never blocks the view; standing still a moment opens it again.
+local shownTitle: string? = nil
+local shownAt = 0
+local lastMoved = -math.huge
+local function busy(): boolean
+	local d = State.data
+	local char = player.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	local hrp = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if hum and hum.MoveDirection.Magnitude > 0.1 then
+		lastMoved = os.clock()
+	end
+	return (d ~= nil and d.carrying ~= nil) or (hrp ~= nil and Layout.inWater(hrp.Position)) or os.clock() - lastMoved < 2
+end
+
 local function tutBanner(title: string?, sub: string?, color: Color3?)
 	if not title then
+		shownTitle = nil
 		Notify.clear("tut")
 		return
 	end
-	Notify.banner(("STEP %d of %d · %s"):format(math.clamp(step + 1, 1, DONE), DONE, title), { key = "tut", sticky = true, priority = 3, sub = sub, color = color })
+	if title ~= shownTitle then
+		shownTitle, shownAt = title, os.clock()
+	end
+	-- a new step always shows in full for a moment; urgent (colored) ones stay open
+	local compact = color == nil and os.clock() - shownAt > 2.5 and busy()
+	Notify.banner(title, { key = "tut", sticky = true, priority = 3, sub = sub, color = color,
+		step = ("%d/%d"):format(math.clamp(step + 1, 1, DONE), DONE), compact = compact })
 end
 
 -- a quick "nice!" between steps
@@ -180,7 +203,7 @@ local function drillTick(pos: Vector3): (Vector3?, string?, string?, string?)
 		if drill.shark then
 			drillEnd("abort")
 		end
-		return nil, nil, "Shark drill", "Wait for the real sharks to leave..."
+		return nil, nil, "Shark drill", "Wait for the real sharks to leave"
 	end
 	local safe = Layout.isSafe(pos)
 	if drill.state == "idle" then
@@ -190,14 +213,14 @@ local function drillTick(pos: Vector3): (Vector3?, string?, string?, string?)
 			-- lead them a little way into the water
 			local plot = myPlot()
 			local x = plot and plot.Position.X or pos.X
-			return Vector3.new(x, 1, Config.SHORE_Z + 30), "Swim out!", "Shark drill!", "Swim out into the water... (it's just practice)"
+			return Vector3.new(x, 1, Config.SHORE_Z + 30), "Swim out!", "Shark drill!", "Swim out (just practice)"
 		end
 	end
 	if drill.state == "chase" then
 		local sh = drill.shark
 		if safe then
 			drillEnd("safe")
-			Notify.toast("Sharks attack every minute or so. Sand and islands are always safe!", C.green)
+			Notify.toast("Sharks attack every minute or so. Sand is always safe!", C.green)
 			advance(4)
 			return nil, nil, nil, nil
 		end
@@ -211,14 +234,14 @@ local function drillTick(pos: Vector3): (Vector3?, string?, string?, string?)
 				if drill.catches >= 2 then
 					-- don't loop on failure: they've seen it, move on
 					Notify.word("You'll get it next time!", C.gold, 1.2)
-					Notify.toast("Sand and islands are always safe from sharks!", C.green)
+					Notify.toast("Sand is always safe. Islands only for a few seconds!", C.green)
 					advance(4, true)
 					return nil, nil, nil, nil
 				end
 				Notify.word("CHOMP! (just practice)", C.red, 1)
 				Notify.toast("A real shark eats what you're carrying. Try again: it'll be slower!", C.red)
 				drill.state = "pause"
-				return nil, nil, "Shark drill", "Try again in a moment..."
+				return nil, nil, "Shark drill", "Try again in a moment"
 			end
 		end
 		-- second try: the arrow points straight back at the sand
@@ -226,20 +249,20 @@ local function drillTick(pos: Vector3): (Vector3?, string?, string?, string?)
 		if drill.catches > 0 then
 			local sand = Vector3.new(pos.X, Config.BEACH_TOP + 2, Config.SHORE_Z - 6)
 			if circling then
-				return sand, "SAND!", "It's circling you!", "Swim straight back to the SAND!"
+				return sand, "SAND!", "It's circling you!", "Swim straight back to the sand"
 			end
-			return sand, "SAND!", "IT'S CHARGING!", "Swim straight back to the SAND!", C.red
+			return sand, "SAND!", "IT'S CHARGING!", "Swim straight back to the sand", C.red
 		end
 		local safeAt = Layout.nearestSafe(pos)
 		if circling then
-			return safeAt + Vector3.new(0, 2, 0), "SAFE!", "It's circling you!", "Get to SAND or an ISLAND (follow the arrow)"
+			return safeAt + Vector3.new(0, 2, 0), "SAFE!", "It's circling you!", "Get to sand or an island"
 		end
-		return safeAt + Vector3.new(0, 2, 0), "SAFE!", "IT'S CHARGING!", "Keep going, or swerve at the last second!", C.red
+		return safeAt + Vector3.new(0, 2, 0), "SAFE!", "IT'S CHARGING!", "Keep going, or swerve late!", C.red
 	end
 	if drill.state == "pause" and os.clock() - drill.t > 3 then
 		drill.state = "idle"
 	end
-	return nil, nil, "Shark drill", "Try again in a moment..."
+	return nil, nil, "Shark drill", "Try again in a moment"
 end
 
 Remotes.get("SharkEvent").OnClientEvent:Connect(function(kind)
@@ -268,7 +291,7 @@ local function update()
 			advance(1)
 		else
 			at, label = nearestBubble(pos), "Grab it!"
-			title, sub = "Grab a sea creature", TAP_HINT
+			title, sub = "Grab a creature", TAP_HINT
 		end
 	end
 	if step == 1 then
@@ -277,15 +300,15 @@ local function update()
 		elseif not d.carrying then
 			-- a shark ate it on the way back: go grab another
 			at, label = nearestBubble(pos), "Grab it!"
-			title, sub = "Grab a sea creature", HOLD_HINT
+			title, sub = "Grab a creature", HOLD_HINT
 		elseif plot then
 			at, label = Layout.tankPos(plot) + Vector3.new(0, 4, 0), "Your tank"
-			title, sub = "Bring it home", "Follow the arrow to your tank. It earns cash every second!"
+			title, sub = "Bring it home", "Follow the arrow to your tank"
 		end
 	end
 	if step == 2 and plot then
 		at, label = Layout.padPos(plot), "Collect!"
-		title, sub = "Collect your cash", "Step on the green pad next to your tank"
+		title, sub = "Collect your cash", "Step on the green pad"
 	end
 	if step == 3 then
 		at, label, title, sub, color = drillTick(pos)
@@ -296,7 +319,7 @@ local function update()
 			advance(5)
 		elseif d.coins >= nxt.price then
 			at, label = Layout.RideShopPad + Vector3.new(0, 1, 0), "Ride Shop"
-			title, sub = ("Get the %s"):format(nxt.name), ("Walk onto the Ride Shop pad · +%d speed every second!"):format(nxt.gain or 0)
+			title, sub = ("Get the %s"):format(nxt.name), ("Walk onto the Ride Shop pad · +%d speed/s"):format(nxt.gain or 0)
 			HUD.pulseRide(true)
 		else
 			-- not enough yet: keep them on the loop that earns cash
@@ -308,7 +331,7 @@ local function update()
 				at, label = nearestBubble(pos), "Grab it!"
 			end
 			title = ("Save up for the %s"):format(nxt.name)
-			sub = ("$%s / $%s · grab creatures, collect cash"):format(UI.short(d.coins), UI.short(nxt.price))
+			sub = ("$%s / $%s · catch and collect"):format(UI.short(d.coins), UI.short(nxt.price))
 		end
 	end
 
