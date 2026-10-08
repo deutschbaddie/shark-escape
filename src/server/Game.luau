@@ -59,6 +59,16 @@ end
 
 function Game.notify(player: Player, kind: string, data: { [string]: any }?)
 	NotifyRemote:FireClient(player, kind, data or {})
+	Game.track(player, kind, data or {})
+end
+
+-- analytics hook (Analytics.luau sets it): every player event passes here,
+-- plus internal ones starting with "_" (join, leave, water, tut)
+Game.onTrack = nil :: ((Player, string, { [string]: any }) -> ())?
+function Game.track(player: Player, kind: string, data: { [string]: any })
+	if Game.onTrack then
+		task.spawn(Game.onTrack, player, kind, data)
+	end
 end
 
 function Game.notifyAll(kind: string, data: { [string]: any }?)
@@ -572,7 +582,7 @@ actions.buyRide = function(s, id)
 		s.profile.ride = id
 		Game.attachRide(s)
 	end
-	Game.notify(s.player, "ride", { id = id, gain = Game.gain(s) })
+	Game.notify(s.player, "ride", { id = id, gain = Game.gain(s), price = ride.price })
 	s.dirty = true
 end
 
@@ -643,7 +653,7 @@ actions.buySlot = function(s)
 		s.profile.coins -= price
 		s.profile.slots += 1
 		Game.equipBest(s)
-		Game.notify(s.player, "slot", { slots = tankSlots(s) })
+		Game.notify(s.player, "slot", { slots = tankSlots(s), price = price })
 		s.dirty = true
 	end
 end
@@ -709,6 +719,7 @@ actions.tut = function(s, step)
 	if typeof(step) == "number" and step > s.profile.tut and step <= 5 then
 		s.profile.tut = math.floor(step)
 		s.dirty = true
+		Game.track(s.player, "_tut", { step = s.profile.tut })
 	end
 end
 
@@ -819,6 +830,7 @@ function Game.join(player: Player)
 	end
 	Game.refreshTank(s)
 	Game.push(s)
+	Game.track(player, "_join", { new = profile.tut == 0 and #profile.creatures == 0 })
 	if Game.onJoin then
 		Game.onJoin(s)
 	end
@@ -830,6 +842,7 @@ function Game.leave(player: Player)
 		return
 	end
 	Game.sessions[player] = nil
+	Game.track(player, "_leave", { minutes = (os.clock() - s.joinedAt) / 60, rebirths = s.profile.rebirths })
 	s.profile.coins += s.pending + s.offline
 	if s.plot then
 		s.plot.owner = nil
@@ -936,6 +949,7 @@ local function fastTick()
 		if wet ~= s.inWater then
 			s.inWater = wet
 			Game.setRideVisible(s, wet)
+			Game.track(s.player, "_water", { wet = wet })
 		end
 		local plot = s.plot
 		if plot then

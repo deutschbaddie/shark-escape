@@ -121,11 +121,21 @@ function Rewards.dailyReady(): boolean
 end
 
 ----------------------------------------------------------------- group chest
+-- while Roblox's favorite prompt is open it covers the middle of the screen,
+-- so the chest reward waits until it's closed
+local likeOpenUntil = 0
 local function promptLike()
 	-- the favorite button for this game ("like"); Roblox shows its own prompt
-	pcall(function()
-		game:GetService("AvatarEditorService"):PromptSetFavorite(game.PlaceId, Enum.AvatarItemType.Asset, true)
+	local ok = pcall(function()
+		local aes = game:GetService("AvatarEditorService")
+		aes.PromptSetFavoriteCompleted:Once(function()
+			likeOpenUntil = 0
+		end)
+		aes:PromptSetFavorite(game.PlaceId, Enum.AvatarItemType.Asset, true)
 	end)
+	if ok then
+		likeOpenUntil = os.clock() + 20
+	end
 end
 
 local function promptGroup()
@@ -209,6 +219,10 @@ function Rewards.start()
 			end
 		elseif kind == "groupChest" then
 			if data.ok then
+				while os.clock() < likeOpenUntil do
+					task.wait(0.2)
+				end
+				task.wait(0.3)
 				Notify.takeover("CHEST CLAIMED!", ("+$%s · 2x speed for %d min"):format(UI.short(data.coins), data.minutes), C.gold, 1.6)
 				Fx.sound("buy", 0.8)
 				Fx.confetti((player.Character and player.Character:GetPivot().Position) or Vector3.zero)
