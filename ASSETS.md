@@ -48,15 +48,15 @@ Licenses are as the source listings give them (checked by the developer when dow
 | `528962__steenish__crunch` | [Freesound 528962](https://freesound.org/s/528962/), CC0 | chomp (3D; deeper, splat under) | `rbxassetid://114947460738011` |
 | `445118__breviceps__cartoon-splat` | [Freesound 445118](https://freesound.org/s/445118/), CC0 | spat; under chomp | `rbxassetid://87181834248801` |
 | `mixkit-arrow-whoosh-1491` | Mixkit #1491 | dodge | `rbxassetid://97268804826952` |
-| `350917__csaszi__rubber-duck-csg` | [Freesound 350917](https://freesound.org/s/350917/), CC0 | duckSqueak (one squeak; also now and then while riding a duck) | _upload_ |
+| `350917__csaszi__rubber-duck-csg` | [Freesound 350917](https://freesound.org/s/350917/), CC0 | duckSqueak (one squeak; also now and then while riding a duck) | `rbxassetid://105370668810111` |
 | `456151__jfournier18__dolphin-noise` | [Freesound 456151](https://freesound.org/s/456151/), CC0 | dolphin calls now and then while riding the Dolphin | `rbxassetid://96059363771818` |
 | `mixkit-sea-swimming-loop-1181` | Mixkit #1181 | rideSplash, rideKick, rideDolphin (different loops) | `rbxassetid://131576493971250` |
 | `188199__splicesound__paddle-boat-on-water-2` | [Freesound 188199](https://freesound.org/s/188199/), CC0 | rideDuck | `rbxassetid://79089636097979` |
 | `443870__eardeer__water_flow_dam_close_loop` | [Freesound 443870](https://freesound.org/s/443870/), CC0 | rideSurf (less rumble) | `rbxassetid://123327977782557` |
 | `mixkit-deep-water-bubbles-1321` | Mixkit #1321 | rideBubbles; ambTank (slow bloops at every dock) | `rbxassetid://76938595911508` |
 | `454199__kyles__speed-boat-outboard-motor-medium-high-gear-waves-splash` | [Freesound 454199](https://freesound.org/s/454199/), CC0 | rideBoat; rideMotor (another part, pitched down) | `rbxassetid://117099041120300` |
-| `212441__wjauch__jetski` | [Freesound 212441](https://freesound.org/s/212441/), CC0 | rideJetSki (steady high-revs part) | _upload_ |
-| `171106__qubodup__rocket-flight-loop` | [Freesound 171106](https://freesound.org/s/171106/), CC0 | rideRocket | _upload_ |
+| `212441__wjauch__jetski` | [Freesound 212441](https://freesound.org/s/212441/), CC0 | rideJetSki (steady high-revs part) | `rbxassetid://103155995162396` |
+| `171106__qubodup__rocket-flight-loop` | [Freesound 171106](https://freesound.org/s/171106/), CC0 | rideRocket | `rbxassetid://128168593084712` |
 | `mixkit-sea-waves-loop-1196` | Mixkit #1196 | ambWaves (open-sea bed); ambShore (3D small waves along the shore and around islands) | `rbxassetid://110907888719466` |
 | `seagulls_distant` | [Freesound 537854](https://freesound.org/s/537854/) (Ambientsoundapp), CC0 | ambGulls (3D over the beach and the nearest palm island) | `rbxassetid://94208672690861` |
 
