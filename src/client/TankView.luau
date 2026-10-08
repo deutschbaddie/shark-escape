@@ -126,7 +126,12 @@ local function show(m: Model)
 	line(box, (sizeLabel and (sizeLabel .. " ") or "") .. Config.species(z, r).name, 22, C.white, 1)
 	line(box, (mut and (mut .. " · ") or "") .. r, 16, mut and (Config.mutation(mut) :: any).color or rarity.color, 2)
 	line(box, "⚖️ " .. Config.formatKg(Config.creatureKg(z, r, s)), 16, Color3.fromRGB(180, 220, 255), 3)
-	line(box, ("$%s/s"):format(UI.short(perSecond)), 18, C.money, 4)
+	if m:GetAttribute("Dead") then
+		-- not earning: dimmed $/s
+		line(box, ("$%s/s  ·  not equipped"):format(UI.short(perSecond)), 18, Color3.fromRGB(120, 130, 120), 4)
+	else
+		line(box, ("$%s/s"):format(UI.short(perSecond)), 18, C.money, 4)
+	end
 	card = bb
 	UI.fade(box, true, 0.12)
 end
@@ -183,8 +188,10 @@ local function openView(plotIndex: number, title: string)
 	local slots = plot:FindFirstChild("Slots")
 	if slots then
 		for _, m in slots:GetChildren() do
-			perSecond += (m:GetAttribute("PerSecond") :: number?) or 0
-			n += 1
+			if not m:GetAttribute("Dead") then
+				perSecond += (m:GetAttribute("PerSecond") :: number?) or 0
+				n += 1
+			end
 		end
 	end
 	UI.outlined(g, title, { Size = UDim2.fromOffset(600, 40), Position = UDim2.new(0.5, 0, 0, 10), AnchorPoint = Vector2.new(0.5, 0) })

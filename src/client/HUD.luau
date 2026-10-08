@@ -23,6 +23,7 @@ local State = require(script.Parent.State)
 local Water = require(script.Parent.Water)
 local SharkView = require(script.Parent.SharkView)
 local Travel = require(script.Parent.Travel)
+local Guide = require(script.Parent.Guide)
 local Notify = require(script.Parent.Notify)
 
 local HUD = {}
@@ -583,17 +584,7 @@ handlers.deposit = function(d)
 	if d.active then
 		Fx.popup3D(tank + Vector3.new(0, 11, 0), ("+$%s/s"):format(UI.short(d.v)), C.money, true)
 	else
-		Fx.popup3D(tank + Vector3.new(0, 11, 0), "📦 Stored", C.sky, true)
-	end
-	if d.swapped then
-		task.delay(0.7, function()
-			Fx.popup3D(tank + Vector3.new(0, 14, 0), ("↻ %s → storage"):format(d.swapped), C.sky, false)
-		end)
-	end
-	if d.sold then
-		task.delay(1.2, function()
-			Fx.popup3D(tank + Vector3.new(0, 15, 0), ("Storage full · sold %s +$%s"):format(d.soldName or "", UI.short(d.sold)), C.gold, false)
-		end)
+		Fx.popup3D(tank + Vector3.new(0, 11, 0), "💤 Not equipped", Color3.fromRGB(170, 170, 180), true)
 	end
 end
 
@@ -616,6 +607,23 @@ handlers.code = function(d)
 		Notify.toast("❌ " .. tostring(d.text), C.red)
 		Fx.sound("uiError", 0.6)
 	end
+end
+
+handlers.tankFull = function(d)
+	Notify.banner(("Tank full! %d dead fish"):format(d.max or 10), { key = "tankFull", priority = 2, time = 4, color = C.red,
+		sub = "Sell some at the SELL hut, or equip them" })
+	Fx.sound("uiError", 0.6)
+	local pad = Travel.padPos("Sell")
+	if pad then
+		Guide.set("shop", pad + Vector3.new(0, 1, 0), "Sell") -- an arrow, no teleport
+	end
+end
+
+handlers.sold = function(d)
+	Notify.word(("💰 SOLD %d!"):format(d.count), C.green, 0.9)
+	Notify.toast("+$" .. UI.short(d.coins), C.money)
+	Fx.sound("buy", 0.7)
+	UI.pop(coinsLabel, 1.3)
 end
 
 handlers.collect = function(d)

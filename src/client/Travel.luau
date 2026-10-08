@@ -15,7 +15,7 @@ local Guide = require(script.Parent.Guide)
 local Travel = {}
 local player = Players.LocalPlayer
 
-local LABELS = { Rides = "Ride Shop", Shop = "Shop", Index = "Index" }
+local LABELS = { Rides = "Ride Shop", Shop = "Shop", Index = "Index", Sell = "Sell" }
 
 -- the pad's centre and radius (World.luau builds them: huts 13 wide, Ride Shop 15)
 function Travel.padPos(kind: string): (Vector3?, number)

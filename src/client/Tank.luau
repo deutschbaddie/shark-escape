@@ -75,7 +75,7 @@ end
 
 local function renderHeader(d: any)
 	headerTitle.Text = ("%d/%d Active"):format(d.active, d.slots)
-	headerSub.Text = ("%d/%d caught  ·  +$%s/s"):format(#d.creatures, d.storage, UI.short(d.income))
+	headerSub.Text = ("💀 %d/%d dead  ·  +$%s/s"):format(d.dead or 0, d.maxDead or 10, UI.short(d.income))
 	if d.slotPrice then
 		UI.setText(equipBtn, ("+1 EQUIP [$%s]"):format(UI.short(d.slotPrice)))
 		equipBtn.BackgroundColor3 = d.coins >= d.slotPrice and C.green or Color3.fromRGB(110, 120, 110)

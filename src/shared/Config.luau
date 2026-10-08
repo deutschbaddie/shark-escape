@@ -394,7 +394,7 @@ Config.Tank = {
 	passSlots = 4,
 	-- price of active slot #5, #6, ... #12
 	slotPrices = { 400, 2000, 8000, 30000, 120000, 500000, 2000000, 8000000 },
-	storage = 40, -- caught creatures kept (active + stored); past this the weakest stored one is sold
+	maxDead = 10, -- unequipped catches lie "dead" on the tank floor (no income); past this you must sell some
 }
 
 -- hold time (seconds) on the grab prompt: rarer = longer = riskier

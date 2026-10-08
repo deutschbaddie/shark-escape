@@ -38,7 +38,7 @@ local function grantPass(s: Game.Session, key: string)
 		Game.attachRide(s)
 	end
 	if key == "BigTank" then
-		Game.equipBest(s) -- the new active slots fill right away
+		Game.refreshTank(s)
 	end
 	s.dirty = true
 end

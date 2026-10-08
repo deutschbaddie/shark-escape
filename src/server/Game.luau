@@ -30,6 +30,7 @@ export type Session = {
 	passes: { [string]: boolean },
 	joinedAt: number,
 	eatenUntil: number,
+	fullWarned: number?,
 	dirty: boolean,
 	inWater: boolean,
 	leaderSpeed: IntValue?,
@@ -240,7 +241,9 @@ function Game.push(s: Session)
 		ride = p.ride,
 		creatures = list,
 		active = Game.activeCount(s),
-		storage = Config.Tank.storage,
+		storage = tankSlots(s) + Config.Tank.maxDead,
+		dead = Game.deadCount(s),
+		maxDead = Config.Tank.maxDead,
 		slots = tankSlots(s),
 		friendBoost = s.friendBoost,
 		slow = s.slow,
@@ -336,7 +339,7 @@ function Game.setCarry(s: Session, c: Data.Creature?)
 		w.Part1 = m.PrimaryPart
 		w.Parent = m.PrimaryPart
 		m.Name = "Carried"
-		NameTag.attach(m.PrimaryPart :: BasePart, c, nil, { height = 1.9, maxDist = 90, width = 3.4 })
+		NameTag.attach(m.PrimaryPart :: BasePart, c, baseValue(c) * Game.coinMult(s), { height = 1.9, maxDist = 90, width = 3.4 })
 		m.Parent = char
 		s.carryModel = m
 	end
@@ -344,29 +347,24 @@ function Game.setCarry(s: Session, c: Data.Creature?)
 end
 
 ----------------------------------------------------------------- tank
--- Everything you catch is kept (up to Config.Tank.storage). The Active ones
--- (c.e) swim in your tank and earn; the rest wait in storage. New catches
--- go Active if there's room, or swap in for your weakest Active one if
--- they're better. Players can Equip / Unequip / Equip Best from the Tank UI.
+-- Everything you catch goes in your tank. The Active ones (c.e) swim and
+-- earn; the rest lie "dead" on the tank floor and earn nothing. A new catch
+-- goes Active only if there's a free slot (nothing is swapped for you). At
+-- most Config.Tank.maxDead dead ones: then you can't drop off a catch until
+-- you sell some at the SELL hut. Equip / Unequip / Equip Best: Tank UI.
 
-local function weakestActive(s: Session): Data.Creature?
-	local best, val = nil, math.huge
+function Game.deadCount(s: Session): number
+	local n = 0
 	for _, c in s.profile.creatures do
-		if c.e and baseValue(c) < val then
-			best, val = c, baseValue(c)
+		if not c.e then
+			n += 1
 		end
 	end
-	return best
+	return n
 end
 
-local function weakestStored(s: Session): (number?, Data.Creature?)
-	local idx, best, val = nil, nil, math.huge
-	for i, c in s.profile.creatures do
-		if not c.e and baseValue(c) < val then
-			idx, best, val = i, c, baseValue(c)
-		end
-	end
-	return idx, best
+function Game.sellValue(s: Session, c: Data.Creature): number
+	return math.floor(baseValue(c) * Config.SELL_SECONDS * Game.coinMult(s))
 end
 
 local function findCreature(s: Session, id: any): Data.Creature?
@@ -406,6 +404,34 @@ function Game.refreshTank(s: Session)
 			m.Parent = plot.slots
 		end
 	end
+	-- the unequipped ones lie on their side on the floor, grey and still
+	local box = plot.model:FindFirstChild("TankInterior", true) :: BasePart?
+	local n = 0
+	for _, c in s.profile.creatures do
+		if not c.e and box then
+			n += 1
+			local m = Creatures.build(c.r, c.m, 0.72 * math.min(Config.sizeScale(c.s), 1.35), c.z)
+			m:SetAttribute("Dead", true)
+			m:SetAttribute("R", c.r)
+			m:SetAttribute("Z", c.z)
+			m:SetAttribute("M", c.m)
+			m:SetAttribute("S", c.s or 1)
+			m:SetAttribute("PerSecond", baseValue(c) * mult)
+			for _, d in m:GetDescendants() do
+				if d:IsA("BasePart") then
+					d.Color = d.Color:Lerp(Color3.fromRGB(150, 150, 155), 0.45)
+				end
+			end
+			local half = box.Size / 2
+			local col, row = (n - 1) % 5, (n - 1) // 5
+			local x = -half.X + 1.2 + col * (2 * half.X - 2.4) / 4
+			local z = (row == 0 and -0.35 or 0.35) * half.Z
+			local _, size = m:GetBoundingBox()
+			local y = -half.Y + size.X / 2 + 0.05
+			m:PivotTo(box.CFrame * CFrame.new(x, y, z) * CFrame.Angles(0, (c.id or n) * 1.3, math.pi / 2))
+			m.Parent = plot.slots
+		end
+	end
 	Game.updateTankSign(s)
 end
 
@@ -428,31 +454,9 @@ function Game.addCreature(s: Session, c: Data.Creature)
 	local value = baseValue(c)
 	local mult = Game.coinMult(s)
 	local info: { [string]: any } = { r = c.r, m = c.m, z = c.z, s = c.s, v = value * mult }
-	if Game.activeCount(s) < tankSlots(s) then
-		c.e = true
-	else
-		local weak = weakestActive(s)
-		if weak and value > baseValue(weak) then
-			weak.e = false
-			c.e = true
-			info.swapped = Config.fullName(weak.z, weak.r, weak.m, weak.s)
-		else
-			c.e = false
-		end
-	end
+	c.e = Game.activeCount(s) < tankSlots(s)
 	info.active = c.e
 	table.insert(p.creatures, c)
-	-- storage full? the weakest stored creature is sold
-	if #p.creatures > Config.Tank.storage then
-		local idx, worst = weakestStored(s)
-		if idx and worst then
-			local sold = math.floor(baseValue(worst) * Config.SELL_SECONDS * mult)
-			p.coins += sold
-			table.remove(p.creatures, idx)
-			info.sold = sold
-			info.soldName = Config.fullName(worst.z, worst.r, worst.m, worst.s)
-		end
-	end
 	Game.notify(s.player, "deposit", info)
 	Game.refreshTank(s)
 	s.dirty = true
@@ -605,11 +609,51 @@ end
 
 actions.unequip = function(s, id)
 	local c = findCreature(s, id)
-	if c and c.e then
+	if c and c.e and Game.deadCount(s) >= Config.Tank.maxDead then
+		Game.notify(s.player, "tankFull", { max = Config.Tank.maxDead })
+	elseif c and c.e then
 		c.e = false
 		Game.refreshTank(s)
 		s.dirty = true
 	end
+end
+
+-- sell dead (unequipped) catches at the SELL hut
+local function sell(s: Session, pick: (Data.Creature) -> boolean)
+	local hrp = root(s.player)
+	if not (hrp and Layout.atHut("Sell", hrp.Position)) then
+		return
+	end
+	local total, count = 0, 0
+	local keep = {}
+	for _, c in s.profile.creatures do
+		if not c.e and pick(c) then
+			total += Game.sellValue(s, c)
+			count += 1
+		else
+			table.insert(keep, c)
+		end
+	end
+	if count == 0 then
+		return
+	end
+	s.profile.creatures = keep
+	s.profile.coins += total
+	Game.notify(s.player, "sold", { coins = total, count = count })
+	Game.refreshTank(s)
+	s.dirty = true
+end
+
+actions.sell = function(s, id)
+	sell(s, function(c)
+		return c.id == id
+	end)
+end
+
+actions.sellAll = function(s)
+	sell(s, function()
+		return true
+	end)
 end
 
 actions.equipBest = function(s)
@@ -652,7 +696,7 @@ actions.buySlot = function(s)
 	if price and s.profile.coins >= price then
 		s.profile.coins -= price
 		s.profile.slots += 1
-		Game.equipBest(s)
+		Game.refreshTank(s)
 		Game.notify(s.player, "slot", { slots = tankSlots(s), price = price })
 		s.dirty = true
 	end
@@ -965,9 +1009,15 @@ local function fastTick()
 			if s.carrying then
 				local tank = Layout.tankPos(plot.cf)
 				if Layout.segmentDist(tank, from, pos) < Config.DEPOSIT_RADIUS then
-					local c = s.carrying :: Data.Creature
-					Game.setCarry(s, nil)
-					Game.addCreature(s, { r = c.r, z = c.z, m = c.m, s = c.s })
+					local full = Game.activeCount(s) >= tankSlots(s) and Game.deadCount(s) >= Config.Tank.maxDead
+					if not full then
+						local c = s.carrying :: Data.Creature
+						Game.setCarry(s, nil)
+						Game.addCreature(s, { r = c.r, z = c.z, m = c.m, s = c.s })
+					elseif os.clock() - (s.fullWarned or 0) > 4 then
+						s.fullWarned = os.clock()
+						Game.notify(s.player, "tankFull", { max = Config.Tank.maxDead })
+					end
 				end
 			end
 		end

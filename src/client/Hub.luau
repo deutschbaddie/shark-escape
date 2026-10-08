@@ -22,6 +22,7 @@ local Fx = require(script.Parent.Fx)
 local State = require(script.Parent.State)
 local Shop = require(script.Parent.Shop)
 local Index = require(script.Parent.Index)
+local Sell = require(script.Parent.Sell)
 local Guide = require(script.Parent.Guide)
 
 local Hub = {}
@@ -123,6 +124,9 @@ local opens = {
 	Index = function()
 		Index.open()
 	end,
+	Sell = function()
+		Sell.open()
+	end,
 }
 
 local function padTick()
@@ -139,7 +143,7 @@ local function padTick()
 		end
 		local dist = Vector2.new(pos.X - px, pos.Z - pz).Magnitude
 		local on = dist < 7 and pos.Y < Config.BEACH_TOP + 8
-		if on and hut:GetAttribute("Kind") == "Rides" then
+		if on then
 			Guide.set("shop", nil) -- arrived
 		end
 		if on and not inside[hut] then

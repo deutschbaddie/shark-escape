@@ -83,7 +83,7 @@ local function swimTanks(t: number)
 		if slots and box then
 			local half = box.Size / 2
 			for i, m in slots:GetChildren() do
-				if m:IsA("Model") then
+				if m:IsA("Model") and not m:GetAttribute("Dead") then -- dead ones lie still on the floor
 					local seed = (m:GetAttribute("Seed") or i) :: number
 					local function at(time: number): Vector3
 						return Vector3.new(
@@ -126,6 +126,9 @@ function Animals.start()
 		for m, e in entries do
 			if not m.Parent then
 				entries[m] = nil
+				continue
+			end
+			if m:GetAttribute("Dead") then
 				continue
 			end
 			local root = m.PrimaryPart

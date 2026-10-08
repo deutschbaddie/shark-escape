@@ -61,9 +61,21 @@ Layout.RIDE_SHOP_RADIUS = 26
 Layout.Huts = {
 	{ kind = "Shop", title = "SHOP", color = Color3.fromRGB(255, 70, 170), pos = Vector3.new(-66, Config.BEACH_TOP, -96) },
 	{ kind = "Index", title = "INDEX", color = Color3.fromRGB(255, 150, 30), pos = Vector3.new(66, Config.BEACH_TOP, -96) },
+	{ kind = "Sell", title = "SELL", color = Color3.fromRGB(70, 210, 90), pos = Vector3.new(106, Config.BEACH_TOP, -96) },
 }
 Layout.Board = Vector3.new(-112, Config.BEACH_TOP, -114)
 Layout.GroupChest = Vector3.new(36, Config.BEACH_TOP, -66) -- "Join Group / Like to Claim!"
+
+-- standing at a hut's pad (the server checks before selling)
+function Layout.atHut(kind: string, pos: Vector3): boolean
+	for _, h in Layout.Huts do
+		if h.kind == kind then
+			local pad = h.pos + Vector3.new(0, 0, 9)
+			return Vector2.new(pos.X - pad.X, pos.Z - pad.Z).Magnitude < 14 and math.abs(pos.Y - Config.BEACH_TOP) < 12
+		end
+	end
+	return false
+end
 
 function Layout.atRideShop(pos: Vector3): boolean
 	local d = Vector2.new(pos.X - Layout.RideShopPad.X, pos.Z - (Layout.RideShopPad.Z - 8)).Magnitude
