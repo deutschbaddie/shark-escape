@@ -564,6 +564,8 @@ Config.Icons = {
 		X2Speed = "", X2Coins = "", Magnet = "", Clover = "", BigTank = "", Crown = "",
 		GoldDuck = "", SharkBoard = "", RainbowSki = "", Shield = "", Boost = "", Potion = "", GoldBubble = "",
 		Lock = "", Trophy = "", Sparkle = "", Chest = "", Fin = "", Fish = "", Island = "",
+		-- new HUD icons (upload as single images)
+		Friends = "", Coral = "", Settings = "",
 	},
 	SheetA = "",
 	SheetB = "",

@@ -1,58 +1,30 @@
--- The Tank panel (opens from the tank button): your whole catch.
---   header:  "4/4 Active"  [+1 EQUIP [$1K]]      storage count
---   list:    thumbnail · name ($/s) · Equip / Unequip
---   footer:  Equip Best
--- Active creatures swim in your tank and earn; the rest wait in storage.
+-- The Tank window (opens from the tank button): your whole catch.
+--   status:  3 / 4 ACTIVE      +$42/s      Dead 2 / 10
+--   list:    creature · rarity · $/s (bar vs your best) · EQUIP / UNEQUIP
+--   footer:  [EQUIP BEST]  [+1 SLOT $400]
+-- Active creatures swim in your tank and earn; the rest lie on the floor.
 
 local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
 
 local Shared = game.ReplicatedStorage.Shared
 local Config = require(Shared.Config)
-local Creatures = require(Shared.Creatures)
 local UI = require(script.Parent.UI)
 local State = require(script.Parent.State)
+local Shop = require(script.Parent.Shop)
 
 local Tank = {}
-local C = UI.C
+local T = UI.T
 local player = Players.LocalPlayer
 
 local gui: ScreenGui
-local panel: Frame
+local window: Frame? = nil
 local list: ScrollingFrame
-local headerTitle: TextLabel
-local headerSub: TextLabel
-local equipBtn: TextButton
+local activeText: TextLabel
+local incomeText: TextLabel
+local deadText: TextLabel
+local slotBtn: TextButton
 local isOpen = false
 local lastSig = ""
-
-local TAN = Color3.fromRGB(214, 160, 110)
-
-local function thumb(parent: Instance, c: any)
-	local holder = UI.frame(parent, { Size = UDim2.fromOffset(62, 62), Position = UDim2.fromOffset(7, 7), BackgroundColor3 = Color3.fromRGB(70, 74, 86) })
-	UI.corner(holder, 8)
-	-- light rays behind the creature, like a reveal card
-	local g = Instance.new("UIGradient")
-	g.Color = ColorSequence.new(Color3.fromRGB(235, 235, 240), Color3.fromRGB(120, 124, 136))
-	g.Rotation = 90
-	g.Parent = holder
-	local vf = Instance.new("ViewportFrame")
-	vf.Size = UDim2.fromScale(1, 1)
-	vf.BackgroundTransparency = 1
-	vf.Ambient = Color3.fromRGB(200, 200, 210)
-	vf.LightDirection = Vector3.new(-1, -2, -1)
-	vf.Parent = holder
-	local cam = Instance.new("Camera")
-	cam.FieldOfView = 38
-	cam.Parent = vf
-	vf.CurrentCamera = cam
-	local m = Creatures.build(c.r, c.m, 1, c.z)
-	m:PivotTo(CFrame.new())
-	m.Parent = vf
-	local _, size = m:GetBoundingBox()
-	local r = math.max(size.X, size.Y, size.Z)
-	cam.CFrame = CFrame.lookAt(Vector3.new(r * 1.0, r * 0.55, -r * 1.25), Vector3.zero)
-end
 
 local function signature(d: any): string
 	local parts = { tostring(d.slots), tostring(d.friendBoost) }
@@ -74,14 +46,46 @@ local function sorted(d: any): { any }
 end
 
 local function renderHeader(d: any)
-	headerTitle.Text = ("%d/%d Active"):format(d.active, d.slots)
-	headerSub.Text = ("%d/%d dead  ·  +$%s/s"):format(d.dead or 0, d.maxDead or 10, UI.short(d.income))
+	activeText.Text = ("%d / %d"):format(d.active, d.slots)
+	incomeText.Text = ("+$%s/s"):format(UI.short(d.income))
+	local maxDead = d.maxDead or Config.Tank.maxDead
+	deadText.Text = ("%d / %d"):format(d.dead or 0, maxDead)
+	deadText.TextColor3 = (d.dead or 0) >= maxDead and T.red or T.white
 	if d.slotPrice then
-		UI.setText(equipBtn, ("+1 EQUIP [$%s]"):format(UI.short(d.slotPrice)))
-		equipBtn.BackgroundColor3 = d.coins >= d.slotPrice and C.green or Color3.fromRGB(110, 120, 110)
+		UI.setText(slotBtn, ("+1 SLOT  $%s"):format(UI.short(d.slotPrice)))
+		slotBtn.BackgroundColor3 = d.coins >= d.slotPrice and T.green or T.navyLight
 	else
-		UI.setText(equipBtn, "MAX EQUIPS")
-		equipBtn.BackgroundColor3 = Color3.fromRGB(110, 120, 110)
+		UI.setText(slotBtn, "MAX SLOTS")
+		slotBtn.BackgroundColor3 = T.navyLight
+	end
+end
+
+local function row(c: any, order: number, best: number, free: boolean)
+	local color = Shop.rarityColor(c.r)
+	local f = UI.card(list, c.e and T.green or nil, { Size = UDim2.new(1, 0, 0, 84), LayoutOrder = order,
+		BackgroundColor3 = c.e and T.navyLight or UI.dark(T.navyLight, 0.2) })
+	Shop.thumb(f, c, { Size = UDim2.fromOffset(68, 68), Position = UDim2.fromOffset(8, 8) })
+	UI.label(f, "body", Config.fullName(c.z, c.r, c.m, c.s), { Size = UDim2.new(1, -372, 0, 26), Position = UDim2.fromOffset(88, 10),
+		TextXAlignment = Enum.TextXAlignment.Left })
+	UI.chip(f, c.r:upper(), color, { Size = UDim2.fromOffset(104, 24), Position = UDim2.fromOffset(88, 46) })
+	UI.label(f, "meta", Config.formatKg(Config.creatureKg(c.z, c.r, c.s)), { Size = UDim2.fromOffset(80, 20), Position = UDim2.fromOffset(200, 48),
+		TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = T.mute })
+	-- $/s with a bar against your best creature: easy to compare
+	UI.label(f, "body", ("$%s/s"):format(UI.short(c.v)), { Size = UDim2.fromOffset(120, 26), Position = UDim2.new(1, -150, 0, 14), AnchorPoint = Vector2.new(1, 0),
+		TextXAlignment = Enum.TextXAlignment.Right, TextColor3 = c.e and UI.C.money or T.mute })
+	local _, fill = UI.bar(f, c.e and T.green or T.mute, { Size = UDim2.fromOffset(120, 14), Position = UDim2.new(1, -150, 0, 50), AnchorPoint = Vector2.new(1, 0) })
+	UI.setBar(fill, c.v / math.max(best, 1), true)
+	local btn = { Size = UDim2.fromOffset(124, 56), Position = UDim2.new(1, -10, 0.5, 0), AnchorPoint = Vector2.new(1, 0.5) }
+	if c.e then
+		UI.button(f, "UNEQUIP", T.mute, function()
+			State.action("unequip", c.id)
+		end, btn)
+	elseif free then
+		UI.button(f, "EQUIP", T.green, function()
+			State.action("equip", c.id)
+		end, btn)
+	else
+		Shop.plate(f, "FULL", T.mute, btn)
 	end
 end
 
@@ -92,40 +96,24 @@ local function renderList(d: any)
 		end
 	end
 	local free = d.active < d.slots
+	local best = 0
+	for _, c in d.creatures do
+		best = math.max(best, c.v)
+	end
 	for i, c in sorted(d) do
-		local rarity = Config.rarity(c.r)
-		local row = UI.frame(list, { Size = UDim2.new(1, -12, 0, 76), LayoutOrder = i, BackgroundColor3 = Color3.fromRGB(44, 46, 56) })
-		UI.corner(row, 8)
-		UI.stroke(row, C.ink, 2)
-		thumb(row, c)
-		local name = UI.outlined(row, Config.fullName(c.z, c.r, c.m, c.s), {
-			Size = UDim2.new(1, -200, 0, 30), Position = UDim2.fromOffset(78, 9), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = rarity.color,
-		})
-		name.TextScaled = true
-		UI.outlined(row, ("($%s/s)  ·  %s"):format(UI.short(c.v), Config.formatKg(Config.creatureKg(c.z, c.r, c.s))), {
-			Size = UDim2.new(1, -200, 0, 24), Position = UDim2.fromOffset(78, 40), TextXAlignment = Enum.TextXAlignment.Left,
-			TextColor3 = c.e and C.money or Color3.fromRGB(190, 190, 200),
-		})
-		if c.e then
-			UI.button(row, "Unequip", C.red, function()
-				State.action("unequip", c.id)
-			end, { Size = UDim2.fromOffset(112, 50), Position = UDim2.new(1, -8, 0.5, 0), AnchorPoint = Vector2.new(1, 0.5) })
-		else
-			UI.button(row, "Equip", free and C.green or Color3.fromRGB(110, 120, 110), function()
-				if free then
-					State.action("equip", c.id)
-				end
-			end, { Size = UDim2.fromOffset(112, 50), Position = UDim2.new(1, -8, 0.5, 0), AnchorPoint = Vector2.new(1, 0.5) })
-		end
+		row(c, i, best, free)
 	end
 	if #d.creatures == 0 then
-		local empty = UI.frame(list, { Size = UDim2.new(1, -12, 0, 90), BackgroundTransparency = 1 })
-		UI.outlined(empty, "Grab a creature bubble and bring it home!", { Size = UDim2.new(1, -20, 0, 30), Position = UDim2.fromOffset(10, 30) })
+		local empty = UI.inset(list, { Size = UDim2.new(1, 0, 0, 96) })
+		UI.icon(empty, "Fish", { Size = UDim2.fromOffset(64, 64), Position = UDim2.new(0, 16, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5) })
+		UI.label(empty, "body", "Your tank is empty", { Size = UDim2.new(1, -112, 0, 26), Position = UDim2.fromOffset(96, 20), TextXAlignment = Enum.TextXAlignment.Left })
+		UI.label(empty, "meta", "Grab a creature bubble and bring it home!", { Size = UDim2.new(1, -112, 0, 20), Position = UDim2.fromOffset(96, 52),
+			TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = T.mute })
 	end
 end
 
 local function render(d: any?)
-	if not (isOpen and d) then
+	if not (isOpen and window and d) then
 		return
 	end
 	renderHeader(d)
@@ -136,76 +124,54 @@ local function render(d: any?)
 	end
 end
 
+-- one stat in the status strip: caption over a big value
+local function stat(parent: Instance, x: number, caption: string, color: Color3?): TextLabel
+	local cell = UI.frame(parent, { Size = UDim2.new(1 / 3, 0, 1, 0), Position = UDim2.fromScale(x / 3, 0), BackgroundTransparency = 1 })
+	UI.label(cell, "meta", caption, { Size = UDim2.new(1, -16, 0, 18), Position = UDim2.fromOffset(8, 6), TextColor3 = T.mute })
+	return UI.label(cell, "value", "", { Size = UDim2.new(1, -16, 0, 32), Position = UDim2.fromOffset(8, 24), Font = UI.NUMFONT, TextColor3 = color })
+end
+
 local function build()
-	gui = Instance.new("ScreenGui")
-	gui.Name = "Tank"
-	gui.ResetOnSpawn = false
-	gui.DisplayOrder = 9
-	gui.Enabled = false
-	gui.Parent = player:WaitForChild("PlayerGui")
-	UI.autoScale(gui, Vector2.new(520, 500))
-
-	panel = UI.frame(gui, { Size = UDim2.fromOffset(400, 380), Position = UDim2.new(1, -116, 0.46, 0), AnchorPoint = Vector2.new(1, 0.5),
-		BackgroundColor3 = UI.C.panel })
-	UI.corner(panel, 10)
-	UI.stroke(panel, C.ink, 4)
-	UI.studs(panel, { size = 26, alpha = 0.94 })
-
-	local head = UI.frame(panel, { Size = UDim2.new(1, -12, 0, 64), Position = UDim2.fromOffset(6, 6), BackgroundColor3 = TAN })
-	UI.corner(head, 8)
-	UI.stroke(head, C.ink, 3)
-	UI.shade(head)
-	UI.studs(head, { size = 18, alpha = 0.8 })
-	headerTitle = UI.outlined(head, "", { Size = UDim2.new(0.45, 0, 0, 34), Position = UDim2.fromOffset(12, 6), TextXAlignment = Enum.TextXAlignment.Left })
-	headerSub = UI.outlined(head, "", { Size = UDim2.new(0.5, 0, 0, 18), Position = UDim2.fromOffset(12, 40), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = Color3.fromRGB(255, 240, 200) })
-	equipBtn = UI.button(head, "", C.green, function()
-		State.action("buySlot")
-	end, { Size = UDim2.fromOffset(196, 48), Position = UDim2.new(1, -8, 0.5, 0), AnchorPoint = Vector2.new(1, 0.5) })
-
-	list = Instance.new("ScrollingFrame")
-	list.Size = UDim2.new(1, -16, 1, -84)
-	list.Position = UDim2.fromOffset(8, 78)
-	list.BackgroundTransparency = 1
-	list.BorderSizePixel = 0
-	list.ScrollBarThickness = 7
-	list.ScrollBarImageColor3 = Color3.fromRGB(200, 200, 210)
-	list.AutomaticCanvasSize = Enum.AutomaticSize.Y
-	list.CanvasSize = UDim2.new()
-	list.Parent = panel
-	local layout = Instance.new("UIListLayout")
-	layout.Padding = UDim.new(0, 6)
-	layout.SortOrder = Enum.SortOrder.LayoutOrder
-	layout.Parent = list
-	local lp = Instance.new("UIPadding")
-	lp.PaddingTop = UDim.new(0, 4)
-	lp.PaddingLeft = UDim.new(0, 4)
-	lp.Parent = list
-
-	UI.button(gui, "Equip Best", C.green, function()
-		State.action("equipBest")
-	end, { Size = UDim2.fromOffset(230, 58), Position = UDim2.new(1, -116, 0.46, 200), AnchorPoint = Vector2.new(1, 0) })
-
-	-- the red ">" tab closes it
-	local tab = UI.button(gui, ">", C.red, function()
+	local f, body = UI.window(gui, "Your Tank", T.blue, Vector2.new(640, 470), function()
 		Tank.close()
-	end, { Size = UDim2.fromOffset(48, 60), Position = UDim2.new(1, -116 - 400 - 4, 0.46, 0), AnchorPoint = Vector2.new(1, 0.5) })
-	tab.Name = "CloseTab"
+	end, "Tank")
+	window = f
+	local strip = UI.inset(body, { Size = UDim2.new(1, 0, 0, 64) })
+	activeText = stat(strip, 0, "ACTIVE")
+	incomeText = stat(strip, 1, "EARNING", UI.C.money)
+	deadText = stat(strip, 2, "DEAD FISH")
+	for i = 1, 2 do
+		UI.frame(strip, { Size = UDim2.new(0, 2, 1, -20), Position = UDim2.new(i / 3, -1, 0, 10), BackgroundColor3 = T.line, BackgroundTransparency = 0.5 })
+	end
+
+	list = Shop.list(body, { Size = UDim2.new(1, 8, 1, -148), Position = UDim2.fromOffset(-4, 76) }, 8)
+
+	UI.button(body, "EQUIP BEST", T.green, function()
+		State.action("equipBest")
+	end, { Size = UDim2.new(0.5, -6, 0, 56), Position = UDim2.new(0, 0, 1, 0), AnchorPoint = Vector2.new(0, 1) })
+	slotBtn = UI.button(body, "", T.green, function()
+		State.action("buySlot")
+	end, { Size = UDim2.new(0.5, -6, 0, 56), Position = UDim2.new(1, 0, 1, 0), AnchorPoint = Vector2.new(1, 1) })
 end
 
 function Tank.open()
-	if not gui then
+	if not gui or isOpen then
 		return
 	end
 	isOpen = true
 	lastSig = ""
 	gui.Enabled = true
-	panel.Position = UDim2.new(1, 300, 0.46, 0)
-	TweenService:Create(panel, TweenInfo.new(0.25, Enum.EasingStyle.Back), { Position = UDim2.new(1, -116, 0.46, 0) }):Play()
+	build()
 	render(State.data)
 end
 
 function Tank.close()
 	isOpen = false
+	if window then
+		local w = window
+		window = nil
+		w:Destroy()
+	end
 	if gui then
 		gui.Enabled = false
 	end
@@ -220,7 +186,13 @@ function Tank.toggle()
 end
 
 function Tank.start()
-	build()
+	gui = Instance.new("ScreenGui")
+	gui.Name = "Tank"
+	gui.ResetOnSpawn = false
+	gui.DisplayOrder = 9
+	gui.Enabled = false
+	gui.Parent = player:WaitForChild("PlayerGui")
+	UI.autoScale(gui, Vector2.new(660, 480))
 	State.Changed:Connect(render)
 	player:GetAttributeChangedSignal("Cinematic"):Connect(function()
 		if player:GetAttribute("Cinematic") then

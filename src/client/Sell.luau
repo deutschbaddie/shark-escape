@@ -8,9 +8,10 @@ local Shared = game.ReplicatedStorage.Shared
 local Config = require(Shared.Config)
 local UI = require(script.Parent.UI)
 local State = require(script.Parent.State)
+local Shop = require(script.Parent.Shop)
 
 local Sell = {}
-local C = UI.C
+local T = UI.T
 local player = Players.LocalPlayer
 
 local gui: ScreenGui? = nil
@@ -54,48 +55,46 @@ local function render()
 		window:Destroy()
 	end
 	local list = dead(d)
-	local f, body = UI.window(gui :: ScreenGui, "Sell Fish", C.green, Vector2.new(520, 470), close, "Cash")
+	local maxDead = d.maxDead or Config.Tank.maxDead
+	local f, body = UI.window(gui :: ScreenGui, "Sell Fish", T.green, Vector2.new(600, 470), close, "Cash")
 	window = f
-	local full = #list >= (d.maxDead or Config.Tank.maxDead)
-	UI.outlined(body, ("Dead fish: %d/%d"):format(#list, d.maxDead or Config.Tank.maxDead), {
-		Size = UDim2.new(1, -20, 0, 30), Position = UDim2.fromOffset(10, 4), TextXAlignment = Enum.TextXAlignment.Left,
-		TextColor3 = full and C.red or C.white })
-	UI.outlined(body, "Unequipped catches don't earn. Sell them to make room for better ones!", {
-		Size = UDim2.new(1, -20, 0, 20), Position = UDim2.fromOffset(10, 34), TextXAlignment = Enum.TextXAlignment.Left,
-		TextColor3 = Color3.fromRGB(200, 200, 210) })
-	local scroll = Instance.new("ScrollingFrame")
-	scroll.Size = UDim2.new(1, -16, 1, -136)
-	scroll.Position = UDim2.fromOffset(8, 60)
-	scroll.BackgroundTransparency = 1
-	scroll.BorderSizePixel = 0
-	scroll.ScrollBarThickness = 7
-	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-	scroll.CanvasSize = UDim2.new()
-	scroll.Parent = body
-	local layout = Instance.new("UIListLayout")
-	layout.Padding = UDim.new(0, 6)
-	layout.SortOrder = Enum.SortOrder.LayoutOrder
-	layout.Parent = scroll
+	local full = #list >= maxDead
+
+	-- status: how full the floor is
+	local strip = UI.inset(body, { Size = UDim2.new(1, 0, 0, 64) })
+	UI.label(strip, "meta", "DEAD FISH", { Size = UDim2.fromOffset(120, 18), Position = UDim2.fromOffset(12, 6), TextColor3 = T.mute })
+	UI.label(strip, "value", ("%d / %d"):format(#list, maxDead), { Size = UDim2.fromOffset(120, 32), Position = UDim2.fromOffset(12, 24), Font = UI.NUMFONT,
+		TextColor3 = full and T.red or T.white })
+	UI.frame(strip, { Size = UDim2.new(0, 2, 1, -20), Position = UDim2.fromOffset(144, 10), BackgroundColor3 = T.line, BackgroundTransparency = 0.5 })
+	UI.label(strip, "body", full and "Your tank floor is full! Sell some to drop off new catches."
+		or "Unequipped fish don't earn. Sell them to make room for better ones!", {
+		Size = UDim2.new(1, -172, 1, -16), Position = UDim2.fromOffset(160, 8), TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left,
+		TextColor3 = full and UI.light(T.red, 0.4) or T.mute })
+
+	local scroll = Shop.list(body, { Size = UDim2.new(1, 8, 1, -148), Position = UDim2.fromOffset(-4, 76) }, 8)
 	local total = 0
 	for i, c in list do
 		total += price(c)
-		local row = UI.frame(scroll, { Size = UDim2.new(1, -12, 0, 56), LayoutOrder = i, BackgroundColor3 = Color3.fromRGB(44, 46, 56) })
-		UI.corner(row, 8)
-		UI.stroke(row, C.ink, 2)
-		UI.outlined(row, Config.fullName(c.z, c.r, c.m, c.s), { Size = UDim2.new(1, -170, 0, 26), Position = UDim2.fromOffset(12, 4),
-			TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = Config.rarity(c.r).color })
-		UI.outlined(row, ("$%s/s if equipped"):format(UI.short(c.v)), { Size = UDim2.new(1, -170, 0, 20), Position = UDim2.fromOffset(12, 31),
-			TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = Color3.fromRGB(150, 160, 150) })
-		UI.button(row, "Sell $" .. UI.short(price(c)), C.green, function()
+		local row = UI.card(scroll, nil, { Size = UDim2.new(1, 0, 0, 80), LayoutOrder = i })
+		Shop.thumb(row, c, { Size = UDim2.fromOffset(64, 64), Position = UDim2.fromOffset(8, 8) })
+		UI.label(row, "body", Config.fullName(c.z, c.r, c.m, c.s), { Size = UDim2.new(1, -250, 0, 26), Position = UDim2.fromOffset(84, 10),
+			TextXAlignment = Enum.TextXAlignment.Left })
+		UI.chip(row, c.r:upper(), Shop.rarityColor(c.r), { Size = UDim2.fromOffset(104, 24), Position = UDim2.fromOffset(84, 44) })
+		UI.label(row, "meta", ("$%s/s if equipped"):format(UI.short(c.v)), { Size = UDim2.new(1, -366, 0, 20), Position = UDim2.fromOffset(196, 46),
+			TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = T.mute })
+		UI.button(row, "SELL  $" .. UI.short(price(c)), T.green, function()
 			State.action("sell", c.id)
-		end, { Size = UDim2.fromOffset(140, 44), Position = UDim2.new(1, -6, 0.5, 0), AnchorPoint = Vector2.new(1, 0.5) })
+		end, { Size = UDim2.fromOffset(150, 56), Position = UDim2.new(1, -10, 0.5, 0), AnchorPoint = Vector2.new(1, 0.5) })
 	end
+	local footer = { Size = UDim2.new(1, 0, 0, 56), Position = UDim2.new(0, 0, 1, 0), AnchorPoint = Vector2.new(0, 1) }
 	if #list == 0 then
-		UI.outlined(scroll, "No dead fish. Your tank is all swimmers!", { Size = UDim2.new(1, -12, 0, 40) })
+		local empty = UI.inset(scroll, { Size = UDim2.new(1, 0, 0, 80) })
+		UI.label(empty, "body", "No dead fish. Your tank is all swimmers!", { Size = UDim2.new(1, -32, 0, 26), Position = UDim2.fromOffset(16, 27) })
+		Shop.plate(body, "NOTHING TO SELL", T.mute, footer)
 	else
-		UI.button(body, ("SELL ALL  +$%s"):format(UI.short(total)), C.green, function()
+		UI.button(body, ("SELL ALL  +$%s"):format(UI.short(total)), T.green, function()
 			State.action("sellAll")
-		end, { Size = UDim2.fromOffset(300, 56), Position = UDim2.new(0.5, 0, 1, -6), AnchorPoint = Vector2.new(0.5, 1) })
+		end, footer)
 	end
 end
 
@@ -106,7 +105,7 @@ function Sell.open()
 		g.ResetOnSpawn = false
 		g.DisplayOrder = 9
 		g.Parent = player:WaitForChild("PlayerGui")
-		UI.autoScale(g, Vector2.new(540, 490))
+		UI.autoScale(g, Vector2.new(620, 480))
 		gui = g
 	end
 	render()

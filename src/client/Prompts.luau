@@ -1,7 +1,8 @@
--- Custom look for every ProximityPrompt (Style = Custom): a dark circle with
--- the key ("E", a gamepad button, or tap on touch), a white ring that fills
--- while you hold, the object name in grey and the action in bold white, and
--- a clean white outline around the thing you're about to use.
+-- Custom look for every ProximityPrompt (Style = Custom), in the game's
+-- design system: a navy pill with a dark circle holding a white key chip
+-- ("E", a gamepad button, or TAP on touch), a white ring that fills while
+-- you hold, the object name in soft blue-grey and the action in bold white,
+-- and a clean white outline around the thing you're about to use.
 --
 -- Grab prompts also teach (Onboarding sets Prompts.setTeach):
 --   "tap"   the very first grab: no hold at all (local HoldDuration 0) and a
@@ -16,6 +17,7 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local State = require(script.Parent.State)
+local UI = require(script.Parent.UI)
 
 local Prompts = {}
 local player = Players.LocalPlayer
@@ -27,10 +29,10 @@ Prompts.teach = nil :: string?
 -- ProximityPromptService, so phones always work.
 local triggeredEvent = Instance.new("BindableEvent")
 Prompts.Triggered = triggeredEvent.Event
-local GOLD = Color3.fromRGB(255, 214, 64)
-local RED = Color3.fromRGB(255, 92, 92)
+local GOLD = UI.T.gold
+local RED = UI.light(UI.T.red, 0.2)
 
-local INK = Color3.fromRGB(22, 22, 34)
+local INK = UI.T.navyDark
 local GAMEPAD = {
 	ButtonX = "X", ButtonY = "Y", ButtonA = "A", ButtonB = "B",
 	ButtonL1 = "LB", ButtonR1 = "RB", ButtonL2 = "LT", ButtonR2 = "RT",
@@ -155,12 +157,29 @@ local function build(prompt: ProximityPrompt, inputType: Enum.ProximityPromptInp
 	scale.Parent = gui
 	TweenService:Create(scale, TweenInfo.new(0.18, Enum.EasingStyle.Back), { Scale = 1 }):Play()
 
+	-- the navy pill everything sits on
+	local pill = Instance.new("Frame")
+	pill.Name = "Pill"
+	pill.Size = UDim2.new(1, 0, 0, 72)
+	pill.Position = UDim2.fromOffset(0, top)
+	pill.BackgroundColor3 = UI.T.navy
+	pill.BackgroundTransparency = 0.08
+	pill.BorderSizePixel = 0
+	pill.Parent = gui
+	corner(pill, 0.5)
+	local ps = Instance.new("UIStroke")
+	ps.Thickness = UI.S.subtle
+	ps.Color = UI.T.line
+	ps.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	ps.Parent = pill
+
 	local circle = Instance.new(touch and "TextButton" or "Frame") :: GuiObject
 	circle.Name = "Circle"
 	circle.Size = UDim2.fromOffset(64, 64)
 	circle.Position = UDim2.fromOffset(4, 4 + top)
-	circle.BackgroundColor3 = Color3.fromRGB(40, 40, 48)
-	circle.BackgroundTransparency = 0.3
+	circle.BackgroundColor3 = INK
+	circle.BackgroundTransparency = 0
+	circle.ZIndex = 2
 	circle.BorderSizePixel = 0
 	if circle:IsA("TextButton") then
 		circle.Text = ""
@@ -174,10 +193,11 @@ local function build(prompt: ProximityPrompt, inputType: Enum.ProximityPromptInp
 	key.Size = UDim2.fromOffset(34, 34)
 	key.AnchorPoint = Vector2.new(0.5, 0.5)
 	key.Position = UDim2.fromScale(0.5, 0.5)
-	key.BackgroundColor3 = Color3.fromRGB(30, 30, 36)
-	key.BackgroundTransparency = 0.4
-	key.Font = Enum.Font.GothamBold
-	key.TextColor3 = Color3.new(1, 1, 1)
+	-- the key chip: white with navy text
+	key.BackgroundColor3 = UI.T.white
+	key.BackgroundTransparency = 0
+	key.Font = UI.FONT
+	key.TextColor3 = UI.T.navy
 	key.TextScaled = true
 	key.ZIndex = circle.ZIndex + 2
 	if touch then
@@ -190,8 +210,8 @@ local function build(prompt: ProximityPrompt, inputType: Enum.ProximityPromptInp
 	key.Parent = circle
 	corner(key, nil, 8)
 	local ks = Instance.new("UIStroke")
-	ks.Thickness = 2.5
-	ks.Color = Color3.new(1, 1, 1)
+	ks.Thickness = UI.S.card
+	ks.Color = UI.dark(UI.T.mute, 0.2)
 	ks.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	ks.Parent = key
 	local pad = Instance.new("UIPadding")
@@ -205,25 +225,27 @@ local function build(prompt: ProximityPrompt, inputType: Enum.ProximityPromptInp
 	object.BackgroundTransparency = 1
 	object.Size = UDim2.new(1, -82, 0, 22)
 	object.Position = UDim2.fromOffset(80, 8 + top)
-	object.Font = Enum.Font.GothamBold
-	object.TextColor3 = Color3.fromRGB(205, 205, 210)
+	object.Font = UI.FONT
+	object.TextColor3 = UI.light(UI.T.mute, 0.3)
+	object.ZIndex = 2
 	object.TextScaled = true
 	object.TextXAlignment = Enum.TextXAlignment.Left
 	object.Text = prompt.ObjectText
 	object.Parent = gui
-	stroke(object, 1.5)
+	stroke(object, UI.S.subtle)
 
 	local action = Instance.new("TextLabel")
 	action.BackgroundTransparency = 1
 	action.Size = UDim2.new(1, -82, 0, 32)
 	action.Position = UDim2.fromOffset(80, 30 + top)
-	action.Font = Enum.Font.GothamBlack
-	action.TextColor3 = Color3.new(1, 1, 1)
+	action.Font = UI.FONT
+	action.TextColor3 = UI.T.white
+	action.ZIndex = 2
 	action.TextScaled = true
 	action.TextXAlignment = Enum.TextXAlignment.Left
 	action.Text = prompt.ActionText
 	action.Parent = gui
-	stroke(action, 2.5)
+	stroke(action, UI.S.text)
 
 	-- tutorial hint over the button, and a ghost ring showing where to hold
 	local hint: TextLabel? = nil
@@ -236,13 +258,13 @@ local function build(prompt: ProximityPrompt, inputType: Enum.ProximityPromptInp
 		h.BackgroundTransparency = 1
 		h.Size = UDim2.fromOffset(240, 36)
 		h.Position = UDim2.fromOffset(0, 0)
-		h.Font = Enum.Font.GothamBlack
+		h.Font = UI.FONT
 		h.TextColor3 = GOLD
 		h.TextScaled = true
 		h.TextXAlignment = Enum.TextXAlignment.Left
 		h.Text = idleText
 		h.Parent = gui
-		stroke(h, 3)
+		stroke(h, UI.S.cta)
 		hintScale = Instance.new("UIScale")
 		hintScale.Parent = h
 		hint = h

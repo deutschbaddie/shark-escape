@@ -8,6 +8,7 @@
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local Shared = game.ReplicatedStorage.Shared
@@ -17,6 +18,7 @@ local UI = require(script.Parent.UI)
 local Fx = require(script.Parent.Fx)
 local State = require(script.Parent.State)
 local Notify = require(script.Parent.Notify)
+local Shop = require(script.Parent.Shop)
 
 local Rewards = {}
 local player = Players.LocalPlayer
@@ -30,6 +32,9 @@ local autoOpened = false
 local askedLike = false
 
 ----------------------------------------------------------------- daily window
+local T = UI.T
+local revealDay, revealAt = 0, -math.huge
+
 local function close()
 	if window then
 		window:Destroy()
@@ -37,36 +42,104 @@ local function close()
 	end
 end
 
+-- a check mark from two rounded bars (no glyph or image needed)
+local function check(parent: Instance, size: number, z: number)
+	local box = UI.frame(parent, { Name = "Check", Size = UDim2.fromOffset(size, size), Position = UDim2.fromScale(0.5, 0.5), AnchorPoint = Vector2.new(0.5, 0.5),
+		BackgroundTransparency = 1, ZIndex = z })
+	for _, leg in { { 0.34, 0.62, 0.18, 0.42, -45 }, { 0.6, 0.47, 0.18, 0.8, 40 } } do
+		local bar = UI.frame(box, { Size = UDim2.fromScale(leg[3], leg[4]), Position = UDim2.fromScale(leg[1], leg[2]), AnchorPoint = Vector2.new(0.5, 0.5),
+			Rotation = leg[5], BackgroundColor3 = T.green, ZIndex = z })
+		UI.corner(bar, 100)
+		UI.stroke(bar, UI.dark(T.green, 0.55), UI.S.card)
+	end
+	return box
+end
+
+-- the claimed tile pops and sparkles, and its reward floats up
+local function reveal(day: number)
+	local body = window and window:FindFirstChild("Body")
+	local tile = body and body:FindFirstChild("Day" .. day, true) :: Frame?
+	if not tile then
+		return
+	end
+	UI.pop(tile, 1.25)
+	-- sparkles burst from the tile's middle (children of the tile: it never clips)
+	local parent = tile
+	local center = UDim2.fromScale(0.5, 0.5)
+	for i = 1, 10 do
+		local a = (i / 10) * math.pi * 2
+		local sp = UI.frame(parent, { Size = UDim2.fromOffset(12, 12), Position = center, AnchorPoint = Vector2.new(0.5, 0.5), Rotation = 45,
+			BackgroundColor3 = i % 2 == 0 and T.gold or T.white, ZIndex = tile.ZIndex + 10 })
+		UI.corner(sp, 3)
+		local dist = 80 + (i % 3) * 18
+		TweenService:Create(sp, TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Position = center + UDim2.fromOffset(math.cos(a) * dist, math.sin(a) * dist), BackgroundTransparency = 1, Rotation = 225,
+			Size = UDim2.fromOffset(4, 4) }):Play()
+		task.delay(0.65, function()
+			sp:Destroy()
+		end)
+	end
+	local text = UI.label(parent, "value", Config.Daily[day].label, { Size = UDim2.fromOffset(260, 36), Position = center, AnchorPoint = Vector2.new(0.5, 0.5),
+		TextColor3 = T.gold, ZIndex = tile.ZIndex + 11 })
+	UI.pop(text, 0.6)
+	TweenService:Create(text, TweenInfo.new(1.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Position = center - UDim2.fromOffset(0, 70) }):Play()
+	task.delay(0.8, function()
+		if text.Parent then
+			UI.fade(text, false, 0.3)
+		end
+	end)
+	task.delay(1.2, function()
+		text:Destroy()
+	end)
+end
+
 local function tile(parent: Instance, day: number, state: string, size: UDim2, pos: UDim2)
 	local r = Config.Daily[day]
-	local limited = r.limited == true
-	local f = UI.frame(parent, { Size = size, Position = pos, BackgroundColor3 = limited and C.purple or C.gold })
-	UI.corner(f, 10)
-	UI.stroke(f, C.ink, 3)
-	UI.shade(f)
-	UI.studs(f, { size = 18, alpha = 0.86 })
-	if limited then
-		UI.rainbow(f)
+	local big = r.limited == true
+	local today = state == "today"
+	local accent = (today and T.green) or (big and state ~= "claimed" and T.gold) or nil
+	local bg = (state == "claimed" and T.navyDark) or (today and UI.light(T.navyLight, 0.12)) or (big and UI.dark(T.purple, 0.45)) or T.navyLight
+	local f = UI.card(parent, accent, { Name = "Day" .. day, Size = size, Position = pos, BackgroundColor3 = bg })
+	if today then
+		(f:FindFirstChild("Accent") :: UIStroke).Thickness = 5 -- extra thick edge: this is the one
+		UI.chip(f, "TODAY", T.green, { Size = UDim2.new(1, -16, 0, 28), Position = UDim2.fromOffset(8, 8) })
+	else
+		UI.label(f, "body", ("DAY %d"):format(day), { Size = UDim2.new(1, -16, 0, 26), Position = UDim2.fromOffset(8, 8),
+			TextColor3 = state == "claimed" and T.mute or T.white })
 	end
-	-- "DAY n" tab across the top
-	local tab = UI.frame(f, { Size = UDim2.new(1, -16, 0, 34), Position = UDim2.new(0.5, 0, 0, -8), AnchorPoint = Vector2.new(0.5, 0),
-		BackgroundColor3 = state == "today" and C.green or C.orange, ZIndex = f.ZIndex + 2 })
-	UI.corner(tab, 8)
-	UI.stroke(tab, C.ink, 3)
-	UI.outlined(tab, ("DAY %d"):format(day), { Size = UDim2.new(1, -8, 1, -6), Position = UDim2.fromOffset(4, 3), Font = UI.NUMFONT, ZIndex = tab.ZIndex + 1 })
-	if limited then
-		UI.outlined(f, "Limited!", { Size = UDim2.new(1, -16, 0, 30), Position = UDim2.fromOffset(8, 34), TextColor3 = C.gold, ZIndex = f.ZIndex + 2 })
+	if big then
+		UI.chip(f, "BIG PRIZE", T.gold, { Size = UDim2.fromOffset(130, 26), Position = UDim2.new(0.5, 0, 0, 42), AnchorPoint = Vector2.new(0.5, 0) })
 	end
-	UI.icon(f, r.icon or "Gift", { Size = UDim2.new(1, -24, limited and 0.45 or 0.42, 0), Position = UDim2.fromScale(0.5, limited and 0.52 or 0.56),
-		AnchorPoint = Vector2.new(0.5, 0.5), ZIndex = f.ZIndex + 2 })
-	UI.outlined(f, r.label, { Size = UDim2.new(1, -12, 0, limited and 40 or 24), Position = UDim2.new(0.5, 0, 1, -8), AnchorPoint = Vector2.new(0.5, 1),
-		ZIndex = f.ZIndex + 2 })
+	local iconSize = big and 132 or 60
+	local ic = UI.icon(f, r.icon or "Gift", { Size = UDim2.fromOffset(iconSize, iconSize), Position = UDim2.new(0.5, 0, 0.5, big and 6 or 2), AnchorPoint = Vector2.new(0.5, 0.5) })
+	if state == "claimed" and ic:IsA("ImageLabel") then
+		ic.ImageTransparency = 0.6
+	end
+	UI.label(f, big and "value" or "body", r.label, { Size = UDim2.new(1, -16, 0, big and 32 or 22), Position = UDim2.new(0, 8, 1, -10), AnchorPoint = Vector2.new(0, 1),
+		TextColor3 = (state == "claimed" or state == "later") and T.mute or (big and T.gold or T.white) })
 	if state == "claimed" then
-		local dim = UI.frame(f, { Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, ZIndex = f.ZIndex + 3 })
-		UI.corner(dim, 10)
-		UI.outlined(dim, "✓", { Size = UDim2.fromScale(0.7, 0.7), Position = UDim2.fromScale(0.5, 0.5), AnchorPoint = Vector2.new(0.5, 0.5),
-			TextColor3 = C.green, ZIndex = dim.ZIndex + 1 })
-	elseif state == "today" then
+		check(f, big and 96 or 60, f.ZIndex + 3)
+	elseif state == "next" then
+		-- not ready yet: count down on the tile itself
+		local t = UI.label(f, "meta", "", { Size = UDim2.new(1, -16, 0, 18), Position = UDim2.new(0, 8, 1, big and -46 or -36), AnchorPoint = Vector2.new(0, 1),
+			TextColor3 = T.gold })
+		task.spawn(function()
+			while t.Parent do
+				t.Text = "in " .. UI.timeWords(math.max(0, dailyReadyAt - os.clock()))
+				task.wait(1)
+			end
+		end)
+	elseif today then
+		-- the whole tile claims too
+		local hit = Instance.new("TextButton")
+		hit.Text = ""
+		hit.BackgroundTransparency = 1
+		hit.Size = UDim2.fromScale(1, 1)
+		hit.ZIndex = f.ZIndex + 5
+		hit.Parent = f
+		hit.Activated:Connect(function()
+			State.action("claimDaily")
+		end)
 		UI.pulse(f)
 	end
 end
@@ -77,7 +150,7 @@ function Rewards.openDaily()
 	if not d then
 		return
 	end
-	local f, body = UI.window(gui, "Daily Rewards", C.orange, Vector2.new(640, 500), close, "Gift")
+	local f, body = UI.window(gui, "Daily Rewards", T.pink, Vector2.new(720, 470), close, "Gift")
 	window = f
 	local nextDay = d.dailyDay or 1
 	local ready = os.clock() >= dailyReadyAt
@@ -90,28 +163,30 @@ function Rewards.openDaily()
 		return "later"
 	end
 	-- days 1-6: 3 x 2 grid; day 7: tall on the right
-	local grid = UI.frame(body, { Size = UDim2.new(1, 0, 1, -76), BackgroundTransparency = 1 })
-	local cw, ch, gap = 134, 152, 12
+	local cw, ch, gap = 140, 146, 12
 	for day = 1, 6 do
 		local col, row = (day - 1) % 3, (day - 1) // 3
-		tile(grid, day, state(day), UDim2.fromOffset(cw, ch), UDim2.fromOffset(col * (cw + gap) + 4, row * (ch + gap) + 10))
+		tile(body, day, state(day), UDim2.fromOffset(cw, ch), UDim2.fromOffset(col * (cw + gap), row * (ch + gap)))
 	end
-	tile(grid, 7, state(7), UDim2.fromOffset(cw + 24, ch * 2 + gap), UDim2.fromOffset(3 * (cw + gap) + 4, 10))
+	tile(body, 7, state(7), UDim2.new(1, -3 * (cw + gap), 0, ch * 2 + gap), UDim2.fromOffset(3 * (cw + gap), 0))
 	-- claim button / time to the next one
+	local footer = { Size = UDim2.fromOffset(380, 58), Position = UDim2.new(0.5, 0, 1, 0), AnchorPoint = Vector2.new(0.5, 1) }
 	if ready then
-		UI.button(body, "CLAIM YOUR REWARD", C.green, function()
+		UI.button(body, ("CLAIM DAY %d"):format(math.min(nextDay, #Config.Daily)), T.green, function()
 			State.action("claimDaily")
-		end, { Size = UDim2.fromOffset(330, 58), Position = UDim2.new(0.5, 0, 1, -4), AnchorPoint = Vector2.new(0.5, 1) })
+		end, footer)
 	else
-		local left = math.max(0, dailyReadyAt - os.clock())
-		local t = UI.outlined(body, "Next reward in " .. UI.timeWords(left), { Size = UDim2.fromOffset(420, 36), Position = UDim2.new(0.5, 0, 1, -14),
-			AnchorPoint = Vector2.new(0.5, 1), TextColor3 = C.gold })
+		local p = Shop.plate(body, "", T.gold, footer)
+		local t = p:FindFirstChild("Label") :: TextLabel
 		task.spawn(function()
 			while t.Parent do
 				t.Text = "Next reward in " .. UI.timeWords(math.max(0, dailyReadyAt - os.clock()))
 				task.wait(1)
 			end
 		end)
+	end
+	if revealDay > 0 and os.clock() - revealAt < 0.6 then
+		reveal(revealDay)
 	end
 end
 
@@ -176,7 +251,7 @@ function Rewards.start()
 	gui.ResetOnSpawn = false
 	gui.DisplayOrder = 9
 	gui.Parent = player:WaitForChild("PlayerGui")
-	UI.autoScale(gui, Vector2.new(660, 520))
+	UI.autoScale(gui, Vector2.new(740, 480))
 
 	local function onState(d: any)
 		local wasReady = os.clock() >= dailyReadyAt
@@ -210,6 +285,8 @@ function Rewards.start()
 	Remotes.get("Notify").OnClientEvent:Connect(function(kind, data)
 		if kind == "daily" then
 			if data.ok then
+				revealDay, revealAt = data.day, os.clock()
+				reveal(data.day)
 				Notify.takeover(("DAY %d!"):format(data.day), data.text, C.gold, 1.6)
 				Fx.sound("buy", 0.8)
 				Fx.confetti((player.Character and player.Character:GetPivot().Position) or Vector3.zero)

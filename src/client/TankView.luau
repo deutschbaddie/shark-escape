@@ -19,6 +19,13 @@ local UI = require(script.Parent.UI)
 local TankView = {}
 local player = Players.LocalPlayer
 local C = UI.C
+local T = UI.T
+
+-- rarity accents (same as the menus): Common plain, then green, blue, purple, gold
+local RARITY = { Common = T.mute, Uncommon = T.green, Rare = T.blue, Epic = T.purple, Legendary = T.gold }
+local function rarityColor(id: string): Color3
+	return RARITY[id] or T.mute
+end
 
 ----------------------------------------------------------------- picking
 local function slotsFolders(): { Instance }
@@ -69,6 +76,18 @@ local function line(parent: Instance, text: string, size: number, color: Color3,
 	return t
 end
 
+-- a small rounded tag that hugs its text (rarity, mutation)
+local function tag(parent: Instance, text: string, color: Color3, order: number): Frame
+	local f = UI.frame(parent, { Size = UDim2.fromOffset(0, 24), AutomaticSize = Enum.AutomaticSize.X, BackgroundColor3 = color, LayoutOrder = order })
+	UI.corner(f, 12)
+	local pad = Instance.new("UIPadding")
+	pad.PaddingLeft, pad.PaddingRight = UDim.new(0, 10), UDim.new(0, 10)
+	pad.Parent = f
+	UI.outlined(f, text:upper(), { TextScaled = false, TextSize = UI.TYPE.meta[1], AutomaticSize = Enum.AutomaticSize.X,
+		Size = UDim2.fromOffset(0, 24), Font = UI.TYPE.meta[2], StrokeColor = UI.dark(color, 0.55) })
+	return f
+end
+
 local function hide()
 	if outline then
 		outline:Destroy()
@@ -92,7 +111,6 @@ local function show(m: Model)
 	local mut = m:GetAttribute("M") :: string?
 	local s = (m:GetAttribute("S") :: number?) or 1
 	local perSecond = (m:GetAttribute("PerSecond") :: number?) or 0
-	local rarity = Config.rarity(r)
 
 	local hl = Instance.new("Highlight")
 	hl.FillTransparency = 1
@@ -106,31 +124,43 @@ local function show(m: Model)
 	bb.Name = "InspectCard"
 	bb.AlwaysOnTop = true
 	bb.LightInfluence = 0
-	bb.Size = UDim2.fromOffset(240, 120)
+	bb.Size = UDim2.fromOffset(300, 140)
 	bb.StudsOffsetWorldSpace = Vector3.new(0, m:GetExtentsSize().Y * 0.5 + 1.2, 0)
 	bb.Adornee = m.PrimaryPart
 	bb.Parent = player:WaitForChild("PlayerGui")
 	local box = UI.frame(bb, { Size = UDim2.fromOffset(0, 0), AutomaticSize = Enum.AutomaticSize.XY, Position = UDim2.fromScale(0.5, 1),
-		AnchorPoint = Vector2.new(0.5, 1), BackgroundColor3 = Color3.fromRGB(24, 28, 58), BackgroundTransparency = 0.12 })
-	UI.corner(box, 10)
-	UI.stroke(box, C.ink, 3)
+		AnchorPoint = Vector2.new(0.5, 1), BackgroundColor3 = T.navy, BackgroundTransparency = 0.05 })
+	UI.corner(box, UI.R.card)
+	UI.stroke(box, r == "Common" and T.line or rarityColor(r), UI.S.card)
 	local pad = Instance.new("UIPadding")
-	pad.PaddingLeft, pad.PaddingRight = UDim.new(0, 14), UDim.new(0, 14)
-	pad.PaddingTop, pad.PaddingBottom = UDim.new(0, 6), UDim.new(0, 8)
+	pad.PaddingLeft, pad.PaddingRight = UDim.new(0, 16), UDim.new(0, 16)
+	pad.PaddingTop, pad.PaddingBottom = UDim.new(0, 8), UDim.new(0, 10)
 	pad.Parent = box
 	local list = Instance.new("UIListLayout")
 	list.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	list.SortOrder = Enum.SortOrder.LayoutOrder
+	list.Padding = UDim.new(0, 4)
 	list.Parent = box
 	local sizeLabel = Config.sizeLabel(s)
-	line(box, (sizeLabel and (sizeLabel .. " ") or "") .. Config.species(z, r).name, 22, C.white, 1)
-	line(box, (mut and (mut .. " · ") or "") .. r, 16, mut and (Config.mutation(mut) :: any).color or rarity.color, 2)
-	line(box, "" .. Config.formatKg(Config.creatureKg(z, r, s)), 16, Color3.fromRGB(180, 220, 255), 3)
+	local name = line(box, (sizeLabel and (sizeLabel .. " ") or "") .. Config.species(z, r).name, UI.TYPE.body[1] + 2, T.white, 1)
+	name.Font = UI.TYPE.body[2]
+	-- rarity (+ mutation) chips
+	local chips = UI.frame(box, { Size = UDim2.fromOffset(0, 24), AutomaticSize = Enum.AutomaticSize.X, BackgroundTransparency = 1, LayoutOrder = 2 })
+	local cl = Instance.new("UIListLayout")
+	cl.FillDirection = Enum.FillDirection.Horizontal
+	cl.Padding = UDim.new(0, 6)
+	cl.SortOrder = Enum.SortOrder.LayoutOrder
+	cl.Parent = chips
+	tag(chips, r, rarityColor(r), 1)
+	if mut then
+		tag(chips, mut, (Config.mutation(mut) :: any).color, 2)
+	end
+	line(box, Config.formatKg(Config.creatureKg(z, r, s)), UI.TYPE.meta[1], T.mute, 3)
 	if m:GetAttribute("Dead") then
 		-- not earning: dimmed $/s
-		line(box, ("$%s/s  ·  not equipped"):format(UI.short(perSecond)), 18, Color3.fromRGB(120, 130, 120), 4)
+		line(box, ("$%s/s  ·  not equipped"):format(UI.short(perSecond)), UI.TYPE.meta[1] + 2, UI.dark(T.mute, 0.25), 4)
 	else
-		line(box, ("$%s/s"):format(UI.short(perSecond)), 18, C.money, 4)
+		line(box, ("$%s/s"):format(UI.short(perSecond)), UI.TYPE.body[1], C.money, 4)
 	end
 	card = bb
 	UI.fade(box, true, 0.12)
@@ -194,12 +224,20 @@ local function openView(plotIndex: number, title: string)
 			end
 		end
 	end
-	UI.outlined(g, title, { Size = UDim2.fromOffset(600, 40), Position = UDim2.new(0.5, 0, 0, 10), AnchorPoint = Vector2.new(0.5, 0) })
-	UI.outlined(g, n > 0 and ("$%s/s  ·  %d swimming"):format(UI.short(perSecond), n) or "Empty for now", { Size = UDim2.fromOffset(500, 26),
-		Position = UDim2.new(0.5, 0, 0, 52), AnchorPoint = Vector2.new(0.5, 0), TextColor3 = C.money })
-	UI.outlined(g, UI.TOUCH and "Tap a creature to see its name and weight" or "Hover a creature to see its name and weight · drag to look around",
-		{ Size = UDim2.fromOffset(640, 22), Position = UDim2.new(0.5, 0, 1, -14), AnchorPoint = Vector2.new(0.5, 1), TextColor3 = Color3.fromRGB(220, 230, 245) })
-	UI.button(g, "X", C.red, closeView, { Size = UDim2.fromOffset(56, 56), Position = UDim2.new(1, -12, 0, 10), AnchorPoint = Vector2.new(1, 0) })
+	-- title pill at the top, hint pill at the bottom, X to leave
+	local top = UI.frame(g, { Size = UDim2.fromOffset(460, 76), Position = UDim2.new(0.5, 0, 0, 10), AnchorPoint = Vector2.new(0.5, 0),
+		BackgroundColor3 = T.navy, BackgroundTransparency = 0.08 })
+	UI.corner(top, UI.R.panel)
+	UI.stroke(top, T.line, UI.S.subtle)
+	UI.label(top, "value", title, { Size = UDim2.new(1, -32, 0, 34), Position = UDim2.fromOffset(16, 6), TextColor3 = T.gold })
+	UI.label(top, "body", n > 0 and ("$%s/s  ·  %d swimming"):format(UI.short(perSecond), n) or "Empty for now", { Size = UDim2.new(1, -32, 0, 24),
+		Position = UDim2.fromOffset(16, 42), TextColor3 = n > 0 and C.money or T.mute })
+	local hint = UI.frame(g, { Size = UDim2.fromOffset(620, 40), Position = UDim2.new(0.5, 0, 1, -12), AnchorPoint = Vector2.new(0.5, 1),
+		BackgroundColor3 = T.navy, BackgroundTransparency = 0.15 })
+	UI.corner(hint, 20)
+	UI.label(hint, "meta", UI.TOUCH and "Tap a creature to see its name and weight" or "Hover a creature to see its name and weight  ·  drag to look around",
+		{ Size = UDim2.new(1, -32, 1, -14), Position = UDim2.fromOffset(16, 7), TextColor3 = UI.light(T.mute, 0.4) })
+	UI.button(g, "X", T.red, closeView, { Size = UDim2.fromOffset(56, 56), Position = UDim2.new(1, -12, 0, 10), AnchorPoint = Vector2.new(1, 0) })
 
 	local cam = Workspace.CurrentCamera
 	local startCF = cam.CFrame

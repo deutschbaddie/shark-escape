@@ -30,44 +30,62 @@ local C = UI.C
 local player = Players.LocalPlayer
 
 ----------------------------------------------------------------- welcome back
+-- the standard popup's body parts (UI.popup): its value label and buttons
+local function popupParts(win: Frame, value: string): (TextLabel?, { TextButton })
+	local body = win:FindFirstChild("Body")
+	local label: TextLabel? = nil
+	local buttons = {}
+	if body then
+		for _, k in body:GetChildren() do
+			if k:IsA("TextLabel") and k.Text == value then
+				label = k
+			elseif k:IsA("TextButton") then
+				table.insert(buttons, k)
+			end
+		end
+	end
+	return label, buttons
+end
+
 local welcomeShown = false
 local function welcome(amount: number)
 	welcomeShown = true
-	local win, body = Shop.window("Welcome Back!", C.blue, Vector2.new(520, 340), "Clock")
-	UI.outlined(body, "Your tank earned while you were away!", { Size = UDim2.new(1, -20, 0, 28), Position = UDim2.fromOffset(10, 4) })
-	-- the amount, counting up on a dark card
-	local card = UI.inset(body, { Size = UDim2.new(1, -40, 0, 108), Position = UDim2.new(0.5, 0, 0, 42), AnchorPoint = Vector2.new(0.5, 0) })
-	UI.icon(card, "Cash", { Size = UDim2.fromOffset(84, 84), Position = UDim2.new(0, 16, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5) })
-	local value = UI.outlined(card, "+$0", { Size = UDim2.new(1, -124, 0, 70), Position = UDim2.new(0, 112, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5),
-		Font = UI.NUMFONT, TextColor3 = C.money, TextXAlignment = Enum.TextXAlignment.Left })
-	UI.pop(card, 0.8)
-	task.spawn(function()
-		local t0 = os.clock()
-		while value.Parent and os.clock() - t0 < 0.9 do
-			local k = (os.clock() - t0) / 0.9
-			value.Text = "+$" .. UI.commas(amount * (1 - (1 - k) ^ 3))
-			task.wait()
-		end
-		value.Text = "+$" .. UI.commas(amount)
-		Fx.sound("coin", 0.6)
-	end)
-	UI.outlined(body, ("Offline your tank earns %d%% (up to %dh)"):format(math.floor(Config.Offline.rate * 100), Config.Offline.maxHours),
-		{ Size = UDim2.new(1, -40, 0, 20), Position = UDim2.new(0.5, 0, 0, 158), AnchorPoint = Vector2.new(0.5, 0), TextColor3 = Color3.fromRGB(190, 200, 220) })
-	local prod = Config.Products.DoubleOffline
-	local claimX = 0.5
-	if prod.id ~= 0 then
-		claimX = 0.73
-		local dbl = UI.button(body, ("2x  +$%s"):format(UI.short(amount * 2)), C.pink, function()
-			MarketplaceService:PromptProductPurchase(player, prod.id)
-		end, { Size = UDim2.fromOffset(210, 56), Position = UDim2.new(0.27, 0, 1, -2), AnchorPoint = Vector2.new(0.5, 1) })
-		UI.rainbow(dbl)
-		UI.outlined(dbl, "R$" .. prod.price, { Size = UDim2.fromOffset(60, 22), Position = UDim2.new(1, 4, 0, -12), AnchorPoint = Vector2.new(1, 0), TextColor3 = C.money, ZIndex = dbl.ZIndex + 3 })
+	local win = Shop.popup({
+		title = "Welcome Back!",
+		icon = "Clock",
+		color = C.blue,
+		text = ("Your tank earned while you were away! (%d%% rate, up to %dh)"):format(math.floor(Config.Offline.rate * 100), Config.Offline.maxHours),
+		value = "+$0",
+		primary = { text = "CLAIM", color = C.green }, -- closing banks the coins (below)
+		secondary = { text = "Later" },
+	})
+	local value, buttons = popupParts(win, "+$0")
+	-- the amount counts up
+	if value then
+		value.Font = UI.NUMFONT
+		task.spawn(function()
+			local t0 = os.clock()
+			while value.Parent and os.clock() - t0 < 0.9 do
+				local k = (os.clock() - t0) / 0.9
+				value.Text = "+$" .. UI.commas(amount * (1 - (1 - k) ^ 3))
+				task.wait()
+			end
+			value.Text = "+$" .. UI.commas(amount)
+			Fx.sound("coin", 0.6)
+		end)
 	end
-	UI.button(body, "Claim!", C.green, function()
-		State.action("claimOffline")
-		Shop.close()
-	end, { Size = UDim2.fromOffset(200, 56), Position = UDim2.new(claimX, 0, 1, -2), AnchorPoint = Vector2.new(0.5, 1) })
-	-- closing with X still banks the coins
+	-- Robux 2x replaces the secondary button (it must not close: closing banks 1x)
+	local prod = Config.Products.DoubleOffline
+	local secondary = buttons[2]
+	if prod.id ~= 0 and secondary then
+		local props = { Size = secondary.Size, Position = secondary.Position, AnchorPoint = secondary.AnchorPoint }
+		local parent = secondary.Parent
+		secondary:Destroy()
+		UI.button(parent, ("2x  R$ %d"):format(prod.price), UI.T.gold, function()
+			MarketplaceService:PromptProductPurchase(player, prod.id)
+		end, props)
+	end
+	-- closing any way still banks the coins
 	win.Destroying:Connect(function()
 		if State.data and State.data.offline > 0 then
 			State.action("claimOffline")
@@ -87,6 +105,10 @@ end
 
 ----------------------------------------------------------------- rebirth confirm
 -- rebirth wipes progress, so it always asks first and says exactly what happens
+local function multText(m: number): string
+	return "x" .. string.format("%g", math.floor(m * 100) / 100)
+end
+
 function Hub.confirmRebirth()
 	local d = State.data
 	if not d or d.speed < Config.Rebirth.speed then
@@ -94,20 +116,29 @@ function Hub.confirmRebirth()
 	end
 	local now = Config.Rebirth.mult ^ d.rebirths
 	local nextMult = Config.Rebirth.mult ^ (d.rebirths + 1)
-	local _, body = Shop.window("Rebirth?", C.green, Vector2.new(580, 360), "Rebirth")
-	UI.outlined(body, ("Speed gain  x%s  →  x%s  forever!"):format(string.format("%g", math.floor(now * 100) / 100), string.format("%g", math.floor(nextMult * 100) / 100)),
-		{ Size = UDim2.new(1, -20, 0, 44), Position = UDim2.fromOffset(10, 6), TextColor3 = C.money })
-	local lines = UI.inset(body, { Size = UDim2.new(1, -20, 0, 130), Position = UDim2.fromOffset(10, 60) })
-	UI.outlined(lines, "Resets: speed, coins and rides", { Size = UDim2.new(1, -24, 0, 34), Position = UDim2.fromOffset(12, 14), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = Color3.fromRGB(255, 140, 140) })
-	UI.outlined(lines, "Keeps: your tank, Index, shields and Robux items", { Size = UDim2.new(1, -24, 0, 34), Position = UDim2.fromOffset(12, 64), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = C.money })
-	UI.button(body, "Not yet", C.panel, function()
-		Shop.close()
-	end, { Size = UDim2.fromOffset(190, 62), Position = UDim2.new(0.27, 0, 1, -4), AnchorPoint = Vector2.new(0.5, 1) })
-	local go = UI.button(body, "REBIRTH!", C.green, function()
-		State.action("rebirth")
-		Shop.close()
-	end, { Size = UDim2.fromOffset(230, 62), Position = UDim2.new(0.72, 0, 1, -4), AnchorPoint = Vector2.new(0.5, 1) })
-	UI.pulse(go)
+	local win = Shop.popup({
+		title = "Rebirth?",
+		icon = "Rebirth",
+		color = C.purple,
+		text = "Start over for a permanent speed gain boost.",
+		value = ("%s  →  %s"):format(multText(now), multText(nextMult)),
+		valueColor = C.gold,
+		primary = { text = "REBIRTH", color = C.green, fn = function()
+			State.action("rebirth")
+		end },
+		secondary = { text = "Cancel" },
+	})
+	-- what resets / what stays, between the value and the buttons
+	local body = win:FindFirstChild("Body") :: Frame
+	local box = UI.inset(body, { Size = UDim2.new(1, 0, 0, 60), Position = UDim2.fromOffset(0, 104) })
+	UI.label(box, "meta", "RESETS: speed, coins, rides", { Size = UDim2.new(1, -24, 0, 20), Position = UDim2.fromOffset(12, 8),
+		TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.light(C.red, 0.35) })
+	UI.label(box, "meta", "KEEPS: tank, Index, shields, Robux items", { Size = UDim2.new(1, -24, 0, 20), Position = UDim2.fromOffset(12, 32),
+		TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = C.money })
+	local _, buttons = popupParts(win, "")
+	if buttons[1] then
+		UI.pulse(buttons[1])
+	end
 end
 
 ----------------------------------------------------------------- pads + outlines

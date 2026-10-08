@@ -62,7 +62,7 @@ task = {{
 """
     for m in ("Config", "Build", "Layout"):
         s += module(m, "shared", "mod:")
-    for m in ("UI", "Sounds", "Fx", "Notify", "Guide", "Travel", "Prompts", "HUD", "Rewards"):
+    for m in ("UI", "Sounds", "Fx", "Notify", "Guide", "Travel", "Prompts", "HUD", "Rewards", "Shop", "Index", "Tank", "Sell", "Hub"):
         s += module(m, "client", "cmod:")
     s += """
 local sig = function() return { Connect = function() end } end
@@ -78,6 +78,13 @@ MODULES["cmod:State"] = function() return { data = SAMPLE, Changed = sig(), acti
 MODULES["cmod:Water"] = function() return { setSafeGlow = function() end } end
 MODULES["cmod:SharkView"] = function() return { myHunter = function() return nil end, breach = function() end } end
 MODULES["cmod:Travel"] = function() return { go = function() end } end
+-- 3D builders: a stand-in model (viewports draw as a placeholder box)
+local function fakeModel()
+	return { PivotTo = function() end, GetBoundingBox = function() return CFrame.new(), Vector3.new(2, 2, 2) end, ScaleTo = function() end,
+		GetExtentsSize = function() return Vector3.new(2, 2, 2) end }
+end
+MODULES["mod:Rides"] = function() return { build = fakeModel } end
+MODULES["mod:Creatures"] = function() return { build = fakeModel } end
 local HUD = require("cmod:HUD")
 local Notify = require("cmod:Notify")
 HUD.start()
@@ -99,7 +106,8 @@ end
 local KEYS = { "ClassName", "Name", "Visible", "Enabled", "Size", "Position", "AnchorPoint", "BackgroundTransparency", "BackgroundColor3",
 	"Text", "TextScaled", "TextSize", "TextColor3", "TextXAlignment", "TextYAlignment", "TextTransparency", "LayoutOrder", "ZIndex",
 	"Padding", "FillDirection", "HorizontalAlignment", "VerticalAlignment", "SortOrder", "Scale", "AutomaticSize", "CornerRadius",
-	"Thickness", "Color", "ApplyStrokeMode", "PaddingLeft", "PaddingRight", "PaddingTop", "PaddingBottom", "Image", "Rotation", "DisplayOrder" }
+	"Thickness", "Color", "ApplyStrokeMode", "PaddingLeft", "PaddingRight", "PaddingTop", "PaddingBottom", "Image", "Rotation", "DisplayOrder",
+	"CellSize", "CellPadding", "TextWrapped", "Transparency", "PlaceholderText", "PlaceholderColor3", "MaxTextSize", "ClipsDescendants", "ImageTransparency", "FillEmptySpaceColumns" }
 local function walk(n)
 	local p = rawget(n, "_p")
 	local o = {}
@@ -146,6 +154,14 @@ Notify.banner("Coral Reef", { key = "zone", priority = 2, sub = "🦈 Hammerhead
 Notify.toast("🐙 Huge Octopus  +$1.2K/s · NEW!", Color3.fromRGB(64, 156, 255))
 Notify.toast("✅ The sharks are gone. Back to the water!", Color3.fromRGB(78, 206, 48))
 """
+SCENE_TUT = """
+Notify.status("Lagoon · 12 m")
+Notify.banner("Grab a creature", { key = "tut", sticky = true, priority = 3, sub = "Swim to a bubble, then tap", step = "1/5" })
+Notify.toast("Rare Clownfish  +$5/s · NEW!", Color3.fromRGB(64, 156, 255))
+"""
+SCENE_TUT_COMPACT = """
+Notify.banner("Grab a creature", { key = "tut", sticky = true, priority = 3, sub = "Swim to a bubble, then tap", step = "1/5", compact = true })
+"""
 SCENE_DAILY = """
 local Rewards = require("cmod:Rewards")
 Rewards.start()
@@ -184,7 +200,7 @@ def text_w(text, px):
 
 def is_gui(n):
     c = n.get("ClassName", "")
-    return c in ("Frame", "TextLabel", "TextButton", "ImageLabel", "ImageButton", "ScrollingFrame", "ViewportFrame", "CanvasGroup")
+    return c in ("Frame", "TextLabel", "TextButton", "TextBox", "ImageLabel", "ImageButton", "ScrollingFrame", "ViewportFrame", "CanvasGroup")
 
 
 def natural(n, avail):
@@ -223,10 +239,15 @@ def natural(n, avail):
     return size
 
 
-def place(n, pos, size, out, depth):
+def place(n, pos, size, out, depth, clip=None):
     n["_rect"] = (pos[0], pos[1], size[0], size[1])
     n["_depth"] = depth
+    n["_clip"] = clip
     out.append(n)
+    # scrolling frames / ClipsDescendants: children are clipped to this rect
+    if n.get("ClassName") == "ScrollingFrame" or n.get("ClipsDescendants"):
+        r = (pos[0], pos[1], pos[0] + size[0], pos[1] + size[1])
+        clip = r if clip is None else (max(clip[0], r[0]), max(clip[1], r[1]), min(clip[2], r[2]), min(clip[3], r[3]))
     pad = [0, 0, 0, 0]
     for k in n["kids"]:
         if k.get("ClassName") == "UIPadding":
@@ -234,8 +255,20 @@ def place(n, pos, size, out, depth):
     inner_pos = (pos[0] + pad[0], pos[1] + pad[2])
     inner = (size[0] - pad[0] - pad[1], size[1] - pad[2] - pad[3])
     layout = next((k for k in n["kids"] if k.get("ClassName") == "UIListLayout"), None)
+    grid = next((k for k in n["kids"] if k.get("ClassName") == "UIGridLayout"), None)
     kids = [k for k in n["kids"] if is_gui(k) and k.get("Visible", True)]
-    if layout:
+    if grid:
+        kids.sort(key=lambda k: k.get("LayoutOrder", 0))
+        cs = ud(grid.get("CellSize", [0, 100, 0, 100]), inner)
+        cp = ud(grid.get("CellPadding", [0, 5, 0, 5]), inner)
+        cols = max(1, int((inner[0] + cp[0]) // (cs[0] + cp[0])))
+        cols = min(cols, max(1, len(kids)))
+        roww = cols * cs[0] + (cols - 1) * cp[0]
+        x0 = inner_pos[0] + {"Left": 0, "Center": (inner[0] - roww) / 2, "Right": inner[0] - roww}.get(grid.get("HorizontalAlignment", "Left"), 0)
+        for i, k in enumerate(kids):
+            c, r = i % cols, i // cols
+            place(k, (x0 + c * (cs[0] + cp[0]), inner_pos[1] + r * (cs[1] + cp[1])), cs, out, depth + 1, clip)
+    elif layout:
         kids.sort(key=lambda k: k.get("LayoutOrder", 0))
         horiz = layout.get("FillDirection") == "Horizontal"
         gap = layout.get("Padding", [0, 0])[1] + layout.get("Padding", [0, 0])[0] * (inner[0] if horiz else inner[1])
@@ -249,23 +282,103 @@ def place(n, pos, size, out, depth):
         for k, s in zip(kids, sizes):
             if horiz:
                 y = inner_pos[1] + {"Top": 0, "Center": (inner[1] - s[1]) / 2, "Bottom": inner[1] - s[1]}.get(va, 0)
-                place(k, (cur, y), s, out, depth + 1)
+                place(k, (cur, y), s, out, depth + 1, clip)
                 cur += s[0] + gap
             else:
                 x = inner_pos[0] + {"Left": 0, "Center": (inner[0] - s[0]) / 2, "Right": inner[0] - s[0]}.get(ha, 0)
-                place(k, (x, cur), s, out, depth + 1)
+                place(k, (x, cur), s, out, depth + 1, clip)
                 cur += s[1] + gap
     else:
         for k in kids:
             s = natural(k, inner)
             p = ud(k.get("Position", [0, 0, 0, 0]), inner)
             a = k.get("AnchorPoint", [0, 0])
-            place(k, (inner_pos[0] + p[0] - a[0] * s[0], inner_pos[1] + p[1] - a[1] * s[1]), s, out, depth + 1)
+            place(k, (inner_pos[0] + p[0] - a[0] * s[0], inner_pos[1] + p[1] - a[1] * s[1]), s, out, depth + 1, clip)
+
+
+def rgb(c, a=255):
+    return (int(c[0] * 255), int(c[1] * 255), int(c[2] * 255), a)
+
+
+def wrap(text, px, width):
+    words, lines, cur = text.split(" "), [], ""
+    for wd in words:
+        t = (cur + " " + wd).strip()
+        if text_w(t, px) <= width or not cur:
+            cur = t
+        else:
+            lines.append(cur)
+            cur = wd
+    lines.append(cur)
+    return lines
+
+
+def draw_item(d, n, scale, inset, ox, oy, report):
+    x, y, ww, hh = n["_rect"]
+    X, Y, W, H = x * scale + ox, y * scale + inset + oy, ww * scale, hh * scale
+    cls = n.get("ClassName")
+    stroke = next((k for k in n["kids"] if k.get("ClassName") == "UIStroke"), None)
+    corner = next((k for k in n["kids"] if k.get("ClassName") == "UICorner"), None)
+    limit = next((k for k in n["kids"] if k.get("ClassName") == "UITextSizeConstraint"), None)
+    r = 0
+    if corner:
+        cr = corner.get("CornerRadius", [0, 8])
+        r = min(cr[1] * scale + cr[0] * min(W, H), min(W, H) / 2)
+    if cls in ("Frame", "TextButton", "TextBox", "ImageButton", "ScrollingFrame") and n.get("BackgroundTransparency", 0) < 0.99 and W > 0 and H > 0:
+        a = int(255 * (1 - n.get("BackgroundTransparency", 0)))
+        outline = None
+        if stroke and stroke.get("ApplyStrokeMode") == "Border" and stroke.get("Transparency", 0) < 0.99:
+            outline = rgb(stroke.get("Color", [0.09, 0.09, 0.13]))
+        d.rounded_rectangle([X, Y, X + W, Y + H], radius=r, fill=rgb(n.get("BackgroundColor3", [1, 1, 1]), a),
+                            outline=outline, width=max(1, int((stroke or {}).get("Thickness", 1) * scale)) if outline else 1)
+    elif cls == "Frame" and stroke and stroke.get("ApplyStrokeMode") == "Border" and W > 0 and H > 0:
+        d.rounded_rectangle([X, Y, X + W, Y + H], radius=r, outline=rgb(stroke.get("Color", [1, 1, 1])),
+                            width=max(1, int(stroke.get("Thickness", 1) * scale)))
+    if cls in ("ImageLabel", "ImageButton"):
+        d.rectangle([X, Y, X + W, Y + H], outline=(255, 255, 255, 90))
+    if cls == "ViewportFrame" and W > 2 and H > 2:
+        # stand-in for the 3D model: a soft blob
+        d.ellipse([X + W * 0.25, Y + H * 0.2, X + W * 0.75, Y + H * 0.8], fill=(255, 255, 255, 50))
+    if cls == "TextBox" and not n.get("Text") and n.get("PlaceholderText"):
+        n = dict(n, Text=n["PlaceholderText"], TextColor3=n.get("PlaceholderColor3", [0.6, 0.6, 0.6]))
+        cls = "TextLabel"
+    if cls in ("TextLabel", "TextButton") and n.get("Text") and n.get("TextTransparency", 0) < 0.99 and W > 1 and H > 1:
+        text = n["Text"]
+        lines = [text]
+        if n.get("TextScaled"):
+            px = H * 0.9
+            if limit and limit.get("MaxTextSize"):
+                px = min(px, limit["MaxTextSize"] * scale)
+            if n.get("TextWrapped"):
+                while px > 6:
+                    lines = wrap(text, px, W * 0.98)
+                    if len(lines) * px * 1.15 <= H and all(text_w(l, px) <= W * 0.98 for l in lines):
+                        break
+                    px -= 0.5
+            else:
+                tw = text_w(text, px)
+                if tw > W * 0.98:
+                    px *= (W * 0.98) / tw
+        else:
+            px = n.get("TextSize", 14) * scale
+        f = font(px)
+        xa = n.get("TextXAlignment", "Center")
+        c = n.get("TextColor3", [1, 1, 1])
+        st = max(1, int(px / 9))
+        scol = rgb(stroke.get("Color", [0.09, 0.09, 0.13])) if stroke else None
+        total = len(lines) * px * 1.15
+        for i, ln in enumerate(lines):
+            tw = f.getlength(ln)
+            tx = X if xa == "Left" else (X + W - tw if xa == "Right" else X + (W - tw) / 2)
+            ty = Y + (H - total) / 2 + i * px * 1.15
+            d.text((tx, ty), ln, font=f, fill=rgb(c), stroke_width=st if stroke else 0, stroke_fill=scol)
+        if px < 11 and report is not None:
+            report.append(f"small text {px:.1f}px: {text[:40]}")
 
 
 def draw_device(name, w, h, touch, scene, tag):
     code = harness(w, h, touch, scene)
-    path = os.path.join(HERE, "ui_harness.luau")
+    path = os.path.join(HERE, f"ui_harness_{os.getpid()}.luau")
     open(path, "w").write(code)
     res = subprocess.run([LUAU, path], capture_output=True, text=True)
     os.remove(path)
@@ -294,58 +407,75 @@ def draw_device(name, w, h, touch, scene, tag):
                 a = k.get("AnchorPoint", [0, 0])
                 place(k, (p[0] - a[0] * s[0], p[1] - a[1] * s[1]), s, items, 1)
         for n in items:
-            x, y, ww, hh = n["_rect"]
-            X, Y, W, H = x * scale, y * scale + inset, ww * scale, hh * scale
-            cls = n.get("ClassName")
-            stroke = next((k for k in n["kids"] if k.get("ClassName") == "UIStroke"), None)
-            corner = next((k for k in n["kids"] if k.get("ClassName") == "UICorner"), None)
-            r = 0
-            if corner:
-                cr = corner.get("CornerRadius", [0, 8])
-                r = min(cr[1] * scale + cr[0] * min(W, H), min(W, H) / 2)
-            if cls in ("Frame", "TextButton", "ImageButton", "ScrollingFrame") and n.get("BackgroundTransparency", 0) < 0.99 and W > 0 and H > 0:
-                c = n.get("BackgroundColor3", [1, 1, 1])
-                a = int(255 * (1 - n.get("BackgroundTransparency", 0)))
-                outline = None
-                if stroke and stroke.get("ApplyStrokeMode") == "Border":
-                    outline = (22, 22, 34, 255)
-                d.rounded_rectangle([X, Y, X + W, Y + H], radius=r, fill=(int(c[0] * 255), int(c[1] * 255), int(c[2] * 255), a),
-                                    outline=outline, width=max(1, int((stroke or {}).get("Thickness", 1) * scale)) if outline else 1)
-            if cls in ("ImageLabel", "ImageButton"):
-                d.rectangle([X, Y, X + W, Y + H], outline=(255, 255, 255, 120))
-            if cls in ("TextLabel", "TextButton") and n.get("Text") and n.get("TextTransparency", 0) < 0.99 and W > 1 and H > 1:
-                text = n["Text"]
-                if n.get("TextScaled"):
-                    px = H * 0.9
-                    tw = text_w(text, px)
-                    if tw > W * 0.98:
-                        px *= (W * 0.98) / tw
-                else:
-                    px = n.get("TextSize", 14) * scale
-                f = font(px)
-                tw = f.getlength(text)
-                xa = n.get("TextXAlignment", "Center")
-                tx = X if xa == "Left" else (X + W - tw if xa == "Right" else X + (W - tw) / 2)
-                ty = Y + (H - px * 1.15) / 2
-                c = n.get("TextColor3", [1, 1, 1])
-                st = max(1, int(px / 9))
-                d.text((tx, ty), text, font=f, fill=(int(c[0] * 255), int(c[1] * 255), int(c[2] * 255), 255),
-                       stroke_width=st if stroke else 0, stroke_fill=(22, 22, 34, 255))
-                if px < 11:
-                    report.append(f"small text {px:.1f}px: {text[:40]}")
+            cl = n.get("_clip")
+            if cl:
+                cx0, cy0 = int(max(0, cl[0] * scale)), int(max(0, cl[1] * scale + inset))
+                cx1, cy1 = int(min(w, cl[2] * scale)), int(min(h, cl[3] * scale + inset))
+                if cx1 <= cx0 or cy1 <= cy0:
+                    continue
+                x, y, ww, hh = n["_rect"]
+                if x * scale > cx1 or y * scale + inset > cy1 or (x + ww) * scale < cx0 or (y + hh) * scale + inset < cy0:
+                    continue
+                layer = Image.new("RGBA", (cx1 - cx0, cy1 - cy0), (0, 0, 0, 0))
+                draw_item(ImageDraw.Draw(layer, "RGBA"), n, scale, inset, -cx0, -cy0, None)
+                img.paste(layer, (cx0, cy0), layer)
+            else:
+                draw_item(d, n, scale, inset, 0, 0, report)
         for n in items:
             x, y, ww, hh = n["_rect"]
             X, Y, W, H = x * scale, y * scale + inset, ww * scale, hh * scale
-            if n["_depth"] == 1 and (X < -1 or Y < inset - 1 or X + W > w + 1 or Y + H > h + 1) and W > 0 and H > 0:
+            if n["_depth"] == 1 and n.get("Name") != "Backdrop" and (X < -1 or Y < inset - 1 or X + W > w + 1 or Y + H > h + 1) and W > 0 and H > 0:
                 report.append(f"off-screen: {root.get('Name')}/{n.get('Name')} at {X:.0f},{Y:.0f} {W:.0f}x{H:.0f}")
+    if touch:
+        # thumbstick (bottom-left) and jump button (bottom-right) on phones/tablets
+        js, jb = 150, 140
+        d.rectangle([0, h - js, js, h], outline=(255, 60, 60, 255), width=2)
+        d.rectangle([w - jb, h - jb, w, h], outline=(255, 60, 60, 255), width=2)
     out = os.path.join(HERE, f"ui_{name}_{tag}.png")
     img.save(out)
     print(out, "|", "; ".join(sorted(set(report))) or "ok")
 
 
+MENU_SAMPLE = """
+SAMPLE.coins = 450
+SAMPLE.ride = "Tube"
+SAMPLE.rides = { Noodle = true, Duck = true, Tube = true }
+SAMPLE.index = { ["Lagoon:Common"] = true, ["Lagoon:Uncommon"] = true, ["Lagoon:Rare"] = true, ["Reef:Common"] = true }
+SAMPLE.claimed = { ["Lagoon:Common"] = true }
+SAMPLE.active, SAMPLE.slots, SAMPLE.income, SAMPLE.dead, SAMPLE.maxDead, SAMPLE.slotPrice = 3, 4, 42, 2, 10, 400
+SAMPLE.creatures = {
+	{ id = "a", e = true, v = 24, r = "Rare", z = "Lagoon", s = 1.4 },
+	{ id = "b", e = true, v = 9, r = "Uncommon", z = "Lagoon", s = 1 },
+	{ id = "c", e = true, v = 9, r = "Common", z = "Reef", m = "Gold", s = 1 },
+	{ id = "d", e = false, v = 3, r = "Common", z = "Lagoon", s = 0.8 },
+	{ id = "e", e = false, v = 2, r = "Common", z = "Lagoon", s = 1 },
+}
+SAMPLE.rebirths = 1
+SAMPLE.speed = 30000
+"""
+MENU_SCENES = {
+    "index": 'require("cmod:Shop").start()\nrequire("cmod:Index").open()',
+    "rides": 'require("cmod:Shop").start()\nrequire("cmod:Shop").openRides()',
+    "store": 'require("cmod:Shop").start()\nrequire("cmod:Shop").openStore()',
+    "tank": 'require("cmod:Tank").start()\nrequire("cmod:Tank").open()',
+    "sell": 'require("cmod:Sell").open()',
+    "rebirth": 'require("cmod:Shop").start()\nrequire("cmod:Hub").confirmRebirth()',
+    "daily": 'local R = require("cmod:Rewards")\nR.start()\nR.openDaily()',
+}
+
+if len(sys.argv) > 2 and sys.argv[2] == "menus":
+    # menu scenes: python3 tools/preview/ui.py <luau> menus [scene ...]
+    pick = sys.argv[3:] or list(MENU_SCENES)
+    for key in pick:
+        for name, w, h, touch in (("phone_844x390", 844, 390, True), ("desktop_1600x900", 1600, 900, False)):
+            draw_device(name, w, h, touch, MENU_SAMPLE + MENU_SCENES[key], "menu_" + key)
+    sys.exit(0)
+
 for name, w, h, touch in DEVICES:
     draw_device(name, w, h, touch, SCENE_PLAY, "play")
 draw_device("phone_844x390", 844, 390, True, SCENE_TAKEOVER, "takeover")
+draw_device("phone_844x390", 844, 390, True, SCENE_TUT, "tutorial")
+draw_device("phone_844x390", 844, 390, True, SCENE_TUT_COMPACT, "tutorial_compact")
 draw_device("phone_844x390", 844, 390, True, SCENE_DAILY, "daily")
 draw_device("desktop_1600x900", 1600, 900, False, SCENE_DAILY, "daily")
 draw_device("desktop_1600x900", 1600, 900, False, SCENE_TAKEOVER, "takeover")

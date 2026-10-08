@@ -125,7 +125,7 @@ end
 local oldNew = Instance.new
 Instance.new = function(class)
 	if class:match("^UI") or class:match("Gui$") or class:match("Label$") or class:match("Button$") or class == "Frame"
-		or class == "ScrollingFrame" or class == "ViewportFrame" or class == "Folder" or class == "Highlight" or class == "BindableEvent" or class == "Sound" or class:match("SoundEffect$") or class == "SoundGroup" then
+		or class == "ScrollingFrame" or class == "ViewportFrame" or class == "TextBox" or class == "Folder" or class == "Highlight" or class == "BindableEvent" or class == "Sound" or class:match("SoundEffect$") or class == "SoundGroup" then
 		local g = newGui(class)
 		if class == "ScreenGui" then
 			table.insert(GUI_ROOTS, g)
