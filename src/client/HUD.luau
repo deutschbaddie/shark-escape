@@ -410,7 +410,6 @@ local function render(d: any)
 	-- carrying
 	if d.carrying then
 		local r = Config.rarity(d.carrying.r)
-		local sp = Config.species(d.carrying.z, d.carrying.r)
 		carryChip.Visible = true
 		carryChip.TextColor3 = r.color
 		carryChip.Text = ("%s → bring it home to your tank!"):format(Config.fullName(d.carrying.z, d.carrying.r, d.carrying.m, d.carrying.s))
@@ -532,7 +531,6 @@ local newDiscovery = false -- "discover" arrives just before "grab"; one toast s
 
 handlers.grab = function(d)
 	local r = Config.rarity(d.r)
-	local sp = Config.species(d.z, d.r)
 	local name = Config.fullName(d.z, d.r, d.m, d.s)
 	local pos = myPos()
 	if pos then
