@@ -30,6 +30,19 @@ function Props.palm(parent: Instance, base: CFrame, height: number?)
 	return m
 end
 
+-- chunky voxel tree (the classic studded kind): trunk + stacked leaf cubes
+function Props.blockTree(parent: Instance, pos: Vector3, scale: number, leaf: Color3?, leaf2: Color3?)
+	local m = Build.model("Tree", parent)
+	local k = scale
+	local g1, g2 = leaf or C(64, 176, 60), leaf2 or C(92, 204, 72)
+	Build.part(m, Vector3.new(1.6, 6, 1.6) * k, CFrame.new(pos + Vector3.new(0, 3 * k, 0)), C(122, 84, 52))
+	-- studs on top only: there are hundreds of these, keep them cheap
+	Build.studs(Build.part(m, Vector3.new(7, 4, 7) * k, CFrame.new(pos + Vector3.new(0, 7.5 * k, 0)), g1))
+	Build.studs(Build.part(m, Vector3.new(5, 3, 5) * k, CFrame.new(pos + Vector3.new(0, 11 * k, 0)), g2))
+	Build.studs(Build.part(m, Vector3.new(2.6, 1.8, 2.6) * k, CFrame.new(pos + Vector3.new(0, 13.4 * k, 0)), g2))
+	return m
+end
+
 function Props.rock(parent: Instance, cf: CFrame, size: number, color: Color3?)
 	local m = Build.model("Rock", parent)
 	local col = color or C(150, 156, 170)

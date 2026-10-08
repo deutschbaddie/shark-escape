@@ -70,7 +70,6 @@ type Rider = {
 	foam: ParticleEmitter,
 	spray: ParticleEmitter,
 	trail: Trail,
-	ring: Part,
 	wasWet: boolean,
 	motors: { [string]: Motor6D },
 	animate: LocalScript?,
@@ -130,18 +129,6 @@ local function addRider(char: Model)
 	trail.FaceCamera = false
 	trail.Enabled = false
 	trail.Parent = hrp
-	local ring = Instance.new("Part")
-	ring.Anchored = true
-	ring.CanCollide = false
-	ring.CanQuery = false
-	ring.CanTouch = false
-	ring.CastShadow = false
-	ring.Shape = Enum.PartType.Cylinder
-	ring.Color = Color3.new(1, 1, 1)
-	ring.Material = Enum.Material.SmoothPlastic
-	ring.Transparency = 1
-	ring.Size = Vector3.new(0.1, 6, 6)
-	ring.Parent = Fx.folder
 	local motors = {}
 	for _, d in char:GetDescendants() do
 		if d:IsA("Motor6D") then
@@ -149,7 +136,7 @@ local function addRider(char: Model)
 		end
 	end
 	local rider: Rider = {
-		char = char, hrp = hrp, hum = hum, foam = foam, spray = spray, trail = trail, ring = ring,
+		char = char, hrp = hrp, hum = hum, foam = foam, spray = spray, trail = trail,
 		wasWet = false, motors = motors, animate = char:FindFirstChild("Animate") :: LocalScript?,
 	}
 	riders[char] = rider
@@ -161,7 +148,6 @@ local function addRider(char: Model)
 	end)
 	char.AncestryChanged:Connect(function(_, parent)
 		if not parent then
-			ring:Destroy()
 			riders[char] = nil
 		end
 	end)
@@ -253,14 +239,6 @@ local function updateRiders(dt: number)
 		r.spray.Speed = NumberRange.new(8 + 10 * k, 16 + 22 * k)
 		r.trail.Enabled = moving
 		r.trail.Lifetime = 0.5 + 0.8 * k
-		if wet then
-			local pulse = 1 + math.sin(os.clock() * 4 + pos.X) * 0.08
-			r.ring.Transparency = 0.55
-			r.ring.Size = Vector3.new(0.1, (4.5 + k * 2) * pulse, (4.5 + k * 2) * pulse)
-			r.ring.CFrame = CFrame.new(pos.X, 0.12, pos.Z) * CFrame.Angles(0, 0, math.pi / 2)
-		else
-			r.ring.Transparency = 1
-		end
 	end
 end
 

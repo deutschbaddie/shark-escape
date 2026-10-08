@@ -11,8 +11,6 @@
 --   stand    (boards): soles on the deck      prone (boogie): lying on it
 --   float    (noodle): forearms on one noodle across the front
 
-local CollectionService = game:GetService("CollectionService")
-
 local Build = require(script.Parent.Build)
 
 local Rides = {}
@@ -41,6 +39,13 @@ end
 -- wedge whose slope faces -Z (a nose) unless rotated
 local function wdg(m: Model, size: Vector3, cf: CFrame, color: Color3): WedgePart
 	return Build.wedge(m, size, cf, color)
+end
+
+-- smooth ellipsoid (inflatables, rounded hoods), a little glossy
+local function ell(m: Model, size: Vector3, cf: CFrame, color: Color3, props: { [string]: any }?): Part
+	local p = Build.ell(m, size, cf, color, props)
+	p.Reflectance = 0.06
+	return p
 end
 
 -- thin bar from a to b (reins, handles)
@@ -151,18 +156,58 @@ builders.Tube = function(m)
 	float(m, C(240, 70, 40), WHITE, true)
 end
 
+-- Rubber duck float: a glossy yellow ring shaped like a duck's body (low at
+-- the front under your knees, higher sides and back hugging you), a raised
+-- tail, and a big head on a short neck out in front of your feet.
+local function duckBody(m: Model, yellow: Color3)
+	local n = 18
+	for i = 0, n - 1 do
+		local a = i / n * math.pi * 2
+		local cx, cz = math.cos(a), math.sin(a) -- z > 0 = back
+		local p = Vector3.new(cx * RING_RX, 0, RING_C.Z + cz * RING_RZ)
+		-- height: low at the front (under your knees), up around your sides
+		-- (under your arms) and highest behind your back
+		local top = cz < 0 and (1.15 + cz * 0.65) or (1.15 + cz * 0.32)
+		local tall = 0.9 + (top - 0.5) * 0.9
+		local y = top - tall / 2
+		-- along the ring (tangent) and a bit fatter at the sides
+		local tangent = Vector3.new(-cz * RING_RX, 0, cx * RING_RZ)
+		local yaw = math.atan2(-tangent.X, -tangent.Z)
+		local thick = 1.15 + 0.15 * math.abs(cx)
+		ell(m, Vector3.new(thick, tall, tangent.Magnitude * 2 * math.pi / n * 2.1), CFrame.new(p.X, y, p.Z) * CFrame.Angles(0, yaw, 0), yellow)
+	end
+end
+
 builders.Duck = function(m)
-	local yellow, orange = C(255, 214, 40), C(255, 140, 30)
-	float(m, yellow, darker(yellow, 0.08), true)
-	-- neck rises from the front rim between the shins, head above the feet
-	local top = RING_Y + RING_T / 2
-	blk(m, Vector3.new(0.34, 2.1, 0.5), CFrame.new(0, top + 1.0, KNEE_Z - 0.45), yellow)
-	blk(m, Vector3.new(1.3, 1.15, 1.3), CFrame.new(0, 2.85, KNEE_Z - 0.75), yellow, "all")
-	blk(m, Vector3.new(0.9, 0.28, 0.7), CFrame.new(0, 2.65, KNEE_Z - 1.7), orange)
-	wdg(m, Vector3.new(0.9, 0.24, 0.7), CFrame.new(0, 2.91, KNEE_Z - 1.7), orange)
-	eyes(m, CFrame.new(0, 3.05, KNEE_Z - 1.42), 0.36, 0.32)
-	-- tail behind the back rim
-	wdg(m, Vector3.new(1.0, 0.9, 0.8), CFrame.new(0, RING_Y + 0.75, RING_C.Z + RING_RZ + 0.7) * CFrame.Angles(0, math.pi, 0), yellow)
+	local yellow, orange, ink = C(255, 212, 36), C(255, 132, 20), C(25, 25, 32)
+	duckBody(m, yellow)
+	-- raised tail behind you
+	ell(m, Vector3.new(1.3, 1.5, 1.1), CFrame.new(0, 1.55, RING_C.Z + RING_RZ + 0.55) * CFrame.Angles(-0.55, 0, 0), yellow)
+	-- little wings on the sides (below your hands)
+	for _, side in { -1, 1 } do
+		ell(m, Vector3.new(0.35, 0.65, 1.5), CFrame.new(side * (RING_RX + 0.62), 0.5, RING_C.Z + 0.2) * CFrame.Angles(0.35, 0, 0), darker(yellow, 0.04))
+	end
+	-- chest under your feet, neck and the big head out in front
+	ell(m, Vector3.new(1.7, 0.95, 2.0), CFrame.new(0, 0.22, KNEE_Z - 1.6), yellow)
+	ell(m, Vector3.new(1.05, 1.6, 1.05), CFrame.new(0, 1.05, KNEE_Z - 2.45) * CFrame.Angles(0.15, 0, 0), yellow)
+	local head = CFrame.new(0, 2.15, KNEE_Z - 2.55)
+	ell(m, Vector3.new(2.0, 1.9, 1.95), head, yellow)
+	-- beak: two flattened halves with a smile line between
+	local beak = head * CFrame.new(0, -0.2, -1.05)
+	ell(m, Vector3.new(1.25, 0.42, 1.05), beak * CFrame.new(0, 0.12, 0), orange).Name = "Beak"
+	ell(m, Vector3.new(1.05, 0.34, 0.85), beak * CFrame.new(0, -0.16, 0.05), darker(orange, 0.1)).Name = "Beak"
+	-- eyes: glossy black with a white glint
+	for _, side in { -1, 1 } do
+		local eye = ell(m, Vector3.new(0.42, 0.5, 0.3), head * CFrame.new(side * 0.5, 0.28, -0.84), ink)
+		eye:SetAttribute("KeepColor", true)
+		local glint = ell(m, Vector3.new(0.14, 0.14, 0.08), head * CFrame.new(side * 0.45, 0.4, -0.99), WHITE)
+		glint:SetAttribute("KeepColor", true)
+	end
+	for _, d in m:GetDescendants() do
+		if d.Name == "Beak" then
+			d:SetAttribute("KeepColor", true)
+		end
+	end
 end
 
 local ICING_T = 0.28
@@ -262,26 +307,47 @@ end
 -- each side, hands on grips at GRIP. Anything in front starts at z -1.4.
 local SEAT_TOP = 1.0
 
+-- jet ski (and the rainbow one): black hull with a pointed nose, a raised
+-- rounded hood in front of the footwells, a black saddle, chrome bar.
+-- `hood` colors the hood: one color, or a list of stripes side to side.
+local function jetSki(m: Model, hood: { Color3 }, trim: Color3)
+	local hull, seat, deck = C(28, 30, 38), C(20, 20, 26), C(225, 230, 238)
+	-- hull + nose
+	blk(m, Vector3.new(3.5, 0.62, 5.4), CFrame.new(0, -0.36, 0.5), hull)
+	wdg(m, Vector3.new(3.5, 0.62, 2.3), CFrame.new(0, -0.36, -3.35), hull)
+	blk(m, Vector3.new(3.56, 0.14, 5.44), CFrame.new(0, -0.6, 0.5), trim) -- waterline stripe
+	-- deck (footwells at y 0.2) with side rails outside your feet
+	blk(m, Vector3.new(3.4, 0.25, 5.2), CFrame.new(0, 0.075, 0.5), deck, true)
+	for _, x in { -1.66, 1.66 } do
+		blk(m, Vector3.new(0.16, 0.35, 3.4), CFrame.new(x, 0.37, 0.1), trim)
+	end
+	-- saddle on a spine (top 1.0), rounded tail
+	blk(m, Vector3.new(1.25, 0.6, 1.9), CFrame.new(0, 0.5, 1.1), hull)
+	ell(m, Vector3.new(1.35, 0.42, 2.0), CFrame.new(0, 0.86, 1.1), seat)
+	blk(m, Vector3.new(1.35, 0.14, 1.9), CFrame.new(0, SEAT_TOP - 0.07, 1.1), seat)
+	ell(m, Vector3.new(1.9, 0.9, 1.4), CFrame.new(0, 0.3, 2.6), hood[1])
+	-- hood: stripes side to side (block + sloped nose), then a rounded cap
+	local w = 2.3 / #hood
+	for i, col in hood do
+		local x = -1.15 + w * (i - 0.5)
+		blk(m, Vector3.new(w, 0.9, 1.1), CFrame.new(x, 0.65, -1.95), col)
+		wdg(m, Vector3.new(w, 0.9, 1.7), CFrame.new(x, 0.65, -3.35), col)
+	end
+	if #hood == 1 then
+		ell(m, Vector3.new(2.3, 0.6, 2.4), CFrame.new(0, 1.05, -2.35), hood[1])
+		blk(m, Vector3.new(0.5, 0.92, 2.81), CFrame.new(0, 0.66, -2.65), trim) -- racing stripe
+	end
+	-- windshield + bar
+	blk(m, Vector3.new(1.4, 0.5, 0.1), CFrame.new(0, 1.45, -2.05) * CFrame.Angles(-0.5, 0, 0), C(170, 230, 255), nil, { Transparency = 0.35 })
+	handlebar(m, Vector3.new(0, 1.15, -1.85), C(40, 42, 50))
+end
+
 builders.JetSki = function(m)
-	local body, dark = C(230, 30, 50), C(30, 30, 40)
-	blk(m, Vector3.new(2.8, 0.7, 5.2), CFrame.new(0, -0.15, 0.4), body, true)
-	wdg(m, Vector3.new(2.8, 0.7, 1.6), CFrame.new(0, -0.15, -3.0), body)
-	blk(m, Vector3.new(2.9, 0.18, 5.24), CFrame.new(0, -0.4, 0.4), WHITE)
-	-- seat
-	blk(m, Vector3.new(1.3, 0.6, 1.8), CFrame.new(0, 0.5, 1.05), body)
-	blk(m, Vector3.new(1.4, 0.2, 1.8), CFrame.new(0, SEAT_TOP - 0.1, 1.05), dark)
-	wdg(m, Vector3.new(1.3, 0.5, 0.8), CFrame.new(0, 0.45, 2.35) * CFrame.Angles(0, math.pi, 0), body)
-	-- console + windshield in front of the footwell
-	blk(m, Vector3.new(2.0, 1.1, 1.2), CFrame.new(0, 0.75, -2.0), body, true)
-	wdg(m, Vector3.new(2.0, 0.7, 0.9), CFrame.new(0, 0.55, -3.05), body)
-	blk(m, Vector3.new(1.5, 0.55, 0.12), CFrame.new(0, 1.55, -2.3) * CFrame.Angles(-0.45, 0, 0), C(160, 230, 255), nil, { Transparency = 0.3 })
-	handlebar(m, Vector3.new(0, 1.3, -1.9), dark)
+	jetSki(m, { C(232, 32, 52) }, WHITE)
 end
 
 builders.RainbowSki = function(m)
-	builders.JetSki(m)
-	m:SetAttribute("Rainbow", true)
-	CollectionService:AddTag(m, "Rainbow")
+	jetSki(m, { C(235, 45, 55), C(255, 140, 30), C(255, 214, 40), C(70, 200, 70), C(40, 140, 255), C(150, 70, 230) }, C(255, 214, 40))
 end
 
 builders.Banana = function(m)

@@ -36,10 +36,13 @@ local function corner(parent: Instance, scale: number?, px: number?)
 end
 
 -- a ring that fills clockwise from the top: two clipped halves whose stroke
--- gradients rotate (no images needed)
+-- gradients rotate (no images needed). A Border stroke draws OUTSIDE its
+-- frame, so the ring is inset by the stroke width: the whole circle stays
+-- inside the clipping halves (otherwise only the diagonals show).
+local RING = 4
 local function radial(parent: GuiObject): (number) -> ()
 	local halves = {}
-	for i, spec in { { pos = UDim2.fromScale(0.5, 0), ring = UDim2.fromScale(-1, 0) }, { pos = UDim2.fromScale(0, 0), ring = UDim2.fromScale(0, 0) } } do
+	for i, spec in { { pos = UDim2.fromScale(0.5, 0), ring = UDim2.new(-1, RING, 0, RING) }, { pos = UDim2.fromScale(0, 0), ring = UDim2.fromOffset(RING, RING) } } do
 		local clip = Instance.new("Frame")
 		clip.BackgroundTransparency = 1
 		clip.ClipsDescendants = true
@@ -49,13 +52,13 @@ local function radial(parent: GuiObject): (number) -> ()
 		clip.Parent = parent
 		local ring = Instance.new("Frame")
 		ring.BackgroundTransparency = 1
-		ring.Size = UDim2.fromScale(2, 1)
+		ring.Size = UDim2.new(2, -2 * RING, 1, -2 * RING)
 		ring.Position = spec.ring
 		ring.ZIndex = clip.ZIndex
 		ring.Parent = clip
 		corner(ring, 0.5)
 		local s = Instance.new("UIStroke")
-		s.Thickness = 4
+		s.Thickness = RING
 		s.Color = Color3.new(1, 1, 1)
 		s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		s.Parent = ring

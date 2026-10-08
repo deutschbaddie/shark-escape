@@ -416,6 +416,9 @@ local lastZone: string? = nil
 local quietTitlesUntil = 0 -- no "Shark Beach" title right after you wash up
 local menuOpen = false
 
+-- one emoji either side of each zone's title (all widely supported)
+local ZONE_EMOJI = { Lagoon = "🌴", Reef = "🐠", Kelp = "🌿", Shipwreck = "⚓", Deep = "🐋", Abyss = "🦑" }
+
 local function myPos(): Vector3?
 	local char = player.Character
 	local hrp = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
@@ -486,10 +489,11 @@ local function frame()
 		if id ~= lastZone then
 			if lastZone ~= nil and os.clock() > quietTitlesUntil then
 				if zone then
-					Notify.banner(zone.name, { key = "zone", priority = 2, time = 2.2, color = zone.water:Lerp(Color3.new(1, 1, 1), 0.45),
-						sub = ("🦈 %s waters"):format((zone.shark:gsub("(%l)(%u)", "%1 %2"))) })
+					local e = ZONE_EMOJI[zone.id] or "🌴"
+					Notify.banner(("%s %s %s"):format(e, zone.name, e), { key = "zone", priority = 2, time = 2.4, big = true,
+						color = zone.water:Lerp(Color3.new(1, 1, 1), 0.35), sub = ("%s waters"):format((zone.shark:gsub("(%l)(%u)", "%1 %2"))) })
 				else
-					Notify.banner("Shark Beach", { key = "zone", priority = 2, time = 1.8, color = Color3.fromRGB(255, 220, 120), sub = "Sand is always safe" })
+					Notify.banner("🏖️ Shark Beach 🏖️", { key = "zone", priority = 2, time = 2, big = true, color = Color3.fromRGB(255, 220, 120), sub = "Sand is always safe" })
 				end
 			end
 			lastZone = id
@@ -532,11 +536,10 @@ handlers.grab = function(d)
 		Fx.sound("legendary", 0.8)
 	elseif d.lucky then
 		Notify.word("🍀 LUCKY " .. d.r:upper() .. "!", C.green, 1)
+		Fx.sound("lucky", 0.7)
 	elseif d.pity or r.index >= 3 then
 		Notify.word(d.r:upper() .. "!", r.color, 1)
-		if r.index >= 4 then
-			Fx.sound("legendary", 0.6)
-		end
+		Fx.sound("grabRare", 0.6, 1 + r.index * 0.04)
 	end
 	local note = newDiscovery and "  · NEW!" or ""
 	newDiscovery = false
@@ -545,6 +548,7 @@ end
 
 handlers.discover = function()
 	newDiscovery = true
+	Fx.sound("discover", 0.55)
 	UI.pop(menuButtons.Index, 1.3)
 end
 
@@ -565,6 +569,7 @@ handlers.deposit = function(d)
 	-- everything is shown right at the tank, where it happens
 	local tank = Layout.tankPos(Layout.Plots[data.plot])
 	Fx.sparkle(tank + Vector3.new(0, 6, 0), r.color, 40)
+	Fx.sound("deposit", 0.7, 1, tank)
 	if d.active then
 		Fx.popup3D(tank + Vector3.new(0, 11, 0), ("+$%s/s"):format(UI.short(d.v)), C.money, true)
 	else
@@ -599,6 +604,7 @@ handlers.code = function(d)
 		Fx.sound("coin", 0.7)
 	else
 		Notify.toast("❌ " .. tostring(d.text), C.red)
+		Fx.sound("uiError", 0.6)
 	end
 end
 
@@ -620,6 +626,7 @@ handlers.ride = function(d)
 		Fx.splash(Vector3.new(pos.X, 0.5, pos.Z), 1.2)
 	end
 	Fx.sound("buy", 0.8)
+	Fx.sound("rideNew", 0.8)
 	Notify.takeover("NEW RIDE!", ("%s %s · +%s speed every second"):format(ride and ride.icon or "", ride and ride.name or "", UI.short(d.gain)), C.gold, 1.6)
 	UI.pop(gainLabel, 1.5)
 end
@@ -636,6 +643,7 @@ handlers.unlock = function(d)
 	local zone = Config.zoneById(d.zone)
 	if zone then
 		Notify.takeover(zone.name:upper() .. "!", "New zone unlocked · rarer creatures, bigger sharks", C.gold, 1.8)
+		Fx.sound("zoneUnlock", 0.8)
 		local pos = myPos()
 		if pos then
 			Fx.confetti(pos)
@@ -645,6 +653,7 @@ end
 
 handlers.gate = function(d)
 	Notify.word(("🔒 NEED %s SPEED"):format(UI.short(d.need)), C.red, 1)
+	Fx.sound("uiError", 0.6)
 	Fx.shake(1)
 end
 
@@ -665,6 +674,7 @@ handlers.spat = function()
 		hrp.AssemblyLinearVelocity = Vector3.new(0, 60, -55)
 	end
 	Notify.word("PTOOEY!", C.sky, 1)
+	Fx.sound("spat", 0.8)
 	local d = State.data
 	if d and d.playtime >= Config.SHOP_UNLOCK_SECONDS and Config.Products.Shield.id ~= 0 then
 		local b = UI.button(gui, "🛡️ Shield next time  R$" .. Config.Products.Shield.price, C.sky, function()
@@ -682,6 +692,7 @@ end
 
 handlers.rebirth = function(d)
 	Fx.flash(Color3.new(1, 1, 1), 0.8, 0)
+	Fx.sound("rebirth", 0.8)
 	Notify.takeover("REBIRTH!", ("Permanent x%s speed gain"):format(tostring(Config.Rebirth.mult ^ d.rebirths)), C.green, 2)
 end
 

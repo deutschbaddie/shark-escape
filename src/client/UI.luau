@@ -7,6 +7,10 @@ local TweenService = game:GetService("TweenService")
 local Config = require(game.ReplicatedStorage.Shared.Config)
 
 local UI = {}
+-- sound hooks (set by Audio.luau)
+UI.onClick = nil :: (() -> ())?
+UI.onOpen = nil :: (() -> ())?
+UI.onClose = nil :: (() -> ())?
 
 UI.C = {
 	ink = Color3.fromRGB(22, 22, 34),
@@ -239,7 +243,12 @@ function UI.button(parent: Instance, text: string, color: Color3, onClick: () ->
 	UI.corner(lip, 10)
 	UI.outlined(b, text, { Name = "Label", Size = UDim2.new(1, -14, 1, -14), Position = UDim2.new(0.5, 0, 0.5, -2), AnchorPoint = Vector2.new(0.5, 0.5), ZIndex = b.ZIndex + 1 })
 	squish(b)
-	b.Activated:Connect(onClick)
+	b.Activated:Connect(function(...)
+		if UI.onClick then
+			UI.onClick()
+		end
+		onClick(...)
+	end)
 	b.Parent = parent
 	return b
 end
@@ -473,7 +482,15 @@ function UI.window(parent: Instance, title: string, color: Color3, size: Vector2
 		tx = 74
 	end
 	UI.outlined(head, title, { Name = "Title", Size = UDim2.new(1, -96 - tx, 0, 46), Position = UDim2.fromOffset(tx, 8), TextXAlignment = Enum.TextXAlignment.Left })
-	local x = UI.button(f, "X", UI.C.red, onClose, { Name = "Close", Size = UDim2.fromOffset(62, 62), Position = UDim2.new(1, -6, 0, 6), AnchorPoint = Vector2.new(1, 0) })
+	local x = UI.button(f, "X", UI.C.red, function()
+		if UI.onClose then
+			UI.onClose()
+		end
+		onClose()
+	end, { Name = "Close", Size = UDim2.fromOffset(62, 62), Position = UDim2.new(1, -6, 0, 6), AnchorPoint = Vector2.new(1, 0) })
+	if UI.onOpen then
+		UI.onOpen()
+	end
 	local body = UI.frame(f, { Name = "Body", Size = UDim2.new(1, -24, 1, -86), Position = UDim2.fromOffset(12, 76), BackgroundTransparency = 1 })
 	UI.pop(f, 0.85)
 	return f, body, x

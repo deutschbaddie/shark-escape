@@ -133,7 +133,7 @@ local function checkerWall(parent: Instance, a: Vector3, b: Vector3, bottom: num
 	end
 end
 
-local WALL_BOTTOM, WALL_TOP = -6, 14
+local WALL_BOTTOM, WALL_TOP = -6, 6 -- low checker walls, a grassy bank with trees on top
 
 ----------------------------------------------------------------- terrain
 local function fill(minV: Vector3, maxV: Vector3, mat: Enum.Material)
@@ -431,6 +431,51 @@ local function buildBoard()
 end
 
 ----------------------------------------------------------------- lane
+-- the grassy banks beyond the walls, with trees (like the classic stud
+-- obbies): studded grass from the wall's topper out to BANK_W, voxel trees
+-- in two staggered rows, palms near the start, darker trees out deep
+local BANK_W = 72
+local function buildBanks()
+	local banks = Build.model("Banks", map)
+	local inner = WALL_X + (WALL_T + 1.6) / 2
+	local outer = W / 2 + BANK_W
+	local top = WALL_TOP + 2
+	for _, side in { -1, 1 } do
+		local z = PLAZA_BACK - WALL_T
+		while z < Config.OCEAN_END + WALL_T do
+			local len = math.min(400, Config.OCEAN_END + WALL_T - z)
+			local cx = side * (inner + outer) / 2
+			local grass = Build.part(banks, Vector3.new(outer - inner, 6, len), CFrame.new(cx, top - 3, z + len / 2), GRASS, { Name = "Bank" })
+			Build.studs(grass, { Enum.NormalId.Top })
+			z += len
+		end
+	end
+	local trees = Build.model("Trees", map)
+	local rng = Random.new(7)
+	for _, side in { -1, 1 } do
+		for row, spec in { { x = W / 2 + 20, step = 26 }, { x = W / 2 + 44, step = 36 }, { x = W / 2 + 64, step = 48 } } do
+			local z = PLAZA_BACK + rng:NextNumber(0, spec.step)
+			while z < Config.OCEAN_END do
+				local zone = Config.zoneAt(z)
+				local idx = zone and zone.index or 1
+				local pos = Vector3.new(side * (spec.x + rng:NextNumber(-4, 4)), top, z)
+				local scale = rng:NextNumber(0.85, 1.25) * (row == 1 and 0.9 or 1.1)
+				if idx <= 2 and rng:NextNumber() < 0.3 then
+					Props.palm(trees, CFrame.new(pos), rng:NextNumber(12, 17))
+				elseif idx >= 5 then
+					Props.blockTree(trees, pos, scale, C(38, 92, 78), C(52, 118, 96)) -- deep water: dark teal
+				elseif idx >= 3 then
+					Props.blockTree(trees, pos, scale, C(46, 140, 56), C(64, 166, 66))
+				else
+					Props.blockTree(trees, pos, scale)
+				end
+				z += spec.step + rng:NextNumber(-5, 5)
+			end
+		end
+	end
+	Build.ghost(trees)
+end
+
 local function buildLane()
 	local lane = Build.model("Lane", map)
 	-- hidden floor players ride on, one slab per zone (parts max out at 2048)
@@ -454,6 +499,7 @@ local function buildLane()
 		end
 	end
 	checkerWall(walls, Vector3.new(-WALL_X - WALL_T / 2, 0, endZ), Vector3.new(WALL_X + WALL_T / 2, 0, endZ), WALL_BOTTOM, WALL_TOP, { Enum.NormalId.Front })
+	buildBanks()
 	-- foam line at the shore (client pulses it)
 	local foam = Build.part(lane, Vector3.new(W, 0.2, 3), CFrame.new(0, 0.12, 9), C(255, 255, 255),
 		{ Name = "ShoreFoam", Transparency = 0.25, CanCollide = false, CanQuery = false })
@@ -471,27 +517,33 @@ local function buildGates()
 		if zone.gate > 0 then
 			local g = Build.model("Gate_" .. zone.id, folder)
 			local z = zone.zStart
-			-- glowing wall (visual only) up to the crossbeam
-			local wall = Build.part(g, Vector3.new(W - 12, 23, 0.6), CFrame.new(0, 9.5, z), C(255, 214, 64), {
-				Name = "Wall", Material = Enum.Material.ForceField, Transparency = 0.2, CastShadow = false, CanCollide = false, CanQuery = false,
+			-- see-through shimmering barrier across the water (visual only: the
+			-- server enforces gates; the client fades the ones you've unlocked)
+			local wall = Build.part(g, Vector3.new(W - 2, 13, 0.6), CFrame.new(0, 5.5, z), C(205, 236, 255), {
+				Name = "Wall", Material = Enum.Material.ForceField, Transparency = 0.15, CastShadow = false, CanCollide = false, CanQuery = false,
 			})
 			g.PrimaryPart = wall
 			g:SetAttribute("Gate", zone.gate)
 			g:SetAttribute("ZoneName", zone.name)
-			-- checker pillars + crossbeam with a grass topper
-			for _, side in { -1, 1 } do
-				for r = 0, 3 do
-					studAll(Build.part(g, Vector3.new(6, 6, 6), CFrame.new(side * (W / 2 - 3), -3 + r * 6 + 3, z), (r % 2 == 0) and WALL_A or WALL_B))
-				end
+			-- the sign: zone name + what it takes to get in, on two posts
+			local tint = zone.water:Lerp(C(255, 255, 255), 0.25)
+			for _, x in { -14, 14 } do
+				Build.studs(Build.part(g, Vector3.new(1.4, 9, 1.4), CFrame.new(x, 12.5, z), C(250, 250, 255), { CanCollide = false }))
 			end
-			local beam = Build.part(g, Vector3.new(W, 4, 6), CFrame.new(0, 23, z), WALL_B, { Name = "Beam" })
-			Build.studs(beam, { Enum.NormalId.Front, Enum.NormalId.Back })
-			Build.studs(Build.part(g, Vector3.new(W, 1.5, 7), CFrame.new(0, 25.75, z), GRASS), { Enum.NormalId.Top })
-			-- lock sign standing on the beam
-			local board = Build.part(g, Vector3.new(60, 10, 1.2), CFrame.new(0, 31.6, z), C(30, 32, 44), { Name = "Banner", CanCollide = false })
-			Build.studs(Build.part(g, Vector3.new(62, 1.2, 1.6), CFrame.new(0, 37.2, z), C(255, 196, 30), { CanCollide = false }))
+			local board = Build.part(g, Vector3.new(44, 11, 1.2), CFrame.new(0, 21, z), C(28, 32, 58), { Name = "Banner", CanCollide = false })
+			Build.studs(Build.part(g, Vector3.new(46, 1.2, 1.8), CFrame.new(0, 27.1, z), tint, { CanCollide = false }))
+			Build.studs(Build.part(g, Vector3.new(46, 1.2, 1.8), CFrame.new(0, 14.9, z), tint, { CanCollide = false }))
 			for _, face in { Enum.NormalId.Front, Enum.NormalId.Back } do
-				surfaceText(board, face, ("🔒 %s  ⚡%s"):format(zone.name, tostring(zone.gate)), C(255, 255, 255), Vector2.new(600, 100))
+				local name = surfaceText(board, face, ("🔒 %s"):format(zone.name), C(255, 255, 255), Vector2.new(600, 150))
+				name.Size = UDim2.fromScale(0.94, 0.56)
+				name.Position = UDim2.fromScale(0.03, 0.06)
+				local need = name:Clone()
+				need.Name = "Sub"
+				need.Text = ("Need ⚡%s speed"):format(tostring(zone.gate))
+				need.TextColor3 = C(255, 214, 60)
+				need.Size = UDim2.fromScale(0.9, 0.3)
+				need.Position = UDim2.fromScale(0.05, 0.64)
+				need.Parent = name.Parent
 			end
 			-- rope of buoys across the water
 			for x = -W / 2 + 12, W / 2 - 12, 12 do
@@ -567,7 +619,7 @@ local function buildDecor()
 		-- scenery islands outside the corridor
 		for _ = 1, math.floor(zone.length / 200) do
 			for _, side in { -1, 1 } do
-				local x = side * rng:NextNumber(W / 2 + 50, W / 2 + 220)
+				local x = side * rng:NextNumber(W / 2 + BANK_W + 40, W / 2 + BANK_W + 220)
 				local z = rng:NextNumber(zone.zStart, zone.zEnd)
 				Props.island(deco, Vector3.new(x, 0, z), rng:NextNumber(14, 28), true)
 			end
@@ -644,7 +696,7 @@ local function buildPlot(i: number, cf: CFrame): Plot
 	view.MaxActivationDistance = 11
 	view.RequiresLineOfSight = false
 	view.Style = Enum.ProximityPromptStyle.Custom
-	view.KeyboardKeyCode = Enum.KeyCode.F
+	view.KeyboardKeyCode = Enum.KeyCode.E -- E for everything
 	view:SetAttribute("Plot", i)
 	view.Parent = viewSpot
 	-- sign over the tank: owner, what it earns, what it earns per day offline

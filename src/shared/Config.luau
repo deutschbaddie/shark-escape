@@ -542,16 +542,71 @@ Config.Icons = {
 -- rbxasset:// sounds ship with every Roblox client. Empty strings are slots
 -- for Creator Store audio you pick and record in ASSETS.md (never invent ids).
 Config.Sounds = {
+	-- built-in Roblox client sounds (rbxasset://) - no upload needed
 	splash = "rbxasset://sounds/impact_water.mp3",
 	swim = "rbxasset://sounds/action_swim.mp3",
 	chomp = "rbxasset://sounds/impact_explosion_03.mp3",
-	music = "",
-	sharkAlarm = "",
-	-- built-in Roblox client sounds (rbxasset://) - no upload needed
 	coin = "rbxasset://sounds/electronicpingshort.wav",
 	buy = "rbxasset://sounds/electronicpingshort.wav",
 	grab = "rbxasset://sounds/impact_water.mp3",
+
+	-- everything below is empty until you upload/pick it (ASSETS.md has the list)
+	-- music (looped, crossfaded by Audio.luau)
+	musicBeach = "", -- on land: dock, plaza, shops
+	musicOcean = "", -- out on the water, calm
+	musicDeep = "", -- Deep Blue + The Abyss
+	musicHunt = "", -- shark warning + hunt
+	-- ambience (looped)
+	ambWaves = "",
+	ambGulls = "",
+	-- UI
+	uiClick = "",
+	uiOpen = "",
+	uiClose = "",
+	uiError = "",
+	uiToast = "",
+	uiTakeover = "",
+	-- catching + money
+	grabRare = "",
 	legendary = "",
+	lucky = "",
+	discover = "",
+	deposit = "",
+	-- progression
+	rideNew = "",
+	zoneUnlock = "",
+	rebirth = "",
+	-- shark
+	sharkAlarm = "",
+	sharkCharge = "",
+	dodge = "",
+	spat = "",
+	-- ride loops (pitch and volume follow your speed)
+	rideSplash = "",
+	rideDuck = "",
+	rideKick = "",
+	rideSurf = "",
+	rideBubbles = "",
+	rideMotor = "",
+	rideJetSki = "",
+	rideBoat = "",
+	rideDolphin = "",
+	rideRocket = "",
+	duckSqueak = "",
 }
+
+-- which loop each ride plays, and its base pitch
+Config.RideSound = {
+	Noodle = { "rideSplash", 1.0 }, Tube = { "rideSplash", 0.95 }, Donut = { "rideSplash", 0.9 },
+	Duck = { "rideDuck", 1.0 }, GoldDuck = { "rideDuck", 1.08 },
+	Boogie = { "rideKick", 1.0 },
+	Surf = { "rideSurf", 1.0 }, SharkBoard = { "rideSurf", 0.92 },
+	Bathtub = { "rideBubbles", 1.0 },
+	Banana = { "rideMotor", 1.0 },
+	JetSki = { "rideJetSki", 1.0 }, RainbowSki = { "rideJetSki", 1.12 },
+	Speedboat = { "rideBoat", 1.0 },
+	Dolphin = { "rideDolphin", 1.0 },
+	Rocket = { "rideRocket", 1.0 },
+} :: { [string]: { any } }
 
 return Config

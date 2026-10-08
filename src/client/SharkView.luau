@@ -673,6 +673,7 @@ Remotes.get("SharkEvent").OnClientEvent:Connect(function(kind, data)
 		local sh = sharks[data.id]
 		if sh then
 			exclaim(sh)
+			Fx.sound("sharkCharge", 0.9, 1, Vector3.new(sh.pos.X, 1, sh.pos.Z))
 		end
 		if data.victim == player.UserId then
 			-- the turn: a quick FOV punch so you feel it lock on
@@ -694,6 +695,7 @@ Remotes.get("SharkEvent").OnClientEvent:Connect(function(kind, data)
 		if data.victim == player.UserId then
 			Fx.bigWord("DODGED!", UI.C.sky, 0.9)
 			Fx.sound("splash", 0.6, 1.3)
+			Fx.sound("dodge", 0.8)
 		end
 		return
 	end

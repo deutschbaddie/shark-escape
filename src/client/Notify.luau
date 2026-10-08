@@ -6,7 +6,8 @@
 --             One at a time, in order.
 --   word      a punchy center word (LUCKY!, DODGED!, PTOOEY!). Shares center
 --             stage with takeovers and never stacks (one waits, extras drop).
---   banner    the top-center pill. One at a time: the highest priority shows,
+--   banner    the top-center title (plain outlined text, like "🌴 Lagoon 🌴").
+--             One at a time: the highest priority shows,
 --             the rest wait their turn. Sticky ones (shark status, tutorial
 --             step) stay until cleared and briefly give way to newer ones.
 --   toast     small outlined lines under the banner. Two at most.
@@ -26,7 +27,7 @@ Notify.onTakeover = nil :: ((boolean) -> ())?
 local player = Players.LocalPlayer
 local C = UI.C
 
-export type BannerOpts = { sub: string?, color: Color3?, priority: number?, time: number?, key: string?, sticky: boolean? }
+export type BannerOpts = { sub: string?, color: Color3?, priority: number?, time: number?, key: string?, sticky: boolean?, big: boolean? }
 type Banner = BannerOpts & { text: string, left: number, order: number, born: number }
 type Center = { kind: string, text: string, sub: string?, color: Color3, time: number }
 
@@ -54,12 +55,15 @@ local function suppressed(): boolean
 end
 
 ----------------------------------------------------------------- build
-local function label(parent: Instance, text: string, size: number, color: Color3?, font: Enum.Font?): TextLabel
-	local t = UI.outlined(parent, text, { TextScaled = false, TextSize = size, AutomaticSize = Enum.AutomaticSize.XY,
-		Size = UDim2.fromOffset(0, 0), TextColor3 = color or C.white, Font = font or UI.FONT })
+-- Every line is plain outlined text (no pill, no box), in a fixed-height row
+-- that the text scales to fit: long lines shrink instead of getting cut off.
+local WIDTH = 1000
+local function label(parent: Instance, text: string, height: number, color: Color3?, font: Enum.Font?): TextLabel
+	local t = UI.outlined(parent, text, { TextScaled = true, Size = UDim2.fromOffset(WIDTH, height),
+		TextColor3 = color or C.white, Font = font or UI.FONT })
 	local stroke = t:FindFirstChildOfClass("UIStroke")
 	if stroke then
-		stroke.Thickness = size >= 28 and 3.5 or 2.5
+		stroke.Thickness = height >= 50 and 4.5 or (height >= 36 and 3.5 or 2.5)
 	end
 	return t
 end
@@ -74,18 +78,18 @@ local function build()
 	UI.autoScale(gui)
 
 	-- top column: status, banner, toasts (each collapses when empty)
-	top = UI.frame(gui, { Name = "Top", Size = UDim2.fromOffset(900, 0), AutomaticSize = Enum.AutomaticSize.Y,
+	top = UI.frame(gui, { Name = "Top", Size = UDim2.fromOffset(WIDTH, 0), AutomaticSize = Enum.AutomaticSize.Y,
 		Position = UDim2.new(0.5, 0, 0, 4), AnchorPoint = Vector2.new(0.5, 0), BackgroundTransparency = 1 })
 	local list = Instance.new("UIListLayout")
 	list.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	list.SortOrder = Enum.SortOrder.LayoutOrder
 	list.Padding = UDim.new(0, 6)
 	list.Parent = top
-	statusLabel = label(top, "", 22, C.white)
+	statusLabel = label(top, "", 24, C.white)
 	statusLabel.LayoutOrder = 1
 	statusLabel.Visible = false
-	bannerSlot = UI.frame(top, { Name = "Banner", Size = UDim2.fromOffset(0, 0), AutomaticSize = Enum.AutomaticSize.XY, BackgroundTransparency = 1, LayoutOrder = 2 })
-	toastSlot = UI.frame(top, { Name = "Toasts", Size = UDim2.fromOffset(0, 0), AutomaticSize = Enum.AutomaticSize.XY, BackgroundTransparency = 1, LayoutOrder = 3 })
+	bannerSlot = UI.frame(top, { Name = "Banner", Size = UDim2.fromOffset(WIDTH, 0), BackgroundTransparency = 1, LayoutOrder = 2, Visible = false })
+	toastSlot = UI.frame(top, { Name = "Toasts", Size = UDim2.fromOffset(WIDTH, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1, LayoutOrder = 3 })
 	local tl = Instance.new("UIListLayout")
 	tl.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	tl.SortOrder = Enum.SortOrder.LayoutOrder
@@ -108,25 +112,20 @@ function Notify.status(text: string?, color: Color3?)
 end
 
 ----------------------------------------------------------------- banners
+local function bannerHeights(b: Banner): (number, number)
+	local title = b.big and 64 or 46
+	return title, b.sub and 26 or 0
+end
+
 local function bannerUI(b: Banner): Frame
-	local f = UI.frame(bannerSlot, { Size = UDim2.fromOffset(0, 0), AutomaticSize = Enum.AutomaticSize.XY,
-		BackgroundColor3 = Color3.fromRGB(24, 28, 58), BackgroundTransparency = 0.06 })
-	UI.corner(f, 12)
-	UI.stroke(f, C.ink, 3)
-	local pad = Instance.new("UIPadding")
-	pad.PaddingLeft, pad.PaddingRight = UDim.new(0, 20), UDim.new(0, 20)
-	pad.PaddingTop, pad.PaddingBottom = UDim.new(0, 5), UDim.new(0, 7)
-	pad.Parent = f
-	local l = Instance.new("UIListLayout")
-	l.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	l.SortOrder = Enum.SortOrder.LayoutOrder
-	l.Parent = f
-	local title = label(f, b.text, 28, b.color or C.white)
+	local th, sh = bannerHeights(b)
+	bannerSlot.Size = UDim2.fromOffset(WIDTH, th + sh)
+	local f = UI.frame(bannerSlot, { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1 })
+	local title = label(f, b.text, th, b.color or C.white)
 	title.Name = "Title"
-	title.LayoutOrder = 1
-	local sub = label(f, b.sub or "", 17, Color3.fromRGB(200, 220, 255))
+	local sub = label(f, b.sub or "", 26, Color3.fromRGB(235, 242, 255))
 	sub.Name = "Sub"
-	sub.LayoutOrder = 2
+	sub.Position = UDim2.fromOffset(0, th)
 	sub.Visible = b.sub ~= nil
 	return f
 end
@@ -158,6 +157,7 @@ local function swapBanner()
 		end)
 	end
 	shownBanner = want
+	bannerSlot.Visible = want ~= nil
 	if want then
 		local f = bannerUI(want)
 		bannerFrame = f
@@ -184,6 +184,7 @@ function Notify.banner(text: string, opts: BannerOpts?)
 		for _, b in banners do
 			if b.key == o.key then
 				local changed = b.text ~= text or b.sub ~= o.sub or b.color ~= o.color
+				local resized = (b.sub == nil) ~= (o.sub == nil)
 				b.text, b.sub, b.color = text, o.sub, o.color
 				b.priority = o.priority or b.priority
 				if not b.sticky then
@@ -195,6 +196,10 @@ function Notify.banner(text: string, opts: BannerOpts?)
 					local s = f:FindFirstChild("Sub") :: TextLabel
 					t.Text, t.TextColor3 = text, o.color or C.white
 					s.Text, s.Visible = o.sub or "", o.sub ~= nil
+					if resized then
+						local th, sh = bannerHeights(b)
+						bannerSlot.Size = UDim2.fromOffset(WIDTH, th + sh)
+					end
 				end
 				return
 			end
@@ -202,7 +207,7 @@ function Notify.banner(text: string, opts: BannerOpts?)
 	end
 	order += 1
 	table.insert(banners, {
-		text = text, sub = o.sub, color = o.color, priority = o.priority or 1, key = o.key, sticky = o.sticky,
+		text = text, sub = o.sub, color = o.color, priority = o.priority or 1, key = o.key, sticky = o.sticky, big = o.big,
 		left = o.time or 2.4, order = order, born = os.clock(),
 	})
 	swapBanner()
@@ -221,7 +226,8 @@ end
 local pumpToasts: () -> ()
 local function showToast(item: { text: string, color: Color3 })
 	toastsUp += 1
-	local t = label(toastSlot, item.text, 22, item.color)
+	Fx.sound("uiToast", 0.3)
+	local t = label(toastSlot, item.text, 28, item.color)
 	t.LayoutOrder = -os.clock() * 100 // 1 -- newest on top
 	UI.fade(t, true, 0.15)
 	UI.pop(t, 1.15)
@@ -281,6 +287,9 @@ end
 
 local function playCenter(item: Center)
 	local big = item.kind == "takeover"
+	if big then
+		Fx.sound("uiTakeover", 0.7)
+	end
 	local holder = UI.frame(stage, { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1 })
 	if big then
 		-- a soft dark band behind the words so they read over anything

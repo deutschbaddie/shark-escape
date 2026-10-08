@@ -90,7 +90,9 @@ for _, ride in Config.Rides do
 		print("R", ride.id, stance, s, k)
 		for p, c in cfs do
 			if p.Name ~= "HumanoidRootPart" then
-				box("P", p.Name, CFrame.new(0, drop, 0) * c, p.Size, { 0.98, 0.8, 0.62 })
+				local n = p.Name
+				local col = (n:find("Torso") and { 0.16, 0.42, 0.9 }) or (n:find("Leg") or n:find("Foot")) and { 0.3, 0.62, 0.25 } or { 0.98, 0.84, 0.25 }
+				box("P", p.Name, CFrame.new(0, drop, 0) * c, p.Size, col)
 			end
 		end
 		PARTS = {}
@@ -98,7 +100,9 @@ for _, ride in Config.Rides do
 		for _, p in m:GetDescendants() do
 			if (p.ClassName == "Part" or p.ClassName == "WedgePart") and p.Transparency < 1 then
 				local c = p.CFrame
-				box(p.ClassName == "WedgePart" and "W" or "B", p.Name or "part", CFrame.new(c.p.X * k, c.p.Y * k, c.p.Z * k) * c.Rotation, p.Size * k, { p.Color.R, p.Color.G, p.Color.B })
+				local mesh = p:FindFirstChild("SpecialMesh") or (#p:GetChildren() > 0 and p:GetChildren()[1])
+				local isEll = mesh and mesh.ClassName == "SpecialMesh"
+				box(p.ClassName == "WedgePart" and "W" or (isEll and "E" or "B"), p.Name or "part", CFrame.new(c.p.X * k, c.p.Y * k, c.p.Z * k) * c.Rotation, p.Size * k, { p.Color.R, p.Color.G, p.Color.B })
 			end
 		end
 	end
@@ -120,9 +124,9 @@ for line in out.stdout.splitlines():
     if f[0] == "R":
         cur = {"id": f[1], "stance": f[2], "s": float(f[3]), "k": float(f[4]), "body": [], "ride": []}
         cases.append(cur)
-    elif f[0] in ("P", "B", "W"):
+    elif f[0] in ("P", "B", "W", "E"):
         v = [float(x) for x in f[2:20]]
-        b = {"name": f[1], "c": v[0:3], "s": v[3:6], "r": [v[6:9], v[9:12], v[12:15]], "col": v[15:18], "wedge": f[0] == "W"}
+        b = {"name": f[1], "c": v[0:3], "s": v[3:6], "r": [v[6:9], v[9:12], v[12:15]], "col": v[15:18], "wedge": f[0] == "W", "ell": f[0] == "E"}
         (cur["body"] if f[0] == "P" else cur["ride"]).append(b)
 
 
@@ -155,6 +159,25 @@ def penetration(a, b):
     return best
 
 
+def ell_penetration(box, e):
+    """How deep a body box reaches into an ellipsoid (sampled)."""
+    A, E = axes(box), axes(e)
+    semi = [e["s"][i] / 2 for i in range(3)]
+    best = 0
+    n = 6
+    for i in range(n):
+        for j in range(n):
+            for k in range(n):
+                u = [(i + 0.5) / n - 0.5, (j + 0.5) / n - 0.5, (k + 0.5) / n - 0.5]
+                p = [box["c"][q] + sum(A[a][q] * u[a] * box["s"][a] for a in range(3)) for q in range(3)]
+                d = [p[q] - e["c"][q] for q in range(3)]
+                loc = [dot(E[a], d) / semi[a] for a in range(3)]
+                r = math.sqrt(sum(x * x for x in loc))
+                if r < 1:
+                    best = max(best, (1 - r) * min(semi))
+    return best
+
+
 worst_all = []
 for c in cases:
     hits = []
@@ -165,7 +188,7 @@ for c in cases:
                 q = dict(q); q["s"] = [q["s"][0], q["s"][1] * 0.7, q["s"][2] * 0.7]
             if q["name"] == "Grip" and ("Hand" in p["name"] or "LowerArm" in p["name"]):
                 continue  # holding on is the point
-            d = penetration(p, q)
+            d = ell_penetration(p, q) if q.get("ell") else penetration(p, q)
             if d > 0.05:
                 hits.append((d, p["name"], q["name"] + "@(%.2f,%.2f,%.2f)s(%.2f,%.2f,%.2f)" % (*q["c"], *q["s"])))
     hits.sort(reverse=True)
@@ -200,13 +223,28 @@ def project(eye, target):
     return fwd, right, up
 
 
+def hull2d(points):
+    pts = sorted(set((round(x, 2), round(y, 2)) for x, y in points))
+    if len(pts) < 3:
+        return pts
+    def cr(o, a, b): return (a[0]-o[0])*(b[1]-o[1]) - (a[1]-o[1])*(b[0]-o[0])
+    lower, upper = [], []
+    for p in pts:
+        while len(lower) >= 2 and cr(lower[-2], lower[-1], p) <= 0: lower.pop()
+        lower.append(p)
+    for p in reversed(pts):
+        while len(upper) >= 2 and cr(upper[-2], upper[-1], p) <= 0: upper.pop()
+        upper.append(p)
+    return lower[:-1] + upper[:-1]
+
+
 def draw(img, case, ox, oy, eye):
     target = [0, 1.2, 0]
     fwd, right, up = project(eye, target)
     light = [-0.4, 0.9, -0.5]
     m = math.sqrt(dot(light, light)); light = [x/m for x in light]
     faces = []
-    for b, kind in [(b, "body") for b in case["body"]] + [(b, "ride") for b in case["ride"]]:
+    for b, kind in [(b, "body") for b in case["body"]] + [(b, "ride") for b in case["ride"] if not b.get("ell")]:
         A = axes(b)
         for i in range(3):
             for sg in (-1, 1):
@@ -222,6 +260,19 @@ def draw(img, case, ox, oy, eye):
                 shade = 0.55 + 0.45 * max(0, dot(n, light))
                 col = tuple(int(255 * min(1, ch * shade)) for ch in b["col"])
                 faces.append((depth, pts, col, kind))
+    for b in case["ride"]:
+        if not b.get("ell"):
+            continue
+        E = axes(b)
+        pts = []
+        for i in range(24):
+            for j in range(1, 12):
+                th, ph = 2 * math.pi * i / 24, math.pi * j / 12
+                u = [math.sin(ph) * math.cos(th), math.cos(ph), math.sin(ph) * math.sin(th)]
+                pts.append([b["c"][q] + sum(E[a][q] * u[a] * b["s"][a] / 2 for a in range(3)) for q in range(3)])
+        depth = dot([b["c"][q] - eye[q] for q in range(3)], fwd)
+        faces.append((depth, pts, tuple(int(255 * min(1, ch * 0.95)) for ch in b["col"]), "ell"))
+    faces = [f for f in faces if not (f[3] == "ride" and False)]
     faces.sort(key=lambda f: -f[0])
     scale = 34
     d = ImageDraw.Draw(img)
@@ -231,7 +282,9 @@ def draw(img, case, ox, oy, eye):
             v = [p[q] - eye[q] for q in range(3)]
             z = dot(v, fwd)
             poly.append((ox + CELL/2 + dot(v, right) / z * scale * 12, oy + CELL*0.62 - dot(v, up) / z * scale * 12))
-        d.polygon(poly, fill=col, outline=(0, 0, 0) if kind == "ride" else (90, 60, 40))
+        if kind == "ell":
+            poly = hull2d(poly)
+        d.polygon(poly, fill=col, outline=(0, 0, 0) if kind in ("ride", "ell") else (20, 20, 30))
     # waterline
     d.line([(ox, oy + CELL*0.62 + 0.15 * scale * 1.0), (ox + CELL, oy + CELL*0.62 + 0.15*scale*1.0)], fill=(60, 140, 255))
 
@@ -240,9 +293,9 @@ base = [c for c in cases if abs(c["s"] - 1.0) < 1e-6 and (not ONLY or c["id"] in
 img = Image.new("RGB", (CELL * 3, CELL * len(base)), (232, 244, 250))
 d = ImageDraw.Draw(img)
 for row, c in enumerate(base):
-    draw(img, c, 0, row * CELL, [12, 2.2, 0.01])       # side (rider faces -Z = left)
-    draw(img, c, CELL, row * CELL, [7, 5, 9])          # 3/4 from behind
-    draw(img, c, CELL * 2, row * CELL, [5, 4.5, -10])   # 3/4 front
+    draw(img, c, 0, row * CELL, [14, 2.0, 0.01])        # side (rider faces -Z = right)
+    draw(img, c, CELL, row * CELL, [8, 5.5, 10])         # 3/4 from behind
+    draw(img, c, CELL * 2, row * CELL, [7, 4.5, -11])    # 3/4 front
     worst = c["hits"][0][0] if c["hits"] else 0
     d.text((6, row * CELL + 6), f'{c["id"]} ({c["stance"]})  worst overlap {worst:.2f}', fill=(0, 0, 0))
 img.save(os.path.join(HERE, "rides.png"))

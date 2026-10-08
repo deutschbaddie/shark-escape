@@ -254,9 +254,14 @@ local function gateTick()
 			if banner then
 				for _, sg in banner:GetChildren() do
 					local t = sg:FindFirstChild("Text") :: TextLabel?
+					local sub = sg:FindFirstChild("Sub") :: TextLabel?
 					if t then
-						t.Text = open and ("🔓 %s"):format(g:GetAttribute("ZoneName")) or ("🔒 %s  ⚡%s"):format(g:GetAttribute("ZoneName"), UI.short(need))
+						t.Text = (open and "🔓 %s" or "🔒 %s"):format(g:GetAttribute("ZoneName"))
 						t.TextColor3 = open and C.money or C.white
+					end
+					if sub then
+						sub.Text = open and "Unlocked!" or ("Need ⚡%s speed · you have %s"):format(UI.short(need), UI.short(d.speed))
+						sub.TextColor3 = open and C.money or C.gold
 					end
 				end
 			end
