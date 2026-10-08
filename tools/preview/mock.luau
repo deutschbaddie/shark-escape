@@ -17,6 +17,7 @@ V.__index = function(t, k)
 	return V[k]
 end
 function V:Dot(b) return self.X * b.X + self.Y * b.Y + self.Z * b.Z end
+function V:Cross(b) return vec(self.Y * b.Z - self.Z * b.Y, self.Z * b.X - self.X * b.Z, self.X * b.Y - self.Y * b.X) end
 function V:Lerp(b, t) return self + (b - self) * t end
 Vector3 = { new = vec, zero = vec(0, 0, 0), yAxis = vec(0, 1, 0), xAxis = vec(1, 0, 0) }
 Vector2 = { new = function(x, y) return { X = x, Y = y } end, zero = { X = 0, Y = 0 } }

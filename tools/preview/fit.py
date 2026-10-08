@@ -70,9 +70,9 @@ local function rig(s)
 	return parts.HumanoidRootPart, joints, 3 * s -- feet are 3 below the root part's centre
 end
 
-local function box(tag, name, c, s, col)
+local function box(tag, name, c, s, col, mat, t, refl)
 	local r = c.r
-	print(tag, name, c.p.X, c.p.Y, c.p.Z, s.X, s.Y, s.Z, r[1][1], r[1][2], r[1][3], r[2][1], r[2][2], r[2][3], r[3][1], r[3][2], r[3][3], col[1], col[2], col[3])
+	print(tag, name, c.p.X, c.p.Y, c.p.Z, s.X, s.Y, s.Z, r[1][1], r[1][2], r[1][3], r[2][1], r[2][2], r[2][3], r[3][1], r[3][2], r[3][3], col[1], col[2], col[3], mat or "SmoothPlastic", t or 0, refl or 0)
 end
 
 for _, ride in Config.Rides do
@@ -100,9 +100,13 @@ for _, ride in Config.Rides do
 		for _, p in m:GetDescendants() do
 			if (p.ClassName == "Part" or p.ClassName == "WedgePart") and p.Transparency < 1 then
 				local c = p.CFrame
-				local mesh = p:FindFirstChild("SpecialMesh") or (#p:GetChildren() > 0 and p:GetChildren()[1])
-				local isEll = mesh and mesh.ClassName == "SpecialMesh"
-				box(p.ClassName == "WedgePart" and "W" or (isEll and "E" or "B"), p.Name or "part", CFrame.new(c.p.X * k, c.p.Y * k, c.p.Z * k) * c.Rotation, p.Size * k, { p.Color.R, p.Color.G, p.Color.B })
+				local isEll = false
+				for _, ch in p:GetChildren() do
+					if ch.ClassName == "SpecialMesh" then isEll = true end
+				end
+				local shape = p.Shape and p.Shape.Name
+				local tag = p.ClassName == "WedgePart" and "W" or (isEll and "E") or (shape == "Ball" and "S") or (shape == "Cylinder" and "C") or "B"
+				box(tag, p.Name or "part", CFrame.new(c.p.X * k, c.p.Y * k, c.p.Z * k) * c.Rotation, p.Size * k, { p.Color.R, p.Color.G, p.Color.B }, p.Material and p.Material.Name, p.Transparency, p.Reflectance)
 			end
 		end
 	end
@@ -124,9 +128,13 @@ for line in out.stdout.splitlines():
     if f[0] == "R":
         cur = {"id": f[1], "stance": f[2], "s": float(f[3]), "k": float(f[4]), "body": [], "ride": []}
         cases.append(cur)
-    elif f[0] in ("P", "B", "W", "E"):
+    elif f[0] in ("P", "B", "W", "E", "S", "C"):
         v = [float(x) for x in f[2:20]]
-        b = {"name": f[1], "c": v[0:3], "s": v[3:6], "r": [v[6:9], v[9:12], v[12:15]], "col": v[15:18], "wedge": f[0] == "W", "ell": f[0] == "E"}
+        b = {"name": f[1], "c": v[0:3], "s": v[3:6], "r": [v[6:9], v[9:12], v[12:15]], "col": v[15:18], "wedge": f[0] == "W", "ell": f[0] in ("E", "S"),
+             "kind": "B" if f[0] == "P" else f[0], "mat": f[20] if len(f) > 20 else "SmoothPlastic",
+             "t": float(f[21]) if len(f) > 21 and f[21] not in ("nil", "") else 0, "refl": float(f[22]) if len(f) > 22 and f[22] not in ("nil", "") else 0}
+        if f[0] == "S":
+            m = min(b["s"]); b["s"] = [m, m, m]
         (cur["body"] if f[0] == "P" else cur["ride"]).append(b)
 
 
@@ -159,6 +167,26 @@ def penetration(a, b):
     return best
 
 
+def cyl_penetration(box, e):
+    """How deep a body box reaches into a cylinder along local X (sampled)."""
+    A, E = axes(box), axes(e)
+    hx, r = e["s"][0] / 2, min(e["s"][1], e["s"][2]) / 2
+    best = 0
+    n = 6
+    for i in range(n):
+        for j in range(n):
+            for k in range(n):
+                u = [(i + 0.5) / n - 0.5, (j + 0.5) / n - 0.5, (k + 0.5) / n - 0.5]
+                p = [box["c"][q] + sum(A[a][q] * u[a] * box["s"][a] for a in range(3)) for q in range(3)]
+                d = [p[q] - e["c"][q] for q in range(3)]
+                loc = [dot(E[a], d) for a in range(3)]
+                rad = math.sqrt(loc[1] ** 2 + loc[2] ** 2)
+                pen = min(r - rad, hx - abs(loc[0]))
+                if pen > 0:
+                    best = max(best, pen)
+    return best
+
+
 def ell_penetration(box, e):
     """How deep a body box reaches into an ellipsoid (sampled)."""
     A, E = axes(box), axes(e)
@@ -188,7 +216,12 @@ for c in cases:
                 q = dict(q); q["s"] = [q["s"][0], q["s"][1] * 0.7, q["s"][2] * 0.7]
             if q["name"] == "Grip" and ("Hand" in p["name"] or "LowerArm" in p["name"]):
                 continue  # holding on is the point
-            d = ell_penetration(p, q) if q.get("ell") else penetration(p, q)
+            if q.get("ell"):
+                d = ell_penetration(p, q)
+            elif q.get("kind") == "C":
+                d = cyl_penetration(p, q) if penetration(p, q) > 0 else 0
+            else:
+                d = penetration(p, q)
             if d > 0.05:
                 hits.append((d, p["name"], q["name"] + "@(%.2f,%.2f,%.2f)s(%.2f,%.2f,%.2f)" % (*q["c"], *q["s"])))
     hits.sort(reverse=True)
@@ -211,92 +244,74 @@ if os.environ.get("DEBUG"):
                 print(f"  hit {n} x {q} {d:.2f}")
 
 # ---------------------------------------------------------------- draw
-CELL = 420
+import raster
+from PIL import ImageDraw
+
+OUT = os.path.join(HERE, "rides")
+os.makedirs(OUT, exist_ok=True)
+VIEWS = {  # view directions (from target toward the eye)
+    "front34": [7.5, 4.6, -10.5],
+    "side": [13.5, 1.2, 0.01],
+    "back34": [8.5, 5.5, 9.5],
+}
 
 
-def project(eye, target):
-    def norm(a):
-        m = math.sqrt(dot(a, a)); return [a[0]/m, a[1]/m, a[2]/m]
-    fwd = norm([target[i] - eye[i] for i in range(3)])
-    right = norm(cross(fwd, [0, 1, 0]))
-    up = cross(right, fwd)
-    return fwd, right, up
+def frame(ps, view, fov, aspect=4 / 3):
+    """Eye + target that fit all primitives (bounding sphere) in the view."""
+    lo = [min(b["c"][i] - max(b["s"]) / 2 for b in ps) for i in range(3)]
+    hi = [max(b["c"][i] + max(b["s"]) / 2 for b in ps) for i in range(3)]
+    c = [(lo[i] + hi[i]) / 2 for i in range(3)]
+    r = math.sqrt(sum((hi[i] - lo[i]) ** 2 for i in range(3))) / 2 * 0.78
+    d = VIEWS[view]
+    m = math.sqrt(sum(x * x for x in d))
+    dist = r / math.tan(math.radians(fov) / 2)
+    return [c[i] + d[i] / m * dist for i in range(3)], c
 
 
-def hull2d(points):
-    pts = sorted(set((round(x, 2), round(y, 2)) for x, y in points))
-    if len(pts) < 3:
-        return pts
-    def cr(o, a, b): return (a[0]-o[0])*(b[1]-o[1]) - (a[1]-o[1])*(b[0]-o[0])
-    lower, upper = [], []
-    for p in pts:
-        while len(lower) >= 2 and cr(lower[-2], lower[-1], p) <= 0: lower.pop()
-        lower.append(p)
-    for p in reversed(pts):
-        while len(upper) >= 2 and cr(upper[-2], upper[-1], p) <= 0: upper.pop()
-        upper.append(p)
-    return lower[:-1] + upper[:-1]
+def shot(c, rider, view, W, H, fov=28, water=None):
+    ps = prims(c, rider)
+    eye, tgt = frame(ps, view, fov)
+    return raster.render(ps, eye, tgt, W, H, fov=fov, water=water)
 
 
-def draw(img, case, ox, oy, eye):
-    target = [0, 1.2, 0]
-    fwd, right, up = project(eye, target)
-    light = [-0.4, 0.9, -0.5]
-    m = math.sqrt(dot(light, light)); light = [x/m for x in light]
-    faces = []
-    for b, kind in [(b, "body") for b in case["body"]] + [(b, "ride") for b in case["ride"] if not b.get("ell")]:
-        A = axes(b)
-        for i in range(3):
-            for sg in (-1, 1):
-                n = [A[i][j] * sg for j in range(3)]
-                if dot(n, fwd) >= 0:
-                    continue
-                j1, j2 = [x for x in range(3) if x != i]
-                pts = []
-                for u, w in ((-1, -1), (1, -1), (1, 1), (-1, 1)):
-                    p = [b["c"][q] + A[i][q]*sg*b["s"][i]/2 + A[j1][q]*u*b["s"][j1]/2 + A[j2][q]*w*b["s"][j2]/2 for q in range(3)]
-                    pts.append(p)
-                depth = sum(dot([p[q]-eye[q] for q in range(3)], fwd) for p in pts) / 4
-                shade = 0.55 + 0.45 * max(0, dot(n, light))
-                col = tuple(int(255 * min(1, ch * shade)) for ch in b["col"])
-                faces.append((depth, pts, col, kind))
-    for b in case["ride"]:
-        if not b.get("ell"):
-            continue
-        E = axes(b)
-        pts = []
-        for i in range(24):
-            for j in range(1, 12):
-                th, ph = 2 * math.pi * i / 24, math.pi * j / 12
-                u = [math.sin(ph) * math.cos(th), math.cos(ph), math.sin(ph) * math.sin(th)]
-                pts.append([b["c"][q] + sum(E[a][q] * u[a] * b["s"][a] / 2 for a in range(3)) for q in range(3)])
-        depth = dot([b["c"][q] - eye[q] for q in range(3)], fwd)
-        faces.append((depth, pts, tuple(int(255 * min(1, ch * 0.95)) for ch in b["col"]), "ell"))
-    faces = [f for f in faces if not (f[3] == "ride" and False)]
-    faces.sort(key=lambda f: -f[0])
-    scale = 34
-    d = ImageDraw.Draw(img)
-    for depth, pts, col, kind in faces:
-        poly = []
-        for p in pts:
-            v = [p[q] - eye[q] for q in range(3)]
-            z = dot(v, fwd)
-            poly.append((ox + CELL/2 + dot(v, right) / z * scale * 12, oy + CELL*0.62 - dot(v, up) / z * scale * 12))
-        if kind == "ell":
-            poly = hull2d(poly)
-        d.polygon(poly, fill=col, outline=(0, 0, 0) if kind in ("ride", "ell") else (20, 20, 30))
-    # waterline
-    d.line([(ox, oy + CELL*0.62 + 0.15 * scale * 1.0), (ox + CELL, oy + CELL*0.62 + 0.15*scale*1.0)], fill=(60, 140, 255))
+def prims(c, rider=True):
+    out = [b for b in c["ride"]]
+    if rider:
+        out = out + [dict(b, kind="B", mat="SmoothPlastic", t=0, refl=0) for b in c["body"]]
+    return out
 
 
 base = [c for c in cases if abs(c["s"] - 1.0) < 1e-6 and (not ONLY or c["id"] in ONLY)]
-img = Image.new("RGB", (CELL * 3, CELL * len(base)), (232, 244, 250))
-d = ImageDraw.Draw(img)
-for row, c in enumerate(base):
-    draw(img, c, 0, row * CELL, [14, 2.0, 0.01])        # side (rider faces -Z = right)
-    draw(img, c, CELL, row * CELL, [8, 5.5, 10])         # 3/4 from behind
-    draw(img, c, CELL * 2, row * CELL, [7, 4.5, -11])    # 3/4 front
+CELLW, CELLH = 360, 270
+
+
+def render_case(c):
+    tiles = [
+        shot(c, True, "front34", CELLW, CELLH, water=-0.15),
+        shot(c, False, "front34", CELLW, CELLH),
+        shot(c, False, "side", CELLW, CELLH),
+        shot(c, True, "back34", CELLW, CELLH, water=-0.15),
+    ]
     worst = c["hits"][0][0] if c["hits"] else 0
-    d.text((6, row * CELL + 6), f'{c["id"]} ({c["stance"]})  worst overlap {worst:.2f}', fill=(0, 0, 0))
-img.save(os.path.join(HERE, "rides.png"))
+    big = Image.new("RGB", (1200, 900), (255, 255, 255))
+    big.paste(shot(c, False, "front34", 600, 450), (0, 0))
+    big.paste(shot(c, True, "front34", 600, 450, water=-0.15), (600, 0))
+    big.paste(shot(c, False, "side", 600, 450), (0, 450))
+    big.paste(shot(c, False, "back34", 600, 450), (600, 450))
+    ImageDraw.Draw(big).text((8, 8), f'{c["id"]} parts {len(c["ride"])} overlap {worst:.2f}', fill=(0, 0, 0))
+    big.save(os.path.join(OUT, c["id"] + ".png"))
+    return tiles
+
+
+from multiprocessing import Pool
+with Pool(min(8, os.cpu_count() or 2)) as pool:
+    all_tiles = pool.map(render_case, base)
+sheet = Image.new("RGB", (CELLW * 4, CELLH * len(base)), (255, 255, 255))
+for row, (c, tiles) in enumerate(zip(base, all_tiles)):
+    for i, t in enumerate(tiles):
+        sheet.paste(t, (i * CELLW, row * CELLH))
+    worst = c["hits"][0][0] if c["hits"] else 0
+    ImageDraw.Draw(sheet).text((6, row * CELLH + 6), f'{c["id"]} ({c["stance"]}) parts {len(c["ride"])} overlap {worst:.2f}', fill=(0, 0, 0))
+if not ONLY:
+    sheet.save(os.path.join(HERE, "rides.png"))
 print("worst overall", max(worst_all))
