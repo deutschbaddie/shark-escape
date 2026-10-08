@@ -244,27 +244,58 @@ function HUD.nextRide(d: any): Config.Ride?
 	return nil
 end
 
-function HUD.toast(text: string, color: Color3?, duration: number?)
-	local t = UI.frame(toastHolder, { Size = UDim2.fromOffset(440, 40), BackgroundColor3 = color or C.panel })
+-- Toasts queue up: at most 2 on screen, spaced out, duplicates dropped,
+-- held back during cutscenes. Keeps the screen readable when a lot happens.
+local toastQueue: { { text: string, color: Color3?, duration: number? } } = {}
+local toastsShown = 0
+local lastToastAt = 0
+local pumpToasts: () -> ()
+
+local function showToast(item: { text: string, color: Color3?, duration: number? })
+	toastsShown += 1
+	lastToastAt = os.clock()
+	local t = UI.frame(toastHolder, { Size = UDim2.fromOffset(420, 38), BackgroundColor3 = item.color or C.panel })
 	UI.corner(t, 10)
 	UI.stroke(t, C.ink, 3)
 	UI.shade(t)
-	UI.outlined(t, text, { Size = UDim2.new(1, -16, 1, -10), Position = UDim2.fromOffset(8, 5) })
-	UI.pop(t, 1.2)
-	task.delay(duration or 2.6, function()
-		TweenService:Create(t, TweenInfo.new(0.25), { BackgroundTransparency = 1 }):Play()
-		task.wait(0.25)
+	local label = UI.outlined(t, item.text, { Size = UDim2.new(1, -16, 1, -10), Position = UDim2.fromOffset(8, 5) })
+	UI.pop(t, 1.15)
+	task.delay(item.duration or 3, function()
+		TweenService:Create(t, TweenInfo.new(0.3), { BackgroundTransparency = 1 }):Play()
+		TweenService:Create(label, TweenInfo.new(0.3), { TextTransparency = 1 }):Play()
+		task.wait(0.3)
 		t:Destroy()
+		toastsShown -= 1
+		pumpToasts()
 	end)
-	local frames = {}
-	for _, k in toastHolder:GetChildren() do
-		if k:IsA("Frame") then
-			table.insert(frames, k)
+end
+
+pumpToasts = function()
+	if #toastQueue == 0 or toastsShown >= 2 or player:GetAttribute("Cinematic") then
+		return
+	end
+	local wait = 0.45 - (os.clock() - lastToastAt)
+	if wait > 0 then
+		task.delay(wait, pumpToasts)
+		return
+	end
+	showToast(table.remove(toastQueue, 1) :: any)
+	if #toastQueue > 0 then
+		task.delay(0.45, pumpToasts)
+	end
+end
+
+function HUD.toast(text: string, color: Color3?, duration: number?)
+	for _, q in toastQueue do
+		if q.text == text then
+			return
 		end
 	end
-	if #frames > 3 then
-		frames[1]:Destroy()
+	table.insert(toastQueue, { text = text, color = color, duration = duration })
+	while #toastQueue > 3 do
+		table.remove(toastQueue, 1) -- stale news goes first
 	end
+	pumpToasts()
 end
 
 function HUD.hint(text: string?)
@@ -313,7 +344,7 @@ local function render(d: any)
 	coinsLabel.Text = "$" .. UI.short(d.coins)
 	local mult = Config.Rebirth.mult ^ d.rebirths
 	gainLabel.Text = ("⚡ +%s SPEED/S"):format(UI.short(d.gain))
-	tankLabel.Text = mult > 1 and ("x%s Rebirth"):format(string.format("%g", math.floor(mult * 100 + 0.5) / 100)) or ("🐟 %d/%d Tank"):format(#d.tank, d.slots)
+	tankLabel.Text = mult > 1 and ("x%s Rebirth"):format(string.format("%g", math.floor(mult * 100 + 0.5) / 100)) or (#d.tank >= d.slots and ("🐟 FULL · +$%s/s"):format(UI.short(d.income)) or ("🐟 %d/%d · +$%s/s"):format(#d.tank, d.slots, UI.short(d.income)))
 	local extras = {}
 	if d.shields > 0 then
 		table.insert(extras, "🛡️" .. d.shields)
@@ -323,9 +354,6 @@ local function render(d: any)
 	end
 	if d.luckLeft > 0 then
 		table.insert(extras, "🧪" .. UI.time(d.luckLeft))
-	end
-	if d.income > 0 then
-		table.insert(extras, ("+$%s/s"):format(UI.short(d.income)))
 	end
 	extrasLabel.Text = table.concat(extras, "   ")
 
@@ -452,6 +480,28 @@ local function frame()
 			lastZone = id
 		end
 	end
+	-- during a hunt: one clear line about YOUR situation
+	if phase == "hunt" and pos then
+		local safe = Layout.isSafe(pos)
+		local mine = SharkView.myHunter()
+		local text, color
+		if mine and mine.state == "chase" then
+			text, color = "🦈 IT'S CHARGING! GET TO SAND!", C.red
+		elseif mine then
+			text, color = "🦈 A SHARK IS CIRCLING YOU! FOLLOW THE ARROW!", C.red
+		elseif safe then
+			text, color = "🏝️ You're safe here. Wait it out!", C.green
+		else
+			text, color = "🦈 SHARKS ARE HUNTING! GET TO SAND!", C.red
+		end
+		if alertLabel.Text ~= text then
+			alertLabel.Visible = true
+			alertLabel.Text = text
+			alertLabel.TextColor3 = color
+			UI.pop(alertLabel, 1.15)
+		end
+		vignette.Visible = not safe
+	end
 	local left = math.max(0, phaseEnds - os.clock())
 	if phase == "calm" then
 		timerLabel.Text = "in " .. UI.time(left)
@@ -466,6 +516,8 @@ end
 
 ----------------------------------------------------------------- notifications
 local handlers: { [string]: (any) -> () } = {}
+
+local newDiscovery = false -- "discover" arrives just before "grab"; one toast says both
 
 handlers.grab = function(d)
 	local r = Config.rarity(d.r)
@@ -486,13 +538,19 @@ handlers.grab = function(d)
 		Fx.shake(1.5)
 		Fx.sound("legendary", 0.8)
 	end
-	HUD.toast(("%s Got %s%s! (+%s/s)"):format(r.icon, d.m and (d.m .. " ") or "", r.species, UI.short(d.v)), r.color)
+	local note = ""
+	local data = State.data
+	if newDiscovery then
+		note = "  📖 NEW!"
+	elseif data and #data.tank >= data.slots then
+		note = "  (tank full: swaps your weakest)"
+	end
+	newDiscovery = false
+	HUD.toast(("%s %s%s  +$%s/s%s"):format(r.icon, d.m and (d.m .. " ") or "", r.species, UI.short(d.v), note), r.color)
 end
 
 handlers.discover = function(d)
-	local r = Config.rarity(d.r)
-	local zone = Config.zoneById(d.z)
-	HUD.toast(("📖 NEW! %s %s added to your Index"):format(zone and zone.name or "", r.species), C.orange, 3)
+	newDiscovery = true
 	UI.pop(menuButtons.Index, 1.3)
 end
 
@@ -512,13 +570,21 @@ handlers.deposit = function(d)
 		Fx.sparkle(tank + Vector3.new(0, 5, 0), r.color, 40)
 		Fx.popup3D(tank + Vector3.new(0, 10, 0), ("+$%s/s"):format(UI.short(d.v)), C.money, true)
 	end
-	if d.replaced then
-		HUD.toast(("Swapped out a %s (+$%s)"):format(Config.rarity(d.replaced).species, UI.short(d.sold or 0)), C.blue)
+	if d.replaced and data and data.plot > 0 then
+		-- shown right at the tank, where it happened
+		local tank = Layout.tankPos(Layout.Plots[data.plot])
+		task.delay(0.6, function()
+			Fx.popup3D(tank + Vector3.new(0, 13, 0), ("↻ %s swapped out  +$%s"):format(Config.rarity(d.replaced).species, UI.short(d.sold or 0)), C.sky, true)
+		end)
 	end
 end
 
 handlers.sold = function(d)
-	HUD.toast(("Tank full! Sold %s for $%s"):format(Config.rarity(d.r).species, UI.short(d.sold)), C.blue)
+	local data = State.data
+	if data and data.plot > 0 then
+		local tank = Layout.tankPos(Layout.Plots[data.plot])
+		Fx.popup3D(tank + Vector3.new(0, 11, 0), ("Tank full · sold %s +$%s"):format(Config.rarity(d.r).species, UI.short(d.sold)), C.sky, true)
+	end
 end
 
 handlers.collect = function(d)
@@ -556,7 +622,6 @@ handlers.unlock = function(d)
 	local zone = Config.zoneById(d.zone)
 	if zone then
 		Fx.bigWord("🔓 " .. zone.name:upper() .. "!", C.gold, 1.6)
-		HUD.toast(("%s unlocked - %s sharks live there!"):format(zone.name, zone.shark), C.pink, 3.5)
 		local pos = myPos()
 		if pos then
 			Fx.confetti(pos)
@@ -569,8 +634,8 @@ handlers.gate = function(d)
 	Fx.shake(1)
 end
 
-handlers.lost = function(d)
-	HUD.toast(("💔 The shark ate your %s!"):format(Config.rarity(d.r).species), C.red, 3)
+handlers.lost = function()
+	-- the bite cutscene shows this (your creature gets eaten on screen)
 end
 
 handlers.spat = function()
@@ -660,7 +725,9 @@ local function onPhase(kind: string, data: any)
 			local t0 = os.clock()
 			while alertToken == token and os.clock() - t0 < (data.duration or 5) do
 				local left = math.ceil((data.duration or 5) - (os.clock() - t0))
-				alertLabel.Text = ("🦈 SHARK ATTACK IN %d! GET ON SAND!"):format(left)
+				alertLabel.Text = ("🦈 SHARK INCOMING IN %d! GET TO SAND!"):format(left)
+				local p = myPos()
+				vignette.Visible = p ~= nil and not Layout.isSafe(p)
 				for _, f in vignette:GetChildren() do
 					if f:IsA("Frame") then
 						f.BackgroundTransparency = 0.3 + 0.4 * (0.5 + 0.5 * math.sin(os.clock() * 10))
@@ -671,10 +738,8 @@ local function onPhase(kind: string, data: any)
 		end)
 	elseif kind == "hunt" then
 		phase, phaseEnds = "hunt", os.clock() + (data.duration or Config.Shark.hunt)
-		setAlert("🦈 SHARKS ARE HUNTING! STAY ON SAND!")
-		vignette.Visible = true
+		setAlert("🦈 SHARKS ARE HUNTING! GET TO SAND!")
 		Water.setSafeGlow(true)
-		Fx.shake(1)
 	elseif kind == "clear" then
 		phase, phaseEnds = "calm", os.clock() + (data.next or Config.Shark.cycle)
 		local wasOn = vignette.Visible
@@ -702,6 +767,15 @@ function HUD.start()
 		render(State.data)
 	end
 	RunService.Heartbeat:Connect(frame)
+	player:GetAttributeChangedSignal("Cinematic"):Connect(function()
+		local on = player:GetAttribute("Cinematic") == true
+		gui.Enabled = not on
+		if on then
+			vignette.Visible = false
+		else
+			pumpToasts()
+		end
+	end)
 	Remotes.get("Notify").OnClientEvent:Connect(function(kind, data)
 		local fn = handlers[kind]
 		if fn then

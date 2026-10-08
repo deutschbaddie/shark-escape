@@ -268,6 +268,12 @@ function Shop.start()
 	end
 	rescale()
 	workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(rescale)
+	-- the bite cutscene owns the screen
+	player:GetAttributeChangedSignal("Cinematic"):Connect(function()
+		if player:GetAttribute("Cinematic") then
+			closeAll()
+		end
+	end)
 	RunService.RenderStepped:Connect(function()
 		local t = os.clock()
 		for _, m in spinners do

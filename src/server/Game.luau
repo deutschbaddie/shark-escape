@@ -139,6 +139,16 @@ local function tankSlots(s: Session): number
 	return s.profile.slots + (s.passes.BigTank and Config.Tank.passSlots or 0)
 end
 
+local function formatShort(n: number): string
+	local units = { "", "K", "M", "B", "T", "Qa" }
+	local i = 1
+	while n >= 1000 and i < #units do
+		n /= 1000
+		i += 1
+	end
+	return (i == 1 and tostring(math.floor(n)) or (string.format("%.1f", n):gsub("%.0$", ""))) .. units[i]
+end
+
 ----------------------------------------------------------------- state sync
 function Game.push(s: Session)
 	local p = s.profile
@@ -250,23 +260,6 @@ function Game.setCarry(s: Session, c: Data.Creature?)
 end
 
 ----------------------------------------------------------------- tank
-function Game.refreshTank(s: Session)
-	local plot = s.plot
-	if not plot then
-		return
-	end
-	plot.slots:ClearAllChildren()
-	local tcf = CFrame.new(Layout.tankPos(plot.cf)) * plot.cf.Rotation * CFrame.new(0, 0.5, 0)
-	for i, c in s.profile.tank do
-		local col = (i - 1) % 8
-		local row = math.floor((i - 1) / 8)
-		local m = Creatures.build(c.r, c.m, 0.62)
-		m:PivotTo(tcf * CFrame.new(-6.3 + col * 1.8, 3.1 + row * 2.6, 0) * CFrame.Angles(0, math.pi / 2, 0))
-		m:SetAttribute("Swim", true)
-		m.Parent = plot.slots
-	end
-end
-
 local function weakestIndex(tank: { Data.Creature }): (number?, number)
 	local idx, val = nil, math.huge
 	for i, c in tank do
@@ -277,6 +270,48 @@ local function weakestIndex(tank: { Data.Creature }): (number?, number)
 	end
 	return idx, val
 end
+
+function Game.refreshTank(s: Session)
+	local plot = s.plot
+	if not plot then
+		return
+	end
+	plot.slots:ClearAllChildren()
+	local full = #s.profile.tank >= tankSlots(s)
+	local weakest = full and weakestIndex(s.profile.tank) or nil
+	local tcf = CFrame.new(Layout.tankPos(plot.cf)) * plot.cf.Rotation * CFrame.new(0, 0.5, 0)
+	for i, c in s.profile.tank do
+		local col = (i - 1) % 8
+		local row = math.floor((i - 1) / 8)
+		local m = Creatures.build(c.r, c.m, 0.62)
+		m:PivotTo(tcf * CFrame.new(-6.3 + col * 1.8, 3.1 + row * 2.6, 0) * CFrame.Angles(0, math.pi / 2, 0))
+		m:SetAttribute("Swim", true)
+		-- what this one earns; when the tank is full the weakest is marked,
+		-- because your next better catch replaces it automatically
+		local value = Config.creatureValue(c.r, c.z, c.m) * Game.coinMult(s)
+		local swapNext = full and i == weakest
+		local bb = Instance.new("BillboardGui")
+		bb.Size = UDim2.fromScale(1.75, 0.62)
+		bb.StudsOffsetWorldSpace = Vector3.new(0, 0.95, 0)
+		bb.MaxDistance = 45
+		bb.LightInfluence = 0
+		bb.Parent = m.PrimaryPart
+		local t = Instance.new("TextLabel")
+		t.Size = UDim2.fromScale(1, 1)
+		t.BackgroundTransparency = 1
+		t.Font = Enum.Font.FredokaOne
+		t.TextScaled = true
+		t.Text = (swapNext and "↻$" or "$") .. formatShort(value) .. "/s"
+		t.TextColor3 = swapNext and Color3.fromRGB(200, 200, 210) or Config.rarity(c.r).color
+		t.Parent = bb
+		local st = Instance.new("UIStroke")
+		st.Color = Color3.fromRGB(22, 22, 34)
+		st.Thickness = 2
+		st.Parent = t
+		m.Parent = plot.slots
+	end
+end
+
 
 -- put a creature in the tank; if full, it replaces the weakest (or sells)
 function Game.addToTank(s: Session, c: Data.Creature)
@@ -429,6 +464,7 @@ actions.buySlot = function(s)
 	if price and s.profile.coins >= price then
 		s.profile.coins -= price
 		s.profile.slots += 1
+		Game.refreshTank(s)
 		Game.notify(s.player, "slot", { slots = tankSlots(s) })
 		s.dirty = true
 	end
@@ -627,15 +663,6 @@ function Game.saveAll()
 end
 
 ----------------------------------------------------------------- loops
-local function formatShort(n: number): string
-	local units = { "", "K", "M", "B", "T", "Qa" }
-	local i = 1
-	while n >= 1000 and i < #units do
-		n /= 1000
-		i += 1
-	end
-	return (i == 1 and tostring(math.floor(n)) or (string.format("%.1f", n):gsub("%.0$", ""))) .. units[i]
-end
 
 -- every second: +speed, +coins into the tank pool
 local function secondTick()

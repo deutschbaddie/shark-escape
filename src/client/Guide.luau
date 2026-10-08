@@ -1,6 +1,6 @@
 -- The guide beam: a glowing arc from your feet to a target plus a bouncing
 -- arrow marker. Several systems can ask for it; the highest priority wins
--- (tutorial > ride shop).
+-- (shark danger > tutorial > ride shop).
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -12,7 +12,7 @@ local Guide = {}
 local C = UI.C
 local player = Players.LocalPlayer
 
-local PRIORITY = { "tut", "shop" }
+local PRIORITY = { "danger", "tut", "shop" }
 local requests: { [string]: { at: Vector3, label: string? } } = {}
 
 local folder = Instance.new("Folder")

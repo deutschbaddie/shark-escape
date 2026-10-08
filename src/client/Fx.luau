@@ -200,21 +200,45 @@ function Fx.flash(color: Color3, duration: number?, startT: number?)
 	Debris:AddItem(f, (duration or 0.5) + 0.1)
 end
 
--- big center-screen word ("CHOMP!", "LUCKY!")
-function Fx.bigWord(text: string, color: Color3, duration: number?)
+-- big center-screen word ("CHOMP!", "LUCKY!"). One at a time: a word that
+-- arrives while another is up waits its turn (and stale ones are dropped).
+local wordBusyUntil = 0
+local wordQueue = 0
+
+local function showWord(text: string, color: Color3, duration: number)
 	local t = UI.outlined(Fx.screen(), text, {
-		Size = UDim2.fromScale(0.8, 0.16), Position = UDim2.fromScale(0.5, 0.4), AnchorPoint = Vector2.new(0.5, 0.5),
-		TextColor3 = color, ZIndex = 60, Rotation = -4,
+		Size = UDim2.fromScale(0.8, 0.14), Position = UDim2.fromScale(0.5, 0.36), AnchorPoint = Vector2.new(0.5, 0.5),
+		TextColor3 = color, ZIndex = 60, Rotation = -3,
 	})
 	local scale = Instance.new("UIScale")
-	scale.Scale = 2.4
+	scale.Scale = 2.2
 	scale.Parent = t
 	TweenService:Create(scale, TweenInfo.new(0.3, Enum.EasingStyle.Back), { Scale = 1 }):Play()
-	task.delay(duration or 1, function()
+	task.delay(duration, function()
 		TweenService:Create(t, TweenInfo.new(0.3), { TextTransparency = 1 }):Play()
 		TweenService:Create(scale, TweenInfo.new(0.3), { Scale = 0.6 }):Play()
 	end)
-	Debris:AddItem(t, (duration or 1) + 0.4)
+	Debris:AddItem(t, duration + 0.4)
+end
+
+function Fx.bigWord(text: string, color: Color3, duration: number?)
+	local d = duration or 1
+	local now = os.clock()
+	if now >= wordBusyUntil then
+		wordBusyUntil = now + d + 0.35
+		showWord(text, color, d)
+		return
+	end
+	if wordQueue >= 1 then
+		return -- one waiting is enough; skip the rest
+	end
+	wordQueue += 1
+	local at = wordBusyUntil
+	wordBusyUntil = at + d + 0.35
+	task.delay(at - now, function()
+		wordQueue -= 1
+		showWord(text, color, d)
+	end)
 end
 
 Fx.folder = fxFolder

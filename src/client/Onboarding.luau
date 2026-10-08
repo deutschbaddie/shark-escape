@@ -75,6 +75,7 @@ local drill = {
 	state = "idle", -- idle | chase | leave | pause
 	shark = nil :: any,
 	t = 0,
+	angle = 0,
 	realAttack = false,
 }
 
@@ -98,13 +99,14 @@ local function drillStart(pos: Vector3)
 		math.min(pos.Z + 45, Config.OCEAN_END - 8)
 	)
 	local yaw = math.atan2(-(pos.X - from.X), -(pos.Z - from.Z))
+	drill.angle = math.atan2(from.Z - pos.Z, from.X - pos.X)
 	drill.state = "chase"
 	drill.t = os.clock()
 	Water.setSafeGlow(true)
 	Fx.bigWord("🦈 SHARK DRILL!", C.red, 1.2)
 	Fx.shake(1)
 	drill.shark = SharkView.spawnLocal(zone.shark, zone.sharkLength, from, yaw, function(sh, dt)
-		if sh.state ~= "chase" then
+		if sh.state == "leave" then
 			-- swim off and sink (SharkView animates the dive)
 			sh.pos += Vector3.new(-math.sin(sh.yaw), 0, -math.cos(sh.yaw)) * 14 * dt
 			return
@@ -113,14 +115,29 @@ local function drillStart(pos: Vector3)
 		if not hrp then
 			return
 		end
-		local to = Vector3.new(hrp.Position.X - sh.pos.X, 0, hrp.Position.Z - sh.pos.Z)
-		local want = math.atan2(-to.X, -to.Z)
-		local d = (want - sh.yaw + math.pi) % (2 * math.pi) - math.pi
-		sh.yaw += math.clamp(d, -4 * dt, 4 * dt)
-		-- always slower than you, so escaping is about reacting, not stats
+		local p = hrp.Position
 		local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
 		local speed = math.max((hum and hum.WalkSpeed or 16) * 0.6, 9)
-		sh.pos += Vector3.new(-math.sin(sh.yaw), 0, -math.cos(sh.yaw)) * math.min(speed * dt, math.max(to.Magnitude - 1, 0))
+		local t = os.clock() - drill.t
+		local to
+		if t < 3.5 then
+			-- like a real one: circle first (a tightening spiral)...
+			drill.angle = (drill.angle or 0) + dt * 1.1
+			local r = 26 - 10 * (t / 3.5)
+			local goal = Vector3.new(p.X + math.cos(drill.angle) * r, 0, p.Z + math.sin(drill.angle) * r)
+			to = Vector3.new(goal.X - sh.pos.X, 0, goal.Z - sh.pos.Z)
+			sh.state = "stalk"
+		else
+			-- ...then charge (always slower than you: escaping is about reacting)
+			to = Vector3.new(p.X - sh.pos.X, 0, p.Z - sh.pos.Z)
+			sh.state = "chase"
+		end
+		if to.Magnitude > 0.1 then
+			local want = math.atan2(-to.X, -to.Z)
+			local d = (want - sh.yaw + math.pi) % (2 * math.pi) - math.pi
+			sh.yaw += math.clamp(d, -5 * dt, 5 * dt)
+		end
+		sh.pos += Vector3.new(-math.sin(sh.yaw), 0, -math.cos(sh.yaw)) * math.min(speed * 1.3 * dt, math.max(to.Magnitude - 1, 0))
 	end)
 end
 
@@ -164,7 +181,8 @@ local function drillTick(pos: Vector3): (Vector3?, string?, string?)
 			end
 		end
 		local safeAt = Layout.nearestSafe(pos)
-		return safeAt + Vector3.new(0, 2, 0), "SAFE!", "🦈 GET TO THE SAND OR AN ISLAND!"
+		local circling = drill.shark and drill.shark.state == "stalk"
+		return safeAt + Vector3.new(0, 2, 0), "SAFE!", circling and "🦈 It's circling you... get to SAND or an ISLAND!" or "🦈 IT'S CHARGING! GET TO SAND!"
 	end
 	if drill.state == "pause" and os.clock() - drill.t > 3 then
 		drill.state = "idle"

@@ -13,14 +13,19 @@ local Shared = ReplicatedStorage.Shared
 local Config = require(Shared.Config)
 local Remotes = require(Shared.Remotes)
 local SharkFallback = require(Shared.SharkFallback)
+local Layout = require(Shared.Layout)
+local Creatures = require(Shared.Creatures)
 local Fx = require(script.Parent.Fx)
 local UI = require(script.Parent.UI)
+local Guide = require(script.Parent.Guide)
+local TweenService = game:GetService("TweenService")
 
 local SharkView = {}
 
 local player = Players.LocalPlayer
 local VARIANTS = { "Baby", "Hammerhead", "Tiger", "GreatWhite", "Mecha", "Megalodon" }
-local STATE_NAMES = { "chase", "circle", "leave", "bite" }
+-- wire codes from server Sharks.luau ("chase" = the charge)
+local STATE_NAMES = { "chase", "circle", "leave", "bite", "stalk" }
 local BONES = { "Root", "Head", "Jaw", "Spine2", "Spine3", "Spine4", "Tail", "PecL", "PecR" }
 
 local folder = Instance.new("Folder")
@@ -55,6 +60,7 @@ type Shark = {
 	wakeEmitter: ParticleEmitter,
 	victim: number,
 	alive: boolean,
+	dived: boolean?,
 	extra: { [string]: any }?,
 }
 
@@ -149,7 +155,8 @@ local function animate(sh: Shark, dt: number, now: number)
 	local L = sh.L
 	local rig = sh.rig
 	local chasing = sh.state == "chase"
-	local freq = chasing and 9 or (sh.state == "leave" and 5 or 6.5)
+	local stalking = sh.state == "stalk"
+	local freq = chasing and 9 or (sh.state == "leave" and 5 or (stalking and 7.5 or 6.5))
 	sh.phase += dt * freq
 	local w = sh.phase
 	local amp = chasing and 1.25 or 1
@@ -158,6 +165,8 @@ local function animate(sh: Shark, dt: number, now: number)
 	local jaw = 0.06 + 0.04 * math.sin(now * 2.3)
 	if chasing then
 		jaw = 0.24 + 0.08 * math.sin(now * 3.1)
+	elseif stalking then
+		jaw = 0.12 + 0.05 * math.sin(now * 1.9) -- slow, menacing
 	end
 	local lunge, pitch = 0, 0
 	if sh.biteT > 0 then
@@ -180,7 +189,7 @@ local function animate(sh: Shark, dt: number, now: number)
 
 	-- dive when leaving
 	local sink = 0
-	if sh.state == "leave" then
+	if sh.state == "leave" or sh.dived then
 		sh.sinkT = math.min(sh.sinkT + dt / 2.2, 1)
 		sink = sh.sinkT
 		pitch -= 0.28 * sink
@@ -190,6 +199,9 @@ local function animate(sh: Shark, dt: number, now: number)
 	local yOverride: number? = e and e.y
 	if yOverride then
 		pitch = e.pitch or 0
+	end
+	if e and e.jaw then
+		jaw = e.jaw
 	end
 
 	if rig.fallback then
@@ -295,6 +307,67 @@ local function angleLerp(a: number, b: number, t: number): number
 	return a + d * t
 end
 
+local updateDanger: (number) -> ()
+
+----------------------------------------------------------------- your shark
+-- While a shark is hunting YOU: a red ring on the water shows its circle and
+-- the guide arrow points at the nearest safe spot. Obvious, not noisy.
+local SEGMENTS = 28
+local ringParts: { Part } = {}
+for i = 1, SEGMENTS do
+	local seg = Instance.new("Part")
+	seg.Name = "DangerRing"
+	seg.Anchored = true
+	seg.CanCollide = false
+	seg.CanQuery = false
+	seg.CanTouch = false
+	seg.CastShadow = false
+	seg.Material = Enum.Material.Neon
+	seg.Color = Color3.fromRGB(255, 50, 60)
+	seg.Transparency = 1
+	seg.Size = Vector3.new(1, 0.15, 0.6)
+	seg.Parent = folder
+	ringParts[i] = seg
+end
+
+function SharkView.myHunter(): any
+	for id, sh in sharks do
+		if id > 0 and sh.victim == player.UserId and (sh.state == "stalk" or sh.state == "chase") then
+			return sh
+		end
+	end
+	return nil
+end
+
+updateDanger = function(now: number)
+	local me = SharkView.myHunter()
+	local char = player.Character
+	local hrp = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not (me and hrp) then
+		if ringParts[1].Transparency < 1 then
+			for _, seg in ringParts do
+				seg.Transparency = 1
+			end
+		end
+		Guide.set("danger", nil)
+		return
+	end
+	local p = hrp.Position
+	local r = Vector2.new(me.pos.X - p.X, me.pos.Z - p.Z).Magnitude
+	local charging = me.state == "chase"
+	local pulse = 0.5 + 0.5 * math.sin(now * (charging and 18 or 6))
+	-- a dashed red ring on the water at the shark's distance (spinning slowly)
+	local segLen = 2 * math.pi * r / SEGMENTS * 0.6
+	for i, seg in ringParts do
+		local a = (i / SEGMENTS) * math.pi * 2 + now * 0.4
+		seg.Size = Vector3.new(segLen, 0.15, charging and 0.9 or 0.6)
+		seg.CFrame = CFrame.new(p.X + math.cos(a) * r, 0.2, p.Z + math.sin(a) * r) * CFrame.Angles(0, -a + math.pi / 2, 0)
+		seg.Transparency = (charging and 0.05 or 0.3) + pulse * 0.25
+	end
+	local safeAt = Layout.nearestSafe(p)
+	Guide.set("danger", safeAt + Vector3.new(0, 2, 0), "SAFE!")
+end
+
 RunService.RenderStepped:Connect(function(dt)
 	local now = os.clock()
 	for _, sh in sharks do
@@ -303,7 +376,7 @@ RunService.RenderStepped:Connect(function(dt)
 		else
 			-- extrapolate the last snapshot, then ease toward it
 			local ahead = math.min(now - sh.lastSnap, 0.2)
-			local spd = sh.state == "chase" and (sh.extra and 0 or 1) or 0.6
+			local spd = ({ chase = Config.Shark.chargeMult, circle = 0.3, leave = 0.7 } :: any)[sh.state] or 0
 			local fwd = Vector3.new(-math.sin(sh.targetYaw), 0, -math.cos(sh.targetYaw))
 			local goal = sh.targetPos + fwd * ahead * spd * (Config.zoneAt(sh.targetPos.Z) or Config.Zones[1]).sharkSpeed
 			local a = 1 - math.exp(-dt * 12)
@@ -316,8 +389,9 @@ RunService.RenderStepped:Connect(function(dt)
 		animate(sh, dt, now)
 		local fin = sh.pos + Vector3.new(-math.sin(sh.yaw), 0, -math.cos(sh.yaw)) * sh.L * 0.1
 		sh.wake.CFrame = CFrame.new(fin.X, 0.15, fin.Z) * CFrame.Angles(0, sh.yaw, 0)
-		sh.wakeEmitter.Enabled = sh.state ~= "leave" or sh.sinkT < 0.5
+		sh.wakeEmitter.Enabled = sh.sinkT < 0.5 or not (sh.state == "leave" or sh.dived)
 	end
+	updateDanger(now)
 end)
 
 ----------------------------------------------------------------- server feed
@@ -336,7 +410,7 @@ Remotes.get("Sharks").OnClientEvent:Connect(function(list)
 		sh.targetYaw = yaw
 		sh.lastSnap = now
 		local state = STATE_NAMES[st] or "chase"
-		if state == "leave" and sh.state ~= "leave" then
+		if state == "leave" and sh.state ~= "leave" and not sh.dived then
 			sh.sinkT = 0
 		end
 		sh.state = state
@@ -350,8 +424,6 @@ Remotes.get("Sharks").OnClientEvent:Connect(function(list)
 end)
 
 ----------------------------------------------------------------- bites
-local eatenConn: RBXScriptConnection? = nil
-
 local function hideCharacter(hidden: boolean)
 	local char = player.Character
 	if not char then
@@ -364,67 +436,271 @@ local function hideCharacter(hidden: boolean)
 	end
 end
 
-local function eatenCinematic(sh: Shark?)
-	local cam = Workspace.CurrentCamera
-	Fx.bigWord("CHOMP!", UI.C.red, 1.1)
-	Fx.shake(6)
-	Fx.flash(Color3.fromRGB(255, 40, 60), 0.6, 0.2)
-	local tint = Instance.new("ColorCorrectionEffect")
-	tint.TintColor = Color3.fromRGB(255, 150, 160)
-	tint.Contrast = 0.2
-	tint.Parent = Lighting
-	hideCharacter(true)
-	if sh then
-		cam.CameraType = Enum.CameraType.Scriptable
-		local t0 = os.clock()
-		if eatenConn then
-			eatenConn:Disconnect()
-		end
-		eatenConn = RunService.RenderStepped:Connect(function()
-			local fwd = Vector3.new(-math.sin(sh.yaw), 0, -math.cos(sh.yaw))
-			local mouth = sh.pos + fwd * sh.L * 0.25 + Vector3.new(0, sh.L * 0.02, 0)
-			-- inside the mouth looking out past the teeth, closing in
-			local k = math.clamp((os.clock() - t0) / 0.9, 0, 1)
-			cam.CFrame = CFrame.lookAt(mouth - fwd * sh.L * 0.05 * k, mouth + fwd * 10 + Vector3.new(0, 2 - k * 4, 0))
-			cam.FieldOfView = 70 - k * 25
-		end)
+local function flat(v: Vector3): Vector3
+	return Vector3.new(v.X, 0, v.Z)
+end
+
+local CHOMP_AT = 0.42 -- seconds from the start of the leap to the jaws closing
+
+-- Everyone sees the bite: the shark bursts up out of the water, jaws wide,
+-- snaps shut on the spot and arcs back down into a dive.
+local function leap(sh: Shark, at: Vector3)
+	local L = sh.L
+	local p0 = sh.pos
+	local d = flat(at - p0)
+	local dir = d.Magnitude > 1 and d.Unit or Vector3.new(-math.sin(sh.yaw), 0, -math.cos(sh.yaw))
+	local p1 = flat(at) - dir * L * 0.3
+	local yaw = math.atan2(-dir.X, -dir.Z)
+	local t0 = os.clock()
+	local dur = 1.7
+	local chomped, splashed = false, false
+	Fx.splash(Vector3.new(p0.X, 0.5, p0.Z), math.clamp(L / 8, 1, 4))
+	sh.extra = {
+		update = function(s: Shark, dt: number, now: number)
+			local e = s.extra :: any
+			local t = now - t0
+			s.yaw = angleLerp(s.yaw, yaw, math.min(dt * 14, 1))
+			s.state = "chase"
+			if t < CHOMP_AT then
+				local k = t / CHOMP_AT
+				s.pos = p0:Lerp(p1, 1 - (1 - k) ^ 2)
+				e.y = math.sin(k * math.pi * 0.5) * L * 0.32
+				e.pitch = 0.55 - 0.3 * k
+				e.jaw = 0.95 * math.min(1, k * 2.5)
+			else
+				if not chomped then
+					chomped = true
+					Fx.splash(Vector3.new(at.X, 0.5, at.Z), math.clamp(L / 7, 1.2, 4))
+					Fx.ring(Vector3.new(at.X, 0.5, at.Z), Color3.fromRGB(255, 255, 255), L * 1.4)
+					Fx.sound("chomp", 0.9, 1.05, at)
+				end
+				local k = math.clamp((t - CHOMP_AT) / (dur - CHOMP_AT), 0, 1)
+				local tc = t - CHOMP_AT
+				s.pos = p1 + dir * L * 0.7 * k
+				e.y = L * 0.32 * (1 - k * 1.9)
+				e.pitch = 0.25 - 1.1 * k
+				e.jaw = tc < 0.07 and 0.95 * (1 - tc / 0.07) or 0.04 + 0.1 * math.abs(math.sin(tc * 16))
+				if k > 0.45 and not splashed then
+					splashed = true
+					Fx.splash(Vector3.new(s.pos.X, 0.5, s.pos.Z), math.clamp(L / 6, 1, 4))
+				end
+				if t >= dur then
+					-- hand back to the server feed, staying under water
+					s.extra = nil
+					s.dived = true
+					s.sinkT = 0.4
+				end
+			end
+		end,
+	}
+end
+
+----------------------------------------------------------------- the cutscene (victim only)
+-- ~2.8s, three shots: low side angle as it surges in, close on the jaws for
+-- the CHOMP (your pet gets pulled in), then a crane up as it dives. HUD hides,
+-- letterbox bars slide in, fade to black, you wash up on the beach.
+local cine = false
+local bars: { Frame } = {}
+local caption: TextLabel? = nil
+local black: Frame? = nil
+
+local function screenBits()
+	if #bars > 0 then
+		return
 	end
-	task.delay(Config.Shark.eatenTime - 0.15, function()
-		Fx.flash(Color3.new(0, 0, 0), 0.4, 0)
-	end)
-	task.delay(Config.Shark.eatenTime, function()
-		if eatenConn then
-			eatenConn:Disconnect()
-			eatenConn = nil
+	local screen = Fx.screen()
+	for i, y in { 0, 1 } do
+		bars[i] = UI.frame(screen, { Size = UDim2.fromScale(1, 0), Position = UDim2.fromScale(0, y), AnchorPoint = Vector2.new(0, y),
+			BackgroundColor3 = Color3.new(0, 0, 0), ZIndex = 40, Name = "Letterbox" })
+	end
+	caption = UI.outlined(bars[2], "", { Size = UDim2.new(0.8, 0, 0.5, 0), Position = UDim2.fromScale(0.5, 0.5), AnchorPoint = Vector2.new(0.5, 0.5), ZIndex = 41 })
+	black = UI.frame(screen, { Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 1, ZIndex = 45, Name = "Fade" })
+end
+
+local function setBars(on: boolean)
+	screenBits()
+	for _, b in bars do
+		TweenService:Create(b, TweenInfo.new(0.25, Enum.EasingStyle.Quad), { Size = UDim2.fromScale(1, on and 0.11 or 0) }):Play()
+	end
+	if not on and caption then
+		caption.Text = ""
+	end
+end
+
+local function fade(to: number, time: number)
+	screenBits()
+	TweenService:Create(black :: Frame, TweenInfo.new(time), { BackgroundTransparency = to }):Play()
+end
+
+local function eatenCinematic(sh: Shark?, at: Vector3, carried: { r: string, m: string? }?)
+	if cine then
+		return
+	end
+	cine = true
+	player:SetAttribute("Cinematic", true)
+	local cam = Workspace.CurrentCamera
+	cam.CameraType = Enum.CameraType.Scriptable
+	setBars(true)
+	local tint = Instance.new("ColorCorrectionEffect")
+	tint.Contrast = 0.12
+	tint.Saturation = 0.1
+	tint.Parent = Lighting
+
+	local L = sh and sh.L or 12
+	local origin = sh and sh.pos or (at + Vector3.new(0, 0, L))
+	local d = flat(at - origin)
+	local dir = d.Magnitude > 1 and d.Unit or Vector3.new(0, 0, -1)
+	local side = Vector3.new(dir.Z, 0, -dir.X)
+	if side.X * at.X > 0 then
+		side = -side -- keep the camera toward the middle of the lane, away from the walls
+	end
+	local up = Vector3.yAxis
+	local ground = Vector3.new(at.X, 0, at.Z)
+
+	local pet: Model? = nil
+	local petStart = ground + up * 5.6
+	if carried then
+		pet = Creatures.build(carried.r, carried.m, 1.1)
+		pet:PivotTo(CFrame.new(petStart))
+		pet.Parent = Workspace
+	end
+
+	local t0 = os.clock()
+	local total = Config.Shark.eatenTime
+	RunService:BindToRenderStep("SharkCinematic", Enum.RenderPriority.Camera.Value, function()
+		local t = os.clock() - t0
+		local head = ground + up * (L * 0.12)
+		if sh and sh.rig.model.Parent then
+			local e = sh.extra :: any
+			head = sh.pos + Vector3.new(-math.sin(sh.yaw), 0, -math.cos(sh.yaw)) * L * 0.4 + up * ((e and e.y or 0) - L * 0.02)
 		end
+		local camPos, look, fov
+		if t < CHOMP_AT then
+			-- shot 1: low over the water, side-on; it's coming
+			local k = t / CHOMP_AT
+			camPos = ground + side * (L * 0.9 + 9) + up * 2.2 - dir * (L * 0.35 + 3) + dir * (k * 3)
+			look = ground:Lerp(head, 0.45) + up * 1.5
+			fov = 58 - 8 * k
+		elseif t < 1.3 then
+			-- shot 2: tight on the jaws, pushing in
+			local k = (t - CHOMP_AT) / (1.3 - CHOMP_AT)
+			camPos = ground + side * (L * 0.45 + 5.5 - k * 1.5) + up * (L * 0.18 + 2.5) + dir * (L * 0.12)
+			look = head:Lerp(ground, 0.25)
+			fov = 40
+		else
+			-- shot 3: crane up and back as it dives
+			local k = math.clamp((t - 1.3) / (total - 1.3), 0, 1)
+			local e = 1 - (1 - k) ^ 3
+			camPos = ground - dir * (12 + L * 0.5) + side * 6 + up * (5 + 20 * e)
+			look = ground + dir * (L * 0.4) - up
+			fov = 55
+		end
+		cam.CFrame = CFrame.lookAt(camPos, look)
+		cam.FieldOfView = fov
+		local pm = pet
+		if pm and pm.Parent then
+			if t < CHOMP_AT then
+				-- your creature panics above you
+				pm:PivotTo(CFrame.new(petStart + up * math.sin(t * 20) * 0.25) * CFrame.Angles(0, t * 9, math.sin(t * 25) * 0.3))
+			else
+				-- ...and gets pulled into the jaws
+				local k = math.clamp((t - CHOMP_AT) / 0.28, 0, 1)
+				pm:PivotTo(CFrame.new(petStart:Lerp(head, k)) * CFrame.Angles(k * 4, t * 12, 0))
+				pm:ScaleTo(math.max(0.05, 1 - k * 0.95))
+				if k >= 1 then
+					pm:Destroy()
+				end
+			end
+		end
+	end)
+
+	task.delay(CHOMP_AT, function()
+		hideCharacter(true)
+		Fx.shake(5)
+		Fx.flash(Color3.fromRGB(255, 40, 60), 0.35, 0.35)
+		tint.TintColor = Color3.fromRGB(255, 190, 195)
+		Fx.bigWord("CHOMP!", UI.C.red, 0.9)
+		if caption then
+			caption.Text = carried and ("The shark ate your %s!"):format(Config.rarity(carried.r).species) or "The shark got you!"
+		end
+	end)
+	task.delay(total - 0.35, function()
+		fade(0, 0.3)
+	end)
+	task.delay(total + 0.05, function()
+		RunService:UnbindFromRenderStep("SharkCinematic")
 		cam.CameraType = Enum.CameraType.Custom
 		cam.FieldOfView = 70
+		setBars(false)
 		tint:Destroy()
 		hideCharacter(false)
+		if pet and pet.Parent then
+			pet:Destroy()
+		end
+		player:SetAttribute("Cinematic", false)
+		fade(1, 0.45)
+		cine = false
+	end)
+end
+
+----------------------------------------------------------------- shark events
+local function exclaim(sh: Shark)
+	local bb = Instance.new("BillboardGui")
+	bb.Size = UDim2.fromScale(math.max(4, sh.L * 0.35), math.max(4, sh.L * 0.35))
+	bb.StudsOffsetWorldSpace = Vector3.new(0, sh.L * 0.35 + 3, 0)
+	bb.AlwaysOnTop = true
+	bb.LightInfluence = 0
+	bb.Adornee = sh.wake
+	bb.Parent = sh.wake
+	local t = UI.outlined(bb, "!", { TextColor3 = UI.C.red, Font = UI.NUMFONT })
+	UI.pop(t, 2)
+	task.delay(0.9, function()
+		bb:Destroy()
 	end)
 end
 
 Remotes.get("SharkEvent").OnClientEvent:Connect(function(kind, data)
+	if kind == "charge" then
+		local sh = sharks[data.id]
+		if sh then
+			exclaim(sh)
+		end
+		if data.victim == player.UserId then
+			-- the turn: a quick FOV punch so you feel it lock on
+			Fx.shake(1.5)
+			Fx.flash(Color3.fromRGB(255, 40, 60), 0.3, 0.75)
+			local cam = Workspace.CurrentCamera
+			if cam.CameraType == Enum.CameraType.Custom then
+				cam.FieldOfView = 62
+				TweenService:Create(cam, TweenInfo.new(0.4, Enum.EasingStyle.Back), { FieldOfView = 70 }):Play()
+			end
+		end
+		return
+	end
 	if kind ~= "bite" then
 		return
 	end
 	local sh = sharks[data.id]
 	local at = Vector3.new(data.x, 0.5, data.z)
-	if sh then
-		sh.biteT = os.clock()
-	end
-	Fx.splash(at, sh and math.clamp(sh.L / 10, 0.8, 3) or 1.2)
-	Fx.ring(at, Color3.fromRGB(255, 255, 255), sh and sh.L * 1.2 or 16)
-	Fx.sound("chomp", 0.8, 1.1, at)
 	local char = player.Character
 	local hrp = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
-	if hrp and (hrp.Position - at).Magnitude < 60 then
-		Fx.shake(2)
-	end
-	if data.victim == player.UserId then
-		if data.result == "eaten" then
-			eatenCinematic(sh)
-		elseif data.result == "shield" then
+	if data.result == "eaten" then
+		if sh then
+			leap(sh, at)
+		end
+		if hrp and data.victim ~= player.UserId and (hrp.Position - at).Magnitude < 80 then
+			task.delay(CHOMP_AT, Fx.shake, 2)
+		end
+		if data.victim == player.UserId then
+			eatenCinematic(sh, at, data.r and { r = data.r, m = data.m } or nil)
+		end
+	elseif data.result == "shield" then
+		if sh then
+			sh.biteT = os.clock()
+		end
+		Fx.splash(at, sh and math.clamp(sh.L / 10, 0.8, 3) or 1.2)
+		Fx.sound("chomp", 0.8, 1.2, at)
+		if data.victim == player.UserId then
 			Fx.bigWord("🛡️ SHIELD!", UI.C.sky, 1)
 			Fx.ring(at, UI.C.sky, 30)
 			if hrp then

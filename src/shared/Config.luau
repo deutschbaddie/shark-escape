@@ -272,14 +272,20 @@ Config.Tank = {
 
 ----------------------------------------------------------------- sharks
 Config.Shark = {
-	cycle = 60, -- seconds between attacks
-	firstAttack = 45,
-	warning = 5,
-	hunt = 9,
-	spawnDistance = 58,
+	cycle = 90, -- seconds between attacks (calm time is most of it)
+	firstAttack = 75,
+	warning = 8, -- "SHARK INCOMING" countdown: time to get to sand
+	hunt = 18,
+	spawnDistance = 60,
+	-- a hunting shark circles you first (a tightening spiral), then charges
+	stalk = 5, -- seconds of circling before the charge
+	stalkRadius = 34,
+	stalkEnd = 15,
+	chargeMult = 1.35, -- charge speed vs the zone's shark speed
+	chargeGiveUp = 3.5, -- outran it? it goes back to circling
 	maxHunters = 24,
 	newPlayerGrace = 150, -- seconds before a brand-new player can be hunted
-	eatenTime = 1.4,
+	eatenTime = 2.8, -- length of the bite cutscene before you wash up
 }
 
 ----------------------------------------------------------------- rebirth

@@ -3,7 +3,7 @@
 ## 1. Loop and twist
 `Grab a sea creature bubble → carry it to your dock → it earns coins every second → buy a faster ride at the Ride Shop → reach deeper zones with rarer creatures`
 
-**Twist (from the subject):** every 60 seconds the shark attacks the whole server. Anyone still in open water gets hunted and loses the creature they're carrying. Sand and islands are safe, so every trip out is a risk you time.
+**Twist (from the subject):** every 90 seconds the shark attacks the whole server: an 8-second "SHARK INCOMING" warning, then a hunt. A shark picks out anyone still in open water and hunts them like a real one would. First it circles them in a tightening spiral for 5 seconds (red ring on the water, arrow to the nearest sand), then it charges. If it catches them, a ~3-second cutscene plays: the shark leaps, CHOMP, and the creature they were carrying gets eaten on screen. Sand and islands are always safe, so every trip out is a risk you time.
 
 Speed is the stat (+1 game): it climbs every second, faster with better rides. Zones are gated at round numbers: **100 · 500 · 1K · 5K · 25K**.
 
