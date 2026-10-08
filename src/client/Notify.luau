@@ -50,7 +50,7 @@ local centerBusy = false
 local takeoverOn = false
 
 local function suppressed(): boolean
-	return takeoverOn or player:GetAttribute("Cinematic") == true
+	return takeoverOn or player:GetAttribute("Cinematic") == true or player:GetAttribute("ViewingTank") == true
 end
 
 ----------------------------------------------------------------- build
@@ -408,11 +408,13 @@ function Notify.start()
 			swapBanner()
 		end
 	end)
-	player:GetAttributeChangedSignal("Cinematic"):Connect(function()
+	local function refresh()
 		swapBanner()
 		statusLabel.Visible = statusLabel.Visible and not suppressed()
 		pumpToasts()
-	end)
+	end
+	player:GetAttributeChangedSignal("Cinematic"):Connect(refresh)
+	player:GetAttributeChangedSignal("ViewingTank"):Connect(refresh)
 end
 
 return Notify

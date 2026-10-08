@@ -156,6 +156,7 @@ local function closeView()
 		viewGui = nil
 	end
 	player:SetAttribute("ViewingTank", false)
+	ProximityPromptService.Enabled = true
 end
 
 local function openView(plotIndex: number, title: string)
@@ -167,6 +168,7 @@ local function openView(plotIndex: number, title: string)
 	end
 	viewing = true
 	player:SetAttribute("ViewingTank", true)
+	ProximityPromptService.Enabled = false -- no prompt bubbles floating over the view
 	yaw, pitch, dist = 0, 0.12, 15
 
 	-- overlay: title, what it earns, how to leave

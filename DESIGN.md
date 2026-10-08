@@ -41,7 +41,7 @@ Rides: speed gain ×~1.35 per step (REVEX income step). Prices step ×~3.4 inste
 - Tank: 4 slots, buy up to 12 (250 → 4M coins). A creature that doesn't fit sells for 20 seconds of its income.
 - Index: 6 zones × 5 rarities. Each first discovery pays a one-time reward (coins plus speed).
 - Rebirth at 25K speed: resets speed, coins and rides, and gives a permanent ×1.5.
-- Offline: the tank earns 50% while you're away (max 6h), claimed on the Welcome Back screen.
+- Offline: the tank earns 30% while you're away (max 24h), claimed on the Welcome Back screen.
 
 ### Pacing (simulation: `python3 tools/balance/pacing.py`, perfectly efficient player)
 | Milestone | Median | REVEX target |

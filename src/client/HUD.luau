@@ -335,6 +335,7 @@ local function render(d: any)
 		local sq = boostSquares[key]
 		sq.holder.Visible = on
 		sq.timer.Text = timerText or ""
+		sq.holder.Size = UDim2.fromOffset(66, timerText and 84 or 62) -- no empty gap when there's no timer
 		if badge then
 			UI.badge(sq.button, badge)
 		end
