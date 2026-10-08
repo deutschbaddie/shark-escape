@@ -21,7 +21,7 @@ local Fx = require(script.Parent.Fx)
 local State = require(script.Parent.State)
 local Water = require(script.Parent.Water)
 local SharkView = require(script.Parent.SharkView)
-local Guide = require(script.Parent.Guide)
+local Travel = require(script.Parent.Travel)
 
 local HUD = {}
 local C = UI.C
@@ -59,8 +59,7 @@ HUD.atRideShop = nil :: (() -> boolean)?
 HUD.onRebirth = nil :: (() -> ())?
 
 function HUD.goToRideShop()
-	Guide.set("shop", Layout.RideShopPad + Vector3.new(0, 1, 0), "Ride Shop")
-	HUD.toast("🛟 Follow the arrow to the Ride Shop!", C.sky, 2.5)
+	Travel.go("Rides")
 end
 
 local function call(fn: (() -> ())?)
@@ -131,7 +130,7 @@ local function build()
 				HUD.goToRideShop()
 			end
 		else
-			call(HUD.onRides)
+			HUD.goToRideShop()
 		end
 	end, { Size = UDim2.new(0.66, -5, 0, 62), Position = UDim2.fromOffset(0, 88) })
 	local rl = rideBtn:FindFirstChild("Label") :: TextLabel
@@ -145,10 +144,10 @@ local function build()
 	UI.corner(rideFill, 3)
 	slotBtn = UI.button(bottom, "", C.sky, function()
 		local d = State.data
-		if d and d.slotPrice and d.coins >= d.slotPrice then
+		if d and d.slotPrice and d.coins >= d.slotPrice and HUD.atRideShop and HUD.atRideShop() then
 			State.action("buySlot")
 		else
-			call(HUD.onRides)
+			HUD.goToRideShop()
 		end
 	end, { Size = UDim2.new(0.34, -5, 0, 62), Position = UDim2.new(1, 0, 0, 88), AnchorPoint = Vector2.new(1, 0) })
 

@@ -12,7 +12,7 @@ local Rides = require(Shared.Rides)
 local Layout = require(Shared.Layout)
 local UI = require(script.Parent.UI)
 local State = require(script.Parent.State)
-local Guide = require(script.Parent.Guide)
+local Travel = require(script.Parent.Travel)
 
 local Shop = {}
 local C = UI.C
@@ -289,7 +289,7 @@ end
 -- close menus and point the guide beam at the Ride Shop
 function Shop.goToRideShop()
 	closeAll()
-	Guide.set("shop", Layout.RideShopPad + Vector3.new(0, 1, 0), "Ride Shop")
+	Travel.go("Rides")
 end
 function Shop.isOpen(): boolean
 	return open ~= nil and open.Parent ~= nil

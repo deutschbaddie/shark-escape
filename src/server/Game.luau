@@ -421,6 +421,11 @@ end
 
 actions.buySlot = function(s)
 	local price = Game.slotPrice(s)
+	local hrp = root(s.player)
+	if not (hrp and Layout.atRideShop(hrp.Position)) then
+		Game.notify(s.player, "rideShop", {})
+		return
+	end
 	if price and s.profile.coins >= price then
 		s.profile.coins -= price
 		s.profile.slots += 1

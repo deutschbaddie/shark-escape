@@ -346,8 +346,8 @@ Config.Images = {
 -- assets/icons. Upload IconsA.png and IconsB.png (Asset Manager > Import),
 -- paste the ids below. Until then every icon falls back to its emoji.
 Config.Icons = {
-	SheetA = "",
-	SheetB = "",
+	SheetA = "rbxassetid://118060098168308",
+	SheetB = "rbxassetid://72421449834580",
 	cells = {
 		Speed = { "A", 1 }, Coins = { "A", 2 }, Rides = { "A", 3 }, Index = { "A", 4 },
 		Shop = { "A", 5 }, Rebirth = { "A", 6 }, Shark = { "A", 7 }, Tank = { "A", 8 },
