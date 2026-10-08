@@ -600,7 +600,7 @@ local function buildPlot(i: number, cf: CFrame): Plot
 	local pcf = CFrame.new(Layout.padPos(cf)) * CFrame.new(0, 0.55, 0)
 	Build.cyl(m, 0.2, 7.4, pcf * CFrame.new(0, -0.03, 0), C(90, 240, 90), { Material = Enum.Material.Neon, Name = "PadRim", CastShadow = false })
 	local pad = Build.cyl(m, 0.4, 6.2, pcf * CFrame.new(0, 0.1, 0), C(50, 190, 70), { Name = "Pad" })
-	local padLabel = label(pad, Vector2.new(8, 2.4), Vector3.new(0, 3.2, 0), "💰 0", C(140, 255, 90), 90)
+	local padLabel = label(pad, Vector2.new(8, 2.4), Vector3.new(0, 5, 0), "💰 0", C(140, 255, 90), 90)
 	return { index = i, cf = cf, model = m, padLabel = padLabel, signLabel = sign, slots = slots, owner = nil }
 end
 

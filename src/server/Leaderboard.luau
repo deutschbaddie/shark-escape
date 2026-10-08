@@ -48,9 +48,10 @@ local function render(rows: { { id: number, value: number } })
 		local row = board:FindFirstChild("Row" .. i)
 		local r = rows[i]
 		if row then
-			row.Rank.Text = r and ("#" .. i) or ""
-			row.Name.Text = r and nameOf(r.id) or ""
-			row.Value.Text = r and ("⚡ " .. short(r.value)) or ""
+			-- FindFirstChild: row.Name would be the row's own Name property
+			(row:FindFirstChild("Rank") :: TextLabel).Text = r and ("#" .. i) or ""
+			(row:FindFirstChild("Name") :: TextLabel).Text = r and nameOf(r.id) or ""
+			(row:FindFirstChild("Value") :: TextLabel).Text = r and ("⚡ " .. short(r.value)) or ""
 		end
 	end
 end

@@ -11,6 +11,7 @@ local Bubbles = require(script.Bubbles)
 local Sharks = require(script.Sharks)
 local Market = require(script.Market)
 local Leaderboard = require(script.Leaderboard)
+local IconSheets = require(script.IconSheets)
 
 World.build()
 Market.start()
@@ -18,6 +19,7 @@ Game.start()
 Bubbles.start()
 Sharks.start()
 Leaderboard.start()
+IconSheets.start()
 
 Players.CharacterAutoLoads = true
 for _, p in Players:GetPlayers() do

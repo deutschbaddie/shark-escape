@@ -225,10 +225,37 @@ end
 
 -- One of the game's icons by name (Config.Icons). Draws from the uploaded
 -- sheet when its id is set, otherwise falls back to the emoji.
+-- Sheet ids can be typed as 123, "123" or "rbxassetid://123". If it was a
+-- decal id, the server swaps in the real image id (IconSheets.luau) via a
+-- ReplicatedStorage attribute; existing icons update when it arrives.
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local sheetImages: { [string]: { ImageLabel } } = { A = {}, B = {} }
+
+local function sheetId(which: string): string
+	local resolved = ReplicatedStorage:GetAttribute("IconSheet" .. which)
+	if typeof(resolved) == "string" and resolved ~= "" then
+		return resolved
+	end
+	local raw = tostring(Config.Icons["Sheet" .. which] or "")
+	local digits = raw:match("%d+")
+	return digits and ("rbxassetid://" .. digits) or ""
+end
+
+for _, which in { "A", "B" } do
+	ReplicatedStorage:GetAttributeChangedSignal("IconSheet" .. which):Connect(function()
+		local id = sheetId(which)
+		for _, img in sheetImages[which] do
+			if img.Parent then
+				img.Image = id
+			end
+		end
+	end)
+end
+
 function UI.icon(parent: Instance, name: string, props: { [string]: any }?): GuiObject
 	local icons = Config.Icons
 	local cell = icons.cells[name]
-	local sheet = cell and (cell[1] == "A" and icons.SheetA or icons.SheetB) or ""
+	local sheet = cell and sheetId(cell[1]) or ""
 	local obj: GuiObject
 	if cell and sheet ~= "" then
 		local img = Instance.new("ImageLabel")
@@ -237,6 +264,7 @@ function UI.icon(parent: Instance, name: string, props: { [string]: any }?): Gui
 		img.ImageRectSize = Vector2.new(256, 256)
 		img.ImageRectOffset = Vector2.new(((cell[2] - 1) % 4) * 256, math.floor((cell[2] - 1) / 4) * 256)
 		img.ScaleType = Enum.ScaleType.Fit
+		table.insert(sheetImages[cell[1]], img)
 		obj = img
 	else
 		local t = Instance.new("TextLabel")
