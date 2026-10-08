@@ -359,10 +359,10 @@ Config.Icons = {
 		Arrow = { "B", 13 }, MoneyBag = { "B", 14 }, Fish = { "B", 15 }, Island = { "B", 16 },
 	},
 	emoji = {
-		Speed = "⚡", Coins = "💰", Rides = "🛟", Index = "📖", Shop = "🛒", Rebirth = "🔁", Shark = "🦈", Tank = "🐟",
+		Speed = "⚡", Coins = "🪙", Rides = "🛟", Index = "📖", Shop = "🛒", Rebirth = "🔁", Shark = "🦈", Tank = "🐟",
 		Shield = "🛡️", Boost = "⏩", Potion = "🧪", Lock = "🔒", Gift = "🎁", Clock = "⏰", Trophy = "🏆", Sparkle = "✨",
-		X2Speed = "⚡", X2Coins = "💰", Magnet = "🧲", Clover = "🍀", BigTank = "🐟", Crown = "👑", GoldDuck = "🦆",
-		SharkBoard = "🏄", RainbowSki = "🌈", GoldBubble = "🫧", Chest = "🧰", Fin = "🦈", Arrow = "⬇️", MoneyBag = "💰",
+		X2Speed = "⚡", X2Coins = "🪙", Magnet = "🧲", Clover = "🍀", BigTank = "🐟", Crown = "👑", GoldDuck = "🦆",
+		SharkBoard = "🏄", RainbowSki = "🌈", GoldBubble = "🫧", Chest = "🧰", Fin = "🦈", Arrow = "⬇️", MoneyBag = "🪙",
 		Fish = "🐠", Island = "🏝️",
 	},
 }

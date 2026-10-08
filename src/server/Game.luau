@@ -609,7 +609,7 @@ function Game.leave(player: Player)
 	if s.plot then
 		s.plot.owner = nil
 		s.plot.signLabel.Text = "Empty Dock"
-		s.plot.padLabel.Text = "💰 0"
+		s.plot.padLabel.Text = "$0"
 		s.plot.slots:ClearAllChildren()
 		s.plot.model:SetAttribute("Owner", nil)
 	end
@@ -664,7 +664,7 @@ local function secondTick()
 			end
 		end
 		if s.plot then
-			s.plot.padLabel.Text = "💰 " .. formatShort(s.pending)
+			s.plot.padLabel.Text = "$" .. formatShort(s.pending)
 		end
 		if s.leaderSpeed then
 			s.leaderSpeed.Value = math.floor(p.speed)
@@ -699,7 +699,7 @@ local function fastTick()
 				local amount = s.pending
 				s.profile.coins += amount
 				s.pending = 0
-				plot.padLabel.Text = "💰 0"
+				plot.padLabel.Text = "$0"
 				Game.notify(s.player, "collect", { amount = amount })
 				s.dirty = true
 			end

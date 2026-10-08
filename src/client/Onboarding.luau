@@ -215,7 +215,7 @@ local function update()
 	end
 	if step == 2 and plot then
 		at, label = Layout.padPos(plot), "Collect!"
-		hint = "💰 Your tank makes coins. Step on the green pad!"
+		hint = "Your tank makes cash. Step on the green pad!"
 	end
 	if step == 3 then
 		at, label, hint = drillTick(pos)
@@ -236,7 +236,7 @@ local function update()
 			else
 				at, label = nearestBubble(pos), "Grab it!"
 			end
-			hint = ("💰 %s / %s coins for the %s"):format(UI.short(d.coins), UI.short(nxt.price), nxt.name)
+			hint = ("$%s / $%s for the %s"):format(UI.short(d.coins), UI.short(nxt.price), nxt.name)
 		end
 	end
 

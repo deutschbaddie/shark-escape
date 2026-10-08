@@ -310,7 +310,7 @@ local function render(d: any)
 	if math.floor(d.speed) ~= lastSpeed then
 		lastSpeed = math.floor(d.speed)
 	end
-	coinsLabel.Text = UI.short(d.coins)
+	coinsLabel.Text = "$" .. UI.short(d.coins)
 	local mult = Config.Rebirth.mult ^ d.rebirths
 	gainLabel.Text = ("⚡ +%s SPEED/S"):format(UI.short(d.gain))
 	tankLabel.Text = mult > 1 and ("x%s Rebirth"):format(string.format("%g", math.floor(mult * 100 + 0.5) / 100)) or ("🐟 %d/%d Tank"):format(#d.tank, d.slots)
@@ -325,7 +325,7 @@ local function render(d: any)
 		table.insert(extras, "🧪" .. UI.time(d.luckLeft))
 	end
 	if d.income > 0 then
-		table.insert(extras, ("💰+%s/s"):format(UI.short(d.income)))
+		table.insert(extras, ("+$%s/s"):format(UI.short(d.income)))
 	end
 	extrasLabel.Text = table.concat(extras, "   ")
 
@@ -370,7 +370,7 @@ local function render(d: any)
 		local afford = d.coins >= nxt.price
 		local here = HUD.atRideShop and HUD.atRideShop()
 		UI.setText(rideBtn, afford and (here and ("%s BUY %s!"):format(nxt.icon, nxt.name:upper()) or ("%s GET %s!"):format(nxt.icon, nxt.name:upper())) or ("%s %s"):format(nxt.icon, nxt.name))
-		ridePrice.Text = ("+%d/s  ·  💰 %s"):format(nxt.gain or 0, UI.short(nxt.price))
+		ridePrice.Text = ("+%d/s  ·  $%s"):format(nxt.gain or 0, UI.short(nxt.price))
 		rideFill.Size = UDim2.fromScale(math.clamp(d.coins / nxt.price, 0, 1), 1)
 		rideBtn.BackgroundColor3 = afford and C.green or C.gold
 		HUD.pulseRide(afford)
@@ -382,7 +382,7 @@ local function render(d: any)
 	end
 	if d.slotPrice then
 		slotBtn.Visible = true
-		UI.setText(slotBtn, ("🐟 +1 SLOT\n💰 %s"):format(UI.short(d.slotPrice)))
+		UI.setText(slotBtn, ("+1 SLOT\n$%s"):format(UI.short(d.slotPrice)))
 		slotBtn.BackgroundColor3 = d.coins >= d.slotPrice and C.green or C.sky
 	else
 		slotBtn.Visible = false
@@ -498,7 +498,7 @@ end
 
 handlers.indexClaim = function(d)
 	Fx.bigWord("📖 CLAIMED!", C.orange, 1)
-	HUD.toast(("+💰%s  +⚡%s"):format(UI.short(d.coins), UI.short(d.speed)), C.green, 3)
+	HUD.toast(("+$%s  +⚡%s"):format(UI.short(d.coins), UI.short(d.speed)), C.green, 3)
 	UI.pop(coinsLabel, 1.3)
 	UI.pop(speedLabel, 1.3)
 	Fx.sound("coin", 0.7)
@@ -510,22 +510,22 @@ handlers.deposit = function(d)
 	if data and data.plot > 0 then
 		local tank = Layout.tankPos(Layout.Plots[data.plot])
 		Fx.sparkle(tank + Vector3.new(0, 5, 0), r.color, 40)
-		Fx.popup3D(tank + Vector3.new(0, 10, 0), ("+%s 💰/s"):format(UI.short(d.v)), C.money, true)
+		Fx.popup3D(tank + Vector3.new(0, 10, 0), ("+$%s/s"):format(UI.short(d.v)), C.money, true)
 	end
 	if d.replaced then
-		HUD.toast(("Swapped out a %s (+%s 💰)"):format(Config.rarity(d.replaced).species, UI.short(d.sold or 0)), C.blue)
+		HUD.toast(("Swapped out a %s (+$%s)"):format(Config.rarity(d.replaced).species, UI.short(d.sold or 0)), C.blue)
 	end
 end
 
 handlers.sold = function(d)
-	HUD.toast(("Tank full! Sold %s for %s 💰"):format(Config.rarity(d.r).species, UI.short(d.sold)), C.blue)
+	HUD.toast(("Tank full! Sold %s for $%s"):format(Config.rarity(d.r).species, UI.short(d.sold)), C.blue)
 end
 
 handlers.collect = function(d)
 	local pos = myPos()
 	if pos then
 		Fx.confetti(pos, { C.money, C.gold })
-		Fx.popup3D(pos + Vector3.new(0, 5, 0), "+" .. UI.short(d.amount) .. " 💰", C.money, true)
+		Fx.popup3D(pos + Vector3.new(0, 5, 0), "+$" .. UI.short(d.amount), C.money, true)
 	end
 	Fx.sound("coin", 0.7)
 	UI.pop(coinsLabel, 1.35)

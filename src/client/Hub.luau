@@ -220,8 +220,8 @@ local function updateShowcase()
 	if nxt then
 		label.Text = ("%s %s"):format(nxt.icon, nxt.name)
 		local can = d.coins >= nxt.price
-		sub.Text = can and ("💰 %s  ·  +%d/s  ·  STEP ON THE PAD!"):format(UI.short(nxt.price), nxt.gain or 0)
-			or ("💰 %s  ·  +%d speed/sec"):format(UI.short(nxt.price), nxt.gain or 0)
+		sub.Text = can and ("$%s  ·  +%d/s  ·  STEP ON THE PAD!"):format(UI.short(nxt.price), nxt.gain or 0)
+			or ("$%s  ·  +%d speed/sec"):format(UI.short(nxt.price), nxt.gain or 0)
 		sub.TextColor3 = can and C.money or C.gold
 	else
 		label.Text = "🏆 Every ride owned!"

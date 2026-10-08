@@ -142,7 +142,7 @@ function Shop.openRides()
 		UI.outlined(slotCard, "More room = more coins", { Size = UDim2.new(1, -16, 0, 18), Position = UDim2.fromOffset(8, 136), TextColor3 = C.gold })
 		if d.slotPrice then
 			local can = d.coins >= d.slotPrice
-			UI.button(slotCard, ("+1 SLOT  💰%s"):format(UI.short(d.slotPrice)), can and C.green or C.gold, function()
+			UI.button(slotCard, ("+1 SLOT  $%s"):format(UI.short(d.slotPrice)), can and C.green or C.gold, function()
 				State.action("buySlot")
 			end, { Size = UDim2.new(1, -16, 0, 44), Position = UDim2.new(0, 8, 1, -52) })
 		end
@@ -183,14 +183,14 @@ function Shop.openRides()
 						Shop.goToRideShop()
 					end
 				else
-					btnText = (can and "BUY  💰" or "💰") .. UI.short(ride.price)
+					btnText = (can and "BUY  $" or "$") .. UI.short(ride.price)
 					btnColor = can and C.green or C.gold
 					onClick = function()
 						State.action("buyRide", ride.id)
 					end
 				end
 			else
-				btnText = "🔒 💰" .. UI.short(ride.price)
+				btnText = "🔒 $" .. UI.short(ride.price)
 			end
 			UI.button(f, btnText, btnColor, onClick, { Size = UDim2.new(1, -16, 0, 44), Position = UDim2.new(0, 8, 1, -52) })
 		end

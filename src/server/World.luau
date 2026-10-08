@@ -595,12 +595,17 @@ local function buildPlot(i: number, cf: CFrame): Plot
 	slots.Name = "Slots"
 	slots.Parent = m
 	local deck = m:FindFirstChild("Deck") :: BasePart
-	local sign = label(deck, Vector2.new(14, 3), (tcf * CFrame.new(0, 12, 0)).Position - deck.Position, "Empty Dock", nil, 140)
+	local sign = label(deck, Vector2.new(10, 2.2), (tcf * CFrame.new(0, 12, 0)).Position - deck.Position, "Empty Dock", nil, 140)
 	-- collect pad
 	local pcf = CFrame.new(Layout.padPos(cf)) * CFrame.new(0, 0.55, 0)
 	Build.cyl(m, 0.2, 7.4, pcf * CFrame.new(0, -0.03, 0), C(90, 240, 90), { Material = Enum.Material.Neon, Name = "PadRim", CastShadow = false })
 	local pad = Build.cyl(m, 0.4, 6.2, pcf * CFrame.new(0, 0.1, 0), C(50, 190, 70), { Name = "Pad" })
-	local padLabel = label(pad, Vector2.new(8, 2.4), Vector3.new(0, 5, 0), "💰 0", C(140, 255, 90), 90)
+	-- the label hangs off its own invisible anchor above the pad and draws on
+	-- top, so the deck and pad can never cover it
+	local anchor = Build.part(m, Vector3.new(0.2, 0.2, 0.2), CFrame.new(pad.Position + Vector3.new(0, 4.2, 0)), C(255, 255, 255),
+		{ Name = "PadSign", Transparency = 1, CanCollide = false, CanQuery = false, CanTouch = false, CastShadow = false })
+	local padLabel = label(anchor, Vector2.new(7, 2.2), Vector3.zero, "$0", C(140, 255, 90), 90);
+	(padLabel.Parent :: BillboardGui).AlwaysOnTop = true
 	return { index = i, cf = cf, model = m, padLabel = padLabel, signLabel = sign, slots = slots, owner = nil }
 end
 
