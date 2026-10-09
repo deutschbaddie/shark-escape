@@ -30,7 +30,7 @@ local Sharks = {}
 local SharkRemote = Remotes.get("Sharks")
 local EventRemote = Remotes.get("SharkEvent")
 
-local VARIANTS = { "Baby", "Hammerhead", "Tiger", "GreatWhite", "Mecha", "Megalodon" }
+local VARIANTS = { "Baby", "Hammerhead", "Tiger", "GreatWhite", "Mecha", "Megalodon", "Frost", "Magma", "King" }
 local VARIANT_INDEX = {}
 for i, v in VARIANTS do
 	VARIANT_INDEX[v] = i
@@ -41,6 +41,7 @@ local STATE = { charge = 1, circle = 2, leave = 3, bite = 4, stalk = 5, overshoo
 
 type Hunter = {
 	id: number,
+	aggro: number, -- the zone's shark aggression (Config zone.aggro)
 	variant: string,
 	length: number,
 	speed: number,
@@ -135,6 +136,7 @@ local function spawnHunter(s: Game.Session, second: boolean)
 	table.insert(hunters, {
 		id = nextId,
 		variant = zone.shark,
+		aggro = zone.aggro or 1,
 		length = zone.sharkLength,
 		speed = zone.sharkSpeed,
 		pos = start,
@@ -144,7 +146,8 @@ local function spawnHunter(s: Game.Session, second: boolean)
 		island = nil,
 		angle = math.atan2(rel.Z, rel.X),
 		radius = rel.Magnitude,
-		stalkTime = Config.Shark.stalk + (second and 1.8 or 0),
+		-- aggressive zones circle less before the first charge
+		stalkTime = Config.Shark.stalk / (zone.aggro or 1) + (second and 1.8 or 0),
 		timer = 0,
 		holdFor = 0,
 		from = start,
@@ -298,10 +301,11 @@ local function update(dt: number)
 					h.lastSpd, h.lastSpdAt = vNow, now
 				end
 				local _, _, range = Config.lunge(Game.walkSpeed(victim), h.length)
-				if h.timer >= cfg.lungeMinCharge and dist < range and lungeClear(h, victim) then
+				range *= h.aggro -- and leap from further out
+				if h.timer >= cfg.lungeMinCharge / h.aggro and dist < range and lungeClear(h, victim) then
 					startLunge(h, victim, root)
 				elseif h.timer > cfg.chargeGiveUp then
-					restalk(h, p, cfg.recircle)
+					restalk(h, p, cfg.recircle / h.aggro)
 				end
 			end
 		elseif h.state == "lunge" then
@@ -340,7 +344,7 @@ local function update(dt: number)
 			pushOutOfIslands(h)
 			if h.timer > 0.7 then
 				if alive and Game.huntable(s :: Game.Session) then
-					restalk(h, (hrp :: BasePart).Position, cfg.recircle)
+					restalk(h, (hrp :: BasePart).Position, cfg.recircle / h.aggro)
 				elseif alive then
 					lostTarget(h, hrp)
 				else

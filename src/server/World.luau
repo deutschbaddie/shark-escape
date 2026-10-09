@@ -700,6 +700,39 @@ local function buildDecor()
 				Props.spikeRock(deco, CFrame.new(x, 0, z) * CFrame.Angles(0, rng:NextNumber(0, 6), 0), rng:NextNumber(10, 22))
 			end
 			Props.jawArch(deco, CFrame.new(0, -2, zone.zEnd - 30), W * 0.8)
+		elseif zone.id == "Frozen" then
+			for _ = 1, 30 do
+				local x, z = laneXZ(zone)
+				Props.iceCrystal(deco, CFrame.new(x, floorY, z), rng:NextNumber(6, 14), rng)
+			end
+			for _ = 1, 10 do
+				for _, side in { -1, 1 } do
+					local x = side * rng:NextNumber(W / 2 + BANK_W + 30, W / 2 + BANK_W + 160)
+					Props.iceberg(deco, CFrame.new(x, 0, rng:NextNumber(zone.zStart, zone.zEnd)), rng:NextNumber(18, 40), rng)
+				end
+			end
+		elseif zone.id == "Volcano" then
+			for _ = 1, 22 do
+				local x, z = laneXZ(zone)
+				Props.vent(deco, CFrame.new(x, floorY, z), rng:NextNumber(8, 16))
+			end
+			for _ = 1, 4 do
+				for _, side in { -1, 1 } do
+					local x = side * rng:NextNumber(W / 2 + BANK_W + 60, W / 2 + BANK_W + 200)
+					Props.vent(deco, CFrame.new(x, -12, rng:NextNumber(zone.zStart, zone.zEnd)), rng:NextNumber(40, 70))
+				end
+			end
+		elseif zone.id == "Atlantis" then
+			for _ = 1, 40 do
+				local x, z = laneXZ(zone)
+				Props.column(deco, CFrame.new(x, floorY, z), rng:NextNumber(14, zone.depth - 4), rng:NextNumber() < 0.4)
+			end
+			for i = 1, 6 do
+				for _, side in { -1, 1 } do
+					local x = side * (W / 2 + BANK_W + 40 + (i % 3) * 30)
+					Props.column(deco, CFrame.new(x, -10, zone.zStart + zone.length * i / 7), rng:NextNumber(40, 60), i % 2 == 0)
+				end
+			end
 		end
 		-- scenery islands outside the corridor
 		for _ = 1, math.floor(zone.length / 200) do

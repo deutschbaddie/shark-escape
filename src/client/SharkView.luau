@@ -29,7 +29,7 @@ local TweenService = game:GetService("TweenService")
 local SharkView = {}
 
 local player = Players.LocalPlayer
-local VARIANTS = { "Baby", "Hammerhead", "Tiger", "GreatWhite", "Mecha", "Megalodon" }
+local VARIANTS = { "Baby", "Hammerhead", "Tiger", "GreatWhite", "Mecha", "Megalodon", "Frost", "Magma", "King" }
 -- wire codes from server Sharks.luau ("chase" = the charge)
 local STATE_NAMES = { "chase", "circle", "leave", "bite", "stalk", "overshoot", "lunge" }
 local BONES = { "Root", "Head", "Jaw", "Spine2", "Spine3", "Spine4", "Tail", "PecL", "PecR" }
@@ -86,8 +86,28 @@ local function yawOfDir(d: Vector3): number
 	return math.atan2(-d.X, -d.Z)
 end
 
+-- sharks of the zones past the Abyss reuse a real rig, tinted
+local LOOKS: { [string]: { base: string, tint: Color3 } } = {
+	Frost = { base = "GreatWhite", tint = Color3.fromRGB(185, 230, 255) },
+	Magma = { base = "Megalodon", tint = Color3.fromRGB(255, 120, 70) },
+	King = { base = "GreatWhite", tint = Color3.fromRGB(255, 205, 80) },
+}
+
+local function tint(model: Instance, color: Color3)
+	for _, d in model:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.Color = d.Color:Lerp(color, 0.6)
+		elseif d:IsA("SurfaceAppearance") then
+			pcall(function()
+				(d :: any).Color = color
+			end)
+		end
+	end
+end
+
 local function buildRig(variant: string, L: number): Rig
-	local template = findTemplate(variant)
+	local look = LOOKS[variant]
+	local template = findTemplate(variant) or (look and findTemplate(look.base))
 	if template then
 		local model: Model
 		if template:IsA("Model") then
@@ -95,6 +115,9 @@ local function buildRig(variant: string, L: number): Rig
 		else
 			model = Instance.new("Model")
 			template:Clone().Parent = model
+		end
+		if look and not findTemplate(variant) then
+			tint(model, look.tint)
 		end
 		local bones = {}
 		for _, d in model:GetDescendants() do

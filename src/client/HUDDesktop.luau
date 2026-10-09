@@ -335,19 +335,23 @@ local function render(d: any)
 	boost("Boost", d.boostLeft > 0, UI.timeWords(d.boostLeft))
 	boost("Luck", d.luckLeft > 0, UI.timeWords(d.luckLeft))
 
-	-- goal: next zone gate, or rebirth
+	-- goal: the next zone gate up to this run's rebirth target, then rebirth
+	local target = Config.rebirthSpeed(d.rebirths)
 	local gate = Config.nextGate(d.speed)
+	if gate and gate.gate > target then
+		gate = nil
+	end
 	if gate then
 		goalText.Text = ("%s   %s / %s"):format(gate.name, UI.short(d.speed), UI.short(gate.gate))
 		goalFill.Size = UDim2.fromScale(math.clamp(d.speed / gate.gate, 0.06, 1), 1) -- fill matches the numbers; never a sliver
 		goalFill.BackgroundColor3 = C.blue
 	else
-		local ready = d.speed >= Config.Rebirth.speed
-		goalText.Text = ready and "REBIRTH READY!" or ("Rebirth at %s speed"):format(UI.short(Config.Rebirth.speed))
-		goalFill.Size = UDim2.fromScale(math.clamp(d.speed / Config.Rebirth.speed, 0.06, 1), 1)
+		local ready = d.speed >= target
+		goalText.Text = ready and "REBIRTH READY!" or ("Rebirth at %s speed"):format(UI.short(target))
+		goalFill.Size = UDim2.fromScale(math.clamp(d.speed / target, 0.06, 1), 1)
 		goalFill.BackgroundColor3 = C.green
 	end
-	menuButtons.Rebirth.Visible = d.speed >= Config.Rebirth.speed
+	menuButtons.Rebirth.Visible = d.speed >= target
 	local shopOpen = d.playtime >= Config.SHOP_UNLOCK_SECONDS or d.rides.Duck == true
 	if shopOpen and not menuButtons.Shop.Visible then
 		menuButtons.Shop.Visible = true

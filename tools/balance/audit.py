@@ -16,20 +16,28 @@ then replace the guesses with real analytics after launch.
 """
 import json, math, random, statistics, sys
 
-ZONES = [  # id, gate, length, value
-    ("Lagoon", 0, 260, 1), ("Coral Reef", 100, 400, 5), ("Kelp Forest", 500, 560, 25),
-    ("Shipwreck Bay", 1000, 720, 120), ("Deep Blue", 5000, 1000, 600), ("The Abyss", 25000, 1400, 3000),
+ZONES = [  # id, gate, length, value, shark aggro
+    ("Lagoon", 0, 260, 1, 0.85), ("Coral Reef", 100, 400, 5, 1.3), ("Kelp Forest", 500, 560, 25, 1.25),
+    ("Shipwreck Bay", 1000, 720, 120, 1), ("Deep Blue", 5000, 1000, 600, 1), ("The Abyss", 25000, 1400, 3000, 1),
+    ("Frozen Sea", 60000, 1500, 15000, 1.1), ("Volcano Vents", 150000, 1600, 75000, 1.15), ("Lost City", 350000, 1800, 375000, 1.2),
 ]
 RIDES = [(0, 1), (30, 2), (500, 3), (2500, 4), (10000, 5), (40000, 7), (160000, 9), (600000, 12),
-         (2400000, 16), (9000000, 22), (35000000, 30), (130000000, 40)]
+         (2400000, 16), (9000000, 22), (70000000, 30), (200000000, 40),
+         (900000000, 55), (4000000000, 75), (18000000000, 100)]
 RIDE_NAMES = ["Pool Noodle", "Rubber Duck", "Inner Tube", "Boogie Board", "Surfboard", "Bathtub",
-              "Banana Boat", "Jet Ski", "Speedboat", "Dolphin", "Giant Donut", "Rocket Surfboard"]
+              "Banana Boat", "Jet Ski", "Speedboat", "Dolphin", "Giant Donut", "Rocket Surfboard",
+              "Hover Board", "Lava Jet", "Golden Comet"]
+REBIRTH_STEPS = [25000, 60000, 150000, 350000]
+
+
+def rebirth_speed(n):
+    return REBIRTH_STEPS[n] if n < len(REBIRTH_STEPS) else REBIRTH_STEPS[-1] * 2 ** (n - len(REBIRTH_STEPS) + 1)
 RAR = [("Common", 60, 1, 1), ("Uncommon", 25, 2.5, 2), ("Rare", 10, 6, 3), ("Epic", 4, 25, 4), ("Legendary", 1, 120, 5)]
 SLOT_PRICES = [400, 2000, 8000, 30000, 120000, 500000, 2000000, 8000000]
 LUCK, FRENZY_LUCK = 0.05, 0.30
 REBIRTH = 25000
 CYCLE, FIRST, WARN, HUNT = 80, 70, 5, 22
-OFFLINE_RATE, OFFLINE_HOURS = 0.1, 8
+OFFLINE_RATE, OFFLINE_HOURS = 0.07, 4
 
 PROFILES = {
     "ideal": dict(eff=1.35, idle=0.08, hide=0.55, eaten=0.10, first_catch=25, drill=22, drill_fail=0.15,
@@ -150,7 +158,7 @@ def simulate(profile, seed, minutes, sessions=None):
                 trip += left * 0.7  # wait it out on an island / the sand
             else:
                 luck += FRENZY_LUCK  # stays out for the luckier grabs
-                if rng.random() < P["eaten"]:
+                if rng.random() < min(0.9, P["eaten"] * z[4] ** 2):
                     eaten = True
                     trip += 4
         speed += RIDES[ride][1] * (1.5 ** rebirths) * trip
@@ -184,8 +192,8 @@ def simulate(profile, seed, minutes, sessions=None):
             c, s = index_reward(zi, ri)
             coins += c
             speed += s
-            if len(index) == 30:
-                mark("full Index (30/30)")
+            if len(index) == 5 * len(ZONES):
+                mark(f"full Index ({5 * len(ZONES)})")
         while ride + 1 < len(RIDES) and coins >= RIDES[ride + 1][0]:
             coins -= RIDES[ride + 1][0]
             ride += 1
@@ -201,16 +209,16 @@ def simulate(profile, seed, minutes, sessions=None):
         for i, zz in enumerate(ZONES):
             if speed >= zz[1] and i > 0:
                 mark(f"zone: {zz[0]}")
-        if speed >= REBIRTH and ride == len(RIDES) - 1:
+        if speed >= rebirth_speed(rebirths):
             mark("rebirth ready" if rebirths == 0 else f"rebirth {rebirths + 1} ready")
-            if rebirths < 5:
+            if rebirths < 6:
                 rebirths += 1
                 mark(f"rebirth {rebirths}")
                 speed, coins, ride = 0.0, 0.0, 0
         # Index hunting: once you've seen the Abyss, some trips go back to
         # older zones for the Legendaries you're missing
-        if len(index) >= 15:
-            mark(f"Index half (15/30)")
+        if len(index) >= 5 * len(ZONES) // 2:
+            mark("Index half")
     return ev
 
 

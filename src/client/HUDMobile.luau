@@ -545,8 +545,12 @@ local function render(d: any)
 	-- empty side columns fold away so the squares sit together
 	boostCol.Visible = d.shields > 0 or d.boostLeft > 0 or d.luckLeft > 0
 
-	-- goal: next zone gate, or rebirth
+	-- goal: the next zone gate up to this run's rebirth target, then rebirth
+	local target = Config.rebirthSpeed(d.rebirths)
 	local gate = Config.nextGate(d.speed)
+	if gate and gate.gate > target then
+		gate = nil
+	end
 	local frac
 	if gate then
 		zoneLabel.Text = gate.name
@@ -560,10 +564,10 @@ local function render(d: any)
 		frac = math.clamp(d.speed / gate.gate, 0.06, 1) -- fill matches the numbers; never a sliver
 		paintFill(goalFill, T.blue)
 	else
-		local ready = d.speed >= Config.Rebirth.speed
+		local ready = d.speed >= target
 		zoneLabel.Text = "Rebirth"
-		goalText.Text = ready and "REBIRTH READY!" or ("%s / %s"):format(UI.short(d.speed), UI.short(Config.Rebirth.speed))
-		frac = math.clamp(d.speed / Config.Rebirth.speed, 0.06, 1)
+		goalText.Text = ready and "REBIRTH READY!" or ("%s / %s"):format(UI.short(d.speed), UI.short(target))
+		frac = math.clamp(d.speed / target, 0.06, 1)
 		paintFill(goalFill, T.green)
 	end
 	UI.setBar(goalFill, frac)
@@ -575,7 +579,7 @@ local function render(d: any)
 	end
 	goalText.TextColor3 = near and UI.light(T.gold, 0.3) or T.white
 
-	menuButtons.Rebirth.Visible = d.speed >= Config.Rebirth.speed
+	menuButtons.Rebirth.Visible = d.speed >= target
 	local shopOpen = d.playtime >= Config.SHOP_UNLOCK_SECONDS or d.rides.Duck == true
 	if shopOpen and not menuButtons.Shop.Visible then
 		menuButtons.Shop.Visible = true

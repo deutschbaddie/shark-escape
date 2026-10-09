@@ -111,7 +111,7 @@ end
 
 function Hub.confirmRebirth()
 	local d = State.data
-	if not d or d.speed < Config.Rebirth.speed then
+	if not d or d.speed < Config.rebirthSpeed(d.rebirths) then
 		return
 	end
 	local now = Config.Rebirth.mult ^ d.rebirths
@@ -120,7 +120,15 @@ function Hub.confirmRebirth()
 		title = "Rebirth?",
 		icon = "Rebirth",
 		color = C.purple,
-		text = "Start over for a permanent speed gain boost.",
+		text = (function()
+			-- a new wake color at this rebirth? say so
+			for _, t in Config.WakeTiers do
+				if t.at == d.rebirths + 1 then
+					return ("Start over for a permanent speed boost and a %s wake."):format(t.name:lower())
+				end
+			end
+			return "Start over for a permanent speed gain boost."
+		end)(),
 		value = ("%s  →  %s"):format(multText(now), multText(nextMult)),
 		valueColor = C.gold,
 		primary = { text = "REBIRTH", color = C.green, fn = function()

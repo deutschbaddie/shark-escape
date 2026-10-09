@@ -159,6 +159,55 @@ function Props.spikeRock(parent: Instance, cf: CFrame, h: number)
 	return m
 end
 
+-- Frozen Sea: a studded iceberg (stacked blocks, white over pale blue)
+function Props.iceberg(parent: Instance, base: CFrame, size: number, rng: Random)
+	local m = Build.model("Iceberg", parent)
+	local layers = 4
+	for i = 0, layers - 1 do
+		local k = 1 - i / layers * 0.75
+		local w, h = size * k, size * 0.32
+		local cf = base * CFrame.new(rng:NextNumber(-1, 1) * size * 0.08, -size * 0.25 + h * (i + 0.5), 0) * CFrame.Angles(0, rng:NextNumber(-0.4, 0.4), 0)
+		Build.studs(Build.part(m, Vector3.new(w, h, w * rng:NextNumber(0.7, 1)), cf, i == layers - 1 and C(255, 255, 255) or C(200 + i * 15, 235, 255)), Build.ALL_FACES)
+	end
+	return m
+end
+
+-- Frozen Sea floor: a cluster of glowing ice crystals
+function Props.iceCrystal(parent: Instance, base: CFrame, h: number, rng: Random)
+	local m = Build.model("IceCrystal", parent)
+	for i = 1, 3 do
+		local hh = h * rng:NextNumber(0.5, 1)
+		Build.part(m, Vector3.new(hh * 0.25, hh, hh * 0.25), base * CFrame.Angles(rng:NextNumber(-0.4, 0.4), i * 2, rng:NextNumber(-0.4, 0.4)) * CFrame.new(0, hh / 2, 0),
+			C(170, 230, 255), { Material = Enum.Material.Glass, Transparency = 0.25 })
+	end
+	return m
+end
+
+-- Volcano Vents: a dark rock cone with a glowing lava mouth
+function Props.vent(parent: Instance, base: CFrame, h: number)
+	local m = Build.model("Vent", parent)
+	local rock, rock2, lava = C(50, 38, 38), C(70, 52, 48), C(255, 110, 30)
+	for i = 0, 2 do
+		local w = h * (0.9 - i * 0.25)
+		Build.studs(Build.part(m, Vector3.new(w, h / 3, w), base * CFrame.new(0, h / 6 + i * h / 3, 0) * CFrame.Angles(0, i * 0.5, 0), i % 2 == 0 and rock or rock2), Build.ALL_FACES)
+	end
+	Build.part(m, Vector3.new(h * 0.3, 0.6, h * 0.3), base * CFrame.new(0, h + 0.2, 0), lava, { Material = Enum.Material.Neon })
+	return m
+end
+
+-- Lost City: a marble column with a gold cap (sometimes broken off)
+function Props.column(parent: Instance, base: CFrame, h: number, broken: boolean)
+	local m = Build.model("Column", parent)
+	local marble, gold = C(240, 235, 220), C(255, 205, 60)
+	Build.studs(Build.part(m, Vector3.new(h * 0.3, h * 0.06, h * 0.3), base * CFrame.new(0, h * 0.03, 0), marble), Build.ALL_FACES)
+	local shaft = broken and h * 0.55 or h * 0.88
+	Build.cyl(m, shaft, h * 0.2, base * CFrame.new(0, h * 0.06 + shaft / 2, 0), marble)
+	if not broken then
+		Build.studs(Build.part(m, Vector3.new(h * 0.3, h * 0.06, h * 0.3), base * CFrame.new(0, h * 0.97, 0), gold), Build.ALL_FACES)
+	end
+	return m
+end
+
 -- giant fossil jaw arch at the end of the Abyss
 function Props.jawArch(parent: Instance, cf: CFrame, width: number)
 	local m = Build.model("MegalodonJaw", parent)

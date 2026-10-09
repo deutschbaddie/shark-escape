@@ -38,6 +38,7 @@ export type Zone = {
 	floor: Enum.Material,
 	floorColor: Color3,
 	tint: Color3,
+	aggro: number?, -- shark aggression (1 = normal): >1 circles less, lunges from further
 	zStart: number,
 	zEnd: number,
 	index: number,
@@ -47,15 +48,15 @@ Config.Zones = {
 	{ id = "Lagoon", name = "Lagoon", gate = 0, length = 260, depth = 7, shark = "Baby", sharkLength = 8,
 		sharkSpeed = 44, value = 1, islandEvery = 70, islandRadius = 11,
 		water = Color3.fromRGB(40, 222, 226), clarity = 0.92, floor = Enum.Material.Sand,
-		floorColor = Color3.fromRGB(255, 240, 196), tint = Color3.fromRGB(255, 255, 255) },
+		floorColor = Color3.fromRGB(255, 240, 196), tint = Color3.fromRGB(255, 255, 255), aggro = 0.85 },
 	{ id = "Reef", name = "Coral Reef", gate = 100, length = 400, depth = 12, shark = "Hammerhead", sharkLength = 12,
 		sharkSpeed = 80, value = 5, islandEvery = 95, islandRadius = 10,
 		water = Color3.fromRGB(26, 196, 222), clarity = 0.85, floor = Enum.Material.Sandstone,
-		floorColor = Color3.fromRGB(246, 214, 170), tint = Color3.fromRGB(255, 250, 252) },
+		floorColor = Color3.fromRGB(246, 214, 170), tint = Color3.fromRGB(255, 250, 252), aggro = 1.3 },
 	{ id = "Kelp", name = "Kelp Forest", gate = 500, length = 560, depth = 18, shark = "Tiger", sharkLength = 14,
 		sharkSpeed = 102, value = 25, islandEvery = 120, islandRadius = 9,
 		water = Color3.fromRGB(24, 170, 170), clarity = 0.72, floor = Enum.Material.Mud,
-		floorColor = Color3.fromRGB(92, 128, 80), tint = Color3.fromRGB(244, 255, 246) },
+		floorColor = Color3.fromRGB(92, 128, 80), tint = Color3.fromRGB(244, 255, 246), aggro = 1.25 },
 	{ id = "Shipwreck", name = "Shipwreck Bay", gate = 1000, length = 720, depth = 26, shark = "GreatWhite", sharkLength = 18,
 		sharkSpeed = 140, value = 120, islandEvery = 150, islandRadius = 9,
 		water = Color3.fromRGB(20, 132, 190), clarity = 0.6, floor = Enum.Material.Ground,
@@ -68,6 +69,19 @@ Config.Zones = {
 		sharkSpeed = 300, value = 3000, islandEvery = 300, islandRadius = 8,
 		water = Color3.fromRGB(28, 34, 92), clarity = 0.3, floor = Enum.Material.Basalt,
 		floorColor = Color3.fromRGB(30, 26, 46), tint = Color3.fromRGB(236, 226, 255) },
+	-- past the Abyss: each rebirth's goal is one zone further (Config.rebirthSpeed)
+	{ id = "Frozen", name = "Frozen Sea", gate = 60000, length = 1500, depth = 40, shark = "Frost", sharkLength = 28,
+		sharkSpeed = 320, value = 15000, islandEvery = 260, islandRadius = 9, aggro = 1.1,
+		water = Color3.fromRGB(150, 215, 245), clarity = 0.55, floor = Enum.Material.Glacier,
+		floorColor = Color3.fromRGB(205, 235, 250), tint = Color3.fromRGB(235, 248, 255) },
+	{ id = "Volcano", name = "Volcano Vents", gate = 150000, length = 1600, depth = 50, shark = "Magma", sharkLength = 30,
+		sharkSpeed = 340, value = 75000, islandEvery = 280, islandRadius = 8, aggro = 1.15,
+		water = Color3.fromRGB(150, 60, 50), clarity = 0.35, floor = Enum.Material.CrackedLava,
+		floorColor = Color3.fromRGB(45, 30, 30), tint = Color3.fromRGB(255, 232, 220) },
+	{ id = "Atlantis", name = "Lost City", gate = 350000, length = 1800, depth = 60, shark = "King", sharkLength = 34,
+		sharkSpeed = 360, value = 375000, islandEvery = 300, islandRadius = 8, aggro = 1.2,
+		water = Color3.fromRGB(40, 190, 170), clarity = 0.5, floor = Enum.Material.Marble,
+		floorColor = Color3.fromRGB(235, 225, 200), tint = Color3.fromRGB(240, 255, 250) },
 } :: { Zone }
 
 do
@@ -147,8 +161,12 @@ Config.Rides = {
 	{ id = "JetSki", name = "Jet Ski", icon = "", price = 600000, gain = 12 },
 	{ id = "Speedboat", name = "Speedboat", icon = "", price = 2400000, gain = 16 },
 	{ id = "Dolphin", name = "Dolphin", icon = "", price = 9000000, gain = 22 },
-	{ id = "Donut", name = "Giant Donut", icon = "", price = 35000000, gain = 30 },
-	{ id = "Rocket", name = "Rocket Surfboard", icon = "", price = 130000000, gain = 40 },
+	{ id = "Donut", name = "Giant Donut", icon = "", price = 70000000, gain = 30 },
+	{ id = "Rocket", name = "Rocket Surfboard", icon = "", price = 200000000, gain = 40 },
+	-- past the Abyss
+	{ id = "Hover", name = "Hover Board", icon = "", price = 900000000, gain = 55 },
+	{ id = "LavaSki", name = "Lava Jet", icon = "", price = 4000000000, gain = 75 },
+	{ id = "Comet", name = "Golden Comet", icon = "", price = 18000000000, gain = 100 },
 	-- Robux rides: never skip the ladder, they multiply it.
 	{ id = "GoldDuck", name = "Golden Duck", icon = "", price = 0, robux = "GoldDuck", mult = 1.25 },
 	{ id = "SharkBoard", name = "Shark Board", icon = "", price = 0, robux = "SharkBoard", mult = 1.5 },
@@ -196,6 +214,9 @@ Config.RideFeel = {
 Config.RideFeel.GoldDuck = Config.RideFeel.Duck
 Config.RideFeel.SharkBoard = { stance = "stand", accel = 0.6, coast = 1.4, turn = 3.6, grip = 4.5, lean = 0.6, bob = 0.15, bobSpeed = 2.5, plane = 0.06 }
 Config.RideFeel.RainbowSki = Config.RideFeel.JetSki
+Config.RideFeel.Hover = { stance = "stand", accel = 0.25, coast = 1.1, turn = 3.6, grip = 5.5, lean = 0.5, bob = 0.3, bobSpeed = 1.6, plane = 0.12 }
+Config.RideFeel.LavaSki = { stance = "straddle", accel = 0.3, coast = 1.0, turn = 4.4, grip = 3, lean = 0.6, bob = 0.16, bobSpeed = 4, plane = 0.14 }
+Config.RideFeel.Comet = { stance = "stand", accel = 0.2, coast = 0.9, turn = 3.4, grip = 5.5, lean = 0.5, bob = 0.12, bobSpeed = 6, plane = 0.12 }
 
 function Config.feel(rideId: string?): RideFeel
 	return Config.RideFeel[rideId or "Noodle"] or Config.RideFeel.Noodle
@@ -266,6 +287,27 @@ Config.Species = {
 		Rare = { name = "Vampire Squid", kind = "ceph", icon = "", c1 = RGB(90, 20, 40), c2 = RGB(255, 60, 90), glow = true },
 		Epic = { name = "Megalodon Pup", kind = "whale", icon = "", c1 = RGB(110, 130, 160), c2 = RGB(235, 240, 250), fin = true },
 		Legendary = { name = "Kraken", kind = "ceph", icon = "", c1 = RGB(60, 20, 70), c2 = RGB(255, 80, 200), glow = true, size = 1.12 },
+	},
+	Frozen = {
+		Common = { name = "Ice Cod", kind = "fish", icon = "", c1 = RGB(170, 210, 240), c2 = RGB(245, 250, 255), c3 = RGB(60, 90, 130) },
+		Uncommon = { name = "Snow Crab", kind = "crab", icon = "", c1 = RGB(240, 140, 120), c2 = RGB(255, 245, 240), long = true },
+		Rare = { name = "Frost Jelly", kind = "jelly", icon = "", c1 = RGB(150, 230, 255), c2 = RGB(235, 250, 255), glow = true },
+		Epic = { name = "Walrus Ray", kind = "ray", icon = "", c1 = RGB(110, 150, 190), c2 = RGB(240, 248, 255) },
+		Legendary = { name = "Ice Narwhal", kind = "whale", icon = "", c1 = RGB(200, 235, 255), c2 = RGB(255, 255, 255), horn = true, glow = true, size = 1.1 },
+	},
+	Volcano = {
+		Common = { name = "Ember Fish", kind = "fish", icon = "", c1 = RGB(255, 90, 30), c2 = RGB(255, 210, 60), c3 = RGB(40, 20, 20) },
+		Uncommon = { name = "Lava Crab", kind = "crab", icon = "", c1 = RGB(60, 40, 40), c2 = RGB(255, 120, 30), shell = true },
+		Rare = { name = "Magma Puffer", kind = "puffer", icon = "", c1 = RGB(255, 110, 40), c2 = RGB(255, 220, 120), glow = true },
+		Epic = { name = "Cinder Squid", kind = "ceph", icon = "", c1 = RGB(50, 30, 35), c2 = RGB(255, 100, 40), glow = true, long = true },
+		Legendary = { name = "Fire Serpent", kind = "serpent", icon = "", c1 = RGB(255, 70, 20), c2 = RGB(255, 210, 60), horns = true, glow = true, size = 1.2 },
+	},
+	Atlantis = {
+		Common = { name = "Gold Tetra", kind = "fish", icon = "", c1 = RGB(255, 205, 60), c2 = RGB(255, 245, 200), c3 = RGB(40, 120, 120) },
+		Uncommon = { name = "Royal Seahorse", kind = "seahorse", icon = "", c1 = RGB(120, 220, 210), c2 = RGB(255, 215, 90) },
+		Rare = { name = "Pearl Turtle", kind = "turtle", icon = "", c1 = RGB(235, 240, 245), c2 = RGB(200, 170, 220) },
+		Epic = { name = "Temple Ray", kind = "ray", icon = "", c1 = RGB(30, 140, 130), c2 = RGB(255, 215, 90), glow = true },
+		Legendary = { name = "Poseidon Whale", kind = "whale", icon = "", c1 = RGB(40, 170, 160), c2 = RGB(255, 225, 120), horn = true, glow = true, size = 1.25 },
 	},
 } :: any
 
@@ -516,7 +558,39 @@ function Config.freshTime(zoneId: string?): number
 end
 
 ----------------------------------------------------------------- rebirth
-Config.Rebirth = { speed = 25000, mult = 1.5 }
+-- Each rebirth asks for more speed: the first at The Abyss, then one zone
+-- further each time (Frozen Sea, Volcano Vents, Lost City), then x2 each.
+Config.Rebirth = { speed = 25000, mult = 1.5, steps = { 25000, 60000, 150000, 350000 } }
+function Config.rebirthSpeed(rebirths: number?): number
+	local n = (rebirths or 0) + 1
+	local steps = Config.Rebirth.steps
+	if n <= #steps then
+		return steps[n]
+	end
+	return steps[#steps] * 2 ^ (n - #steps)
+end
+
+-- your wake color shows how many times you've rebirthed (VIP: gold)
+Config.WakeTiers = {
+	{ at = 1, color = Color3.fromRGB(90, 230, 255), name = "Cyan" },
+	{ at = 2, color = Color3.fromRGB(110, 255, 120), name = "Green" },
+	{ at = 3, color = Color3.fromRGB(190, 110, 255), name = "Purple" },
+	{ at = 5, color = Color3.fromRGB(255, 90, 160), name = "Pink" },
+	{ at = 8, color = Color3.fromRGB(255, 70, 60), name = "Red" },
+}
+Config.VIP_WAKE = Color3.fromRGB(255, 205, 50)
+function Config.wakeColor(rebirths: number, vip: boolean?): Color3?
+	if vip then
+		return Config.VIP_WAKE
+	end
+	local c = nil
+	for _, t in Config.WakeTiers do
+		if rebirths >= t.at then
+			c = t.color
+		end
+	end
+	return c
+end
 
 ----------------------------------------------------------------- monetization
 -- Fill these in from Creator Dashboard after you create the passes/products.
@@ -615,7 +689,7 @@ end
 
 ----------------------------------------------------------------- offline
 -- Your tank keeps earning while you're away (at a slower rate, capped).
-Config.Offline = { rate = 0.1, maxHours = 8, minSeconds = 120 }
+Config.Offline = { rate = 0.07, maxHours = 4, minSeconds = 120 }
 
 -- what your tank makes per day while you're offline
 function Config.offlinePerDay(income: number): number
@@ -738,6 +812,8 @@ Config.Icons = {
 		SpeedPack0 = "Sneaker", SpeedPack1 = "Sneaker", SpeedPack2 = "Sneaker", SpeedPack3 = "Sneaker", SpeedPack4 = "Sneaker",
 		MoneyPack0 = "Cash", MoneyPack1 = "Cash", MoneyPack2 = "MoneyBag", MoneyPack3 = "MoneyBag", MoneyPack4 = "Chest",
 		Lagoon = "ZonePalm", Reef = "Coral", Kelp = "ZoneKelp", Shipwreck = "ZoneAnchor", Deep = "ZoneWhale", Abyss = "ZoneSquid",
+		-- (no art yet for these: upload ZoneIce / ZoneVolcano / ZoneTemple and add them to ids)
+		Frozen = "ZoneWhale", Volcano = "ZoneSquid", Atlantis = "Crown",
 	},
 	SheetA = "",
 	SheetB = "",

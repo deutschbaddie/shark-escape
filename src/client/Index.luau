@@ -117,7 +117,19 @@ function Index.open()
 		end
 
 		-- zone tabs
-		local tabs = UI.frame(body, { Size = UDim2.new(1, 0, 0, 56), Position = UDim2.fromOffset(0, 68), BackgroundTransparency = 1 })
+		-- (a sideways-scrolling row: 9 zones don't fit at a readable width)
+		local tabs = Instance.new("ScrollingFrame")
+		tabs.Size = UDim2.new(1, 0, 0, 62)
+		tabs.Position = UDim2.fromOffset(0, 66)
+		tabs.BackgroundTransparency = 1
+		tabs.BorderSizePixel = 0
+		tabs.ScrollingDirection = Enum.ScrollingDirection.X
+		tabs.AutomaticCanvasSize = Enum.AutomaticSize.X
+		tabs.CanvasSize = UDim2.new()
+		tabs.ScrollBarThickness = 4
+		tabs.ScrollBarImageColor3 = T.mute
+		tabs.ElasticBehavior = Enum.ElasticBehavior.Never
+		tabs.Parent = body
 		local tl = Instance.new("UIListLayout")
 		tl.FillDirection = Enum.FillDirection.Horizontal
 		tl.Padding = UDim.new(0, 8)
@@ -130,7 +142,7 @@ function Index.open()
 			local b = UI.button(tabs, zone.name, color, function()
 				zoneId = zone.id
 				render()
-			end, { Size = UDim2.new(1 / #Config.Zones, -7, 1, 0), LayoutOrder = i })
+			end, { Size = UDim2.fromOffset(132, 56), LayoutOrder = i })
 			local l = b:FindFirstChild("Label") :: TextLabel
 			l.Size = UDim2.new(1, -12, 0, 22)
 			l.Position = UDim2.new(0.5, 0, 0, 5)
@@ -139,6 +151,9 @@ function Index.open()
 			UI.label(b, "meta", reached and ("%d / %d"):format(c, #Config.Rarities) or ("%s speed"):format(UI.short(zone.gate)), {
 				Size = UDim2.new(1, -12, 0, 17), Position = UDim2.new(0.5, 0, 0, 28), AnchorPoint = Vector2.new(0.5, 0), ZIndex = b.ZIndex + 1,
 				TextColor3 = (c == #Config.Rarities and UI.C.money) or (active and T.white) or T.mute })
+			if active then
+				tabs.CanvasPosition = Vector2.new(math.max(0, (i - 3) * 140), 0) -- keep the open tab in view
+			end
 		end
 
 		-- the zone's creatures

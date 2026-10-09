@@ -228,6 +228,9 @@ Game.short = formatShort
 ----------------------------------------------------------------- state sync
 function Game.push(s: Session)
 	local p = s.profile
+	-- everyone's client colors your wake from these (rebirth tier / VIP gold)
+	s.player:SetAttribute("Rebirths", p.rebirths)
+	s.player:SetAttribute("VIP", s.passes.VIP == true)
 	local mult = Game.coinMult(s)
 	local list = table.create(#p.creatures)
 	for _, c in p.creatures do
@@ -731,7 +734,7 @@ end
 
 actions.rebirth = function(s)
 	local p = s.profile
-	if p.speed < Config.Rebirth.speed then
+	if p.speed < Config.rebirthSpeed(p.rebirths) then
 		return
 	end
 	p.rebirths += 1

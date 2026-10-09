@@ -4,8 +4,8 @@
 --
 --   Onboarding (once per new player)  Joined -> In the water -> First catch ->
 --     In the tank -> First cash -> Shark drill -> First ride -> Coral Reef
---   Zones (every rebirth run)         Lagoon -> Coral Reef -> ... -> The Abyss -> Rebirth
---   Rides (every rebirth run)         Pool Noodle -> Rubber Duck -> ... -> Rocket Surfboard
+--   Zones (every rebirth run)         Lagoon -> Coral Reef -> ... -> Lost City -> Rebirth
+--   Rides (every rebirth run)         Pool Noodle -> Rubber Duck -> ... -> Golden Comet
 --   Store (every Robux prompt)        Prompted -> Bought
 --   Economy  coins in (tank cash, Index, chest, codes) and out (rides, tank slots)
 --   Custom   SharkEaten, GateBlocked, Rebirth, DailyClaim, GroupChest, SessionMinutes

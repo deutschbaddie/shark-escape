@@ -30,7 +30,7 @@ Logged once per brand-new player.
 
 One session per rebirth run: player id plus rebirth number.
 
-Lagoon → Coral Reef → Kelp Forest → Shipwreck Bay → Deep Blue → The Abyss → Rebirth.
+Lagoon → Coral Reef → Kelp Forest → Shipwreck Bay → Deep Blue → The Abyss → Frozen Sea → Volcano Vents → Lost City → Rebirth. Each rebirth asks for one zone further (The Abyss, then Frozen Sea, Volcano Vents, Lost City), so later runs reach deeper steps.
 
 - **Target:** about 60% of runs that reach Kelp Forest should reach Shipwreck Bay.
 - A cliff before one zone means its speed gate is too high for the rides available by then.
@@ -39,7 +39,7 @@ Lagoon → Coral Reef → Kelp Forest → Shipwreck Bay → Deep Blue → The Ab
 
 ## 3. Rides: which purchase do players stall on?
 
-One session per run. The steps are the 12 coin rides in order; Robux rides aren't counted.
+One session per run. The steps are the 15 coin rides in order; Robux rides aren't counted.
 
 - **Target:** each step keeps 85%+ of the one before, up to the Jet Ski.
 - A sharp drop at one ride means its price jumps too far past what the tank earns at that point.

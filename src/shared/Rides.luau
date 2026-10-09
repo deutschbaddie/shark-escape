@@ -468,8 +468,7 @@ builders.Surf = function(m)
 	ell(m, Vector3.new(0.36, 0.34, 0.36), CFrame.new(0, DECK - 0.17 + 0.065, nose + 2.1), C(255, 210, 40))
 end
 
-builders.Rocket = function(m)
-	local navy, red, yel, steel = C(38, 42, 90), C(240, 50, 60), C(255, 200, 40), C(225, 228, 238)
+local function rocketBoard(m: Model, navy: Color3, red: Color3, yel: Color3, steel: Color3)
 	local tail, nose = surfboard(m, 8.4, 2.5, navy, red, yel)
 	-- red nose cone tip
 	ell(m, Vector3.new(0.9, 0.36, 1.3), CFrame.new(0, DECK - 0.15, nose + 0.6), red)
@@ -503,6 +502,33 @@ builders.Rocket = function(m)
 		end
 	end
 end
+
+builders.Rocket = function(m)
+	rocketBoard(m, C(38, 42, 90), C(240, 50, 60), C(255, 200, 40), C(225, 228, 238))
+end
+
+-- Golden Comet: the rocket board in gold and white, with a star on the nose
+builders.Comet = function(m)
+	rocketBoard(m, C(255, 205, 60), C(255, 255, 255), C(255, 120, 40), C(248, 248, 252))
+	for i = 0, 4 do
+		local a = i / 5 * math.pi * 2
+		wdg(m, Vector3.new(0.06, 0.5, 0.22), CFrame.new(0, DECK + 0.06, -1.7) * CFrame.Angles(math.pi / 2, 0, a) * CFrame.new(0, 0.25, 0), WHITE,
+			{ Material = Enum.Material.Neon })
+	end
+end
+
+-- Hover Board: a dark board on cyan neon rails, floating on glowing pads
+builders.Hover = function(m)
+	local body, glow = C(30, 34, 50), C(60, 230, 255)
+	local tail, nose = surfboard(m, 8.2, 2.4, body, glow, glow)
+	for _, z in { tail - 1.6, (tail + nose) / 2, nose + 1.6 } do
+		rod(m, Vector3.new(0, DECK - 0.44, z), Vector3.new(0, DECK - 0.4, z), 1.4, glow, { Material = Enum.Material.Neon, Transparency = 0.2 })
+	end
+	for _, s in { -1, 1 } do
+		blk(m, Vector3.new(0.12, 0.08, 3.4), CFrame.new(s * 0.98, DECK - 0.12, (tail + nose) / 2 + 0.4), glow, { Material = Enum.Material.Neon })
+	end
+end
+
 
 builders.SharkBoard = function(m)
 	local grey, belly, dark, gum = C(100, 130, 170), C(245, 247, 250), C(72, 95, 130), C(150, 25, 45)
@@ -632,6 +658,19 @@ end
 
 builders.RainbowSki = function(m)
 	jetSki(m, { C(235, 45, 55), C(255, 140, 30), C(255, 214, 40), C(70, 200, 80), C(40, 140, 255), C(150, 70, 230) }, WHITE)
+end
+
+-- Lava Jet: a black jet ski with a fiery hood and flames out the back
+builders.LavaSki = function(m)
+	jetSki(m, { C(40, 36, 40), C(255, 90, 20), C(255, 200, 50) }, C(255, 90, 20))
+	ell(m, Vector3.new(0.5, 0.5, 1.4), CFrame.new(0, -0.18, 4.7), C(255, 220, 120), { Material = Enum.Material.Neon })
+	local flame = ell(m, Vector3.new(0.8, 0.8, 2.2), CFrame.new(0, -0.18, 5.1), C(255, 110, 30), { Material = Enum.Material.Neon, Transparency = 0.35 })
+	local fire = Instance.new("Fire")
+	fire.Size = 3
+	fire.Heat = 0
+	fire.Color = C(255, 160, 40)
+	fire.SecondaryColor = C(255, 60, 30)
+	fire.Parent = flame
 end
 
 -- inflatable banana boat: a smooth curved yellow tube you sit astride,
@@ -816,7 +855,8 @@ Rides.FIT = {
 	Bathtub = knee(TUB_TOP + 0.19),
 	Boogie = Vector3.new(0, 0.3, 0),
 	Surf = Vector3.new(0, DECK, 0), Rocket = Vector3.new(0, DECK, 0), SharkBoard = Vector3.new(0, DECK, 0),
-	JetSki = SEAT, RainbowSki = SEAT, Banana = SEAT, Speedboat = SEAT, Dolphin = SEAT,
+	Hover = Vector3.new(0, DECK, 0), Comet = Vector3.new(0, DECK, 0),
+	JetSki = SEAT, RainbowSki = SEAT, Banana = SEAT, Speedboat = SEAT, Dolphin = SEAT, LavaSki = SEAT,
 } :: { [string]: Vector3 }
 
 function Rides.build(id: string): Model

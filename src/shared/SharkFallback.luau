@@ -14,6 +14,9 @@ local COLORS = {
 	GreatWhite = { C(106, 129, 153), C(246, 247, 249) },
 	Mecha = { C(155, 166, 179), C(221, 227, 234) },
 	Megalodon = { C(61, 73, 88), C(200, 206, 215) },
+	Frost = { C(170, 220, 245), C(250, 253, 255) },
+	Magma = { C(50, 36, 36), C(255, 120, 40) },
+	King = { C(220, 170, 40), C(255, 245, 210) },
 }
 
 function SharkFallback.build(variant: string, length: number): Model

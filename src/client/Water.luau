@@ -130,6 +130,36 @@ local function addRider(char: Model)
 	trail.FaceCamera = false
 	trail.Enabled = false
 	trail.Parent = hrp
+	-- wake color: rebirth tier, VIP gold; VIP also gets a tag over the head
+	local owner = Players:GetPlayerFromCharacter(char)
+	local function paintWake()
+		local rb = owner and owner:GetAttribute("Rebirths")
+		local vip = owner ~= nil and owner:GetAttribute("VIP") == true
+		local c = Config.wakeColor(typeof(rb) == "number" and rb or 0, vip)
+		trail.Color = ColorSequence.new(c or Color3.new(1, 1, 1))
+		trail.LightEmission = c and 0.6 or 0
+		spray.Color = ColorSequence.new(c and c:Lerp(Color3.new(1, 1, 1), 0.4) or Color3.fromRGB(210, 250, 255))
+		local head = char:FindFirstChild("Head")
+		local tag = head and head:FindFirstChild("VipTag")
+		if vip and head and not tag then
+			local bb = Instance.new("BillboardGui")
+			bb.Name = "VipTag"
+			bb.Size = UDim2.fromScale(2.6, 0.9)
+			bb.StudsOffsetWorldSpace = Vector3.new(0, 2.4, 0)
+			bb.LightInfluence = 0
+			bb.MaxDistance = 120
+			bb.Parent = head
+			local t = UI.outlined(bb, "VIP", { Size = UDim2.fromScale(1, 1), TextColor3 = Config.VIP_WAKE })
+			t.Font = UI.FONT
+		elseif not vip and tag then
+			tag:Destroy()
+		end
+	end
+	if owner then
+		paintWake()
+		owner:GetAttributeChangedSignal("Rebirths"):Connect(paintWake)
+		owner:GetAttributeChangedSignal("VIP"):Connect(paintWake)
+	end
 	local rider: Rider = {
 		char = char, hrp = hrp, hum = hum, foam = foam, spray = spray, trail = trail,
 		wasWet = false, joints = {}, jointsStale = true, animate = char:FindFirstChild("Animate") :: LocalScript?,
