@@ -909,6 +909,9 @@ function Sharks.start()
 				end
 			end
 			EventRemote:FireAllClients("clear", { next = calm })
+			if Game.onDawn then
+				task.spawn(Game.onDawn) -- (Treasure: a chest washes up)
+			end
 			task.wait(calm)
 		end
 	end)

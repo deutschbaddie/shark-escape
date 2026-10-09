@@ -40,8 +40,8 @@ function Treasure.start()
 				return
 			end
 			Guide.set("treasure", at, "Treasure")
-			Notify.banner("Treasure chest", { key = "treasure", color = GOLD, priority = 2, time = data.quiet and 3 or 6,
-				sub = ("Washed up in %s. First one there wins it!"):format(tostring(data.zone)) })
+			Notify.banner("Dawn treasure", { key = "treasure", color = GOLD, priority = 2, time = data.quiet and 3 or 6,
+				sub = ("A chest washed up in %s. First one there wins it!"):format(tostring(data.zone)) })
 			if not data.quiet then
 				Fx.sound("discover", 0.8)
 			end

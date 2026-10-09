@@ -1,6 +1,5 @@
 -- Dev chat commands for the game's developers only.
 --   /reset   wipe your own progress back to a brand-new save
---   /storm   start a Lucky Storm now (to test it)
 --   /event   start a 15 min Megalodon Hour now
 --   /boss    the boss Megalodon surfaces in your world now
 
@@ -8,7 +7,6 @@ local Players = game:GetService("Players")
 local TextChatService = game:GetService("TextChatService")
 
 local Game = require(script.Parent.Game)
-local Storm = require(script.Parent.Storm)
 local Events = require(script.Parent.Events)
 local Sharks = require(script.Parent.Sharks)
 
@@ -33,9 +31,6 @@ local COMMANDS: { [string]: (Player) -> () } = {
 		if s then
 			Game.resetProfile(s)
 		end
-	end,
-	storm = function()
-		Storm.begin()
 	end,
 	event = function()
 		Events.force(15) -- a 15 min Megalodon Hour now ("admin abuse")

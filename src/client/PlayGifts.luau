@@ -46,7 +46,7 @@ local function tick()
 	end
 	local i = (d.gifts or 0) + 1
 	local g = Config.PlayGifts[i]
-	holder.Visible = g ~= nil
+	holder.Visible = g ~= nil and d.tut >= 5 -- (not during the first-session guide: fewer buttons)
 	if not g then
 		return
 	end

@@ -47,15 +47,14 @@ export type Session = {
 	portalAt: number?, -- last portal use
 	gifts: number?, -- playtime gifts claimed this session
 	bag: { Data.Creature }?, -- extra catches in your net (s.carrying is the one in your hands)
-	chains: { [number]: number }?, -- slalom cooldowns
 	ringSeen: { [number]: number }?, -- when you last passed each ring
 }
 
 Game.sessions = {} :: { [Player]: Session }
 Game.frenzy = false -- set by Sharks while a hunt is on
-Game.storm = false -- set by Storm while a Lucky Storm is on
 Game.event = false -- set by Events during Megalodon Hour
 Game.questList = nil :: ((Session) -> { any })? -- set by Quests
+Game.onDawn = nil :: (() -> ())? -- set by Treasure (Sharks calls it every dawn)
 -- set by Sharks: has this player used up their shelter on this island?
 Game.islandExposed = nil :: ((Session, Layout.Island) -> boolean)?
 
@@ -212,9 +211,6 @@ function Game.luck(s: Session): number
 	end
 	if Game.frenzy then
 		l += Config.Shark.frenzyLuck -- the shark is out: rarer catches for the brave
-	end
-	if Game.storm then
-		l += Config.Storm.luck
 	end
 	if Game.event then
 		l = math.min(l * Config.Event.luckMult, 0.85) -- Megalodon Hour: x3
@@ -948,47 +944,6 @@ actions.ring = function(s, i, retried)
 	s.profile.speed += amount
 	s.dirty = true
 	Game.notify(s.player, "ring", { amount = amount, i = i })
-end
-
--- slalom done: the client saw every hoop of chain c in order; check the
--- server saw you pass the last one recently, then pay 30 s of speed gain
-actions.chain = function(s, c)
-	if typeof(c) ~= "number" then
-		return
-	end
-	-- every hoop of the slalom, in order, within 25 s, the last one just now
-	local steps = {}
-	for i, info in Layout.Chain do
-		if info.chain == c then
-			steps[info.step] = i
-		end
-	end
-	local seen = s.ringSeen or {}
-	local now = os.clock()
-	local last = steps[Layout.CHAIN_LEN]
-	if not last or now - (seen[last] or -100) > 3 then
-		return
-	end
-	local t0 = seen[steps[1] or -1]
-	if not t0 or now - t0 > 25 then
-		return
-	end
-	for k = 2, Layout.CHAIN_LEN do
-		local a, b = seen[steps[k - 1] or -1], seen[steps[k] or -1]
-		if not (a and b and b >= a) then
-			return
-		end
-	end
-	s.chains = s.chains or {}
-	local chains = s.chains :: { [number]: number }
-	if os.clock() - (chains[c] or -100) < 60 then
-		return
-	end
-	chains[c] = os.clock()
-	local amount = math.max(5, math.floor(Game.gain(s) * 30))
-	s.profile.speed += amount
-	s.dirty = true
-	Game.notify(s.player, "chain", { amount = amount })
 end
 
 -- zone warp (the signpost on the sand): to the start of a zone you've unlocked

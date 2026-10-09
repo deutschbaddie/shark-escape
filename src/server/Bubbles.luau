@@ -49,7 +49,7 @@ function Bubbles.rollRarity(): string
 end
 
 function Bubbles.rollMutation(): string?
-	local mult = Game.storm and Config.Storm.mutations or 1
+	local mult = 1
 	for _, m in Config.Mutations do
 		if rng:NextNumber() < m.chance * mult then
 			return m.id

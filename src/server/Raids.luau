@@ -8,7 +8,8 @@
 --          takes Config.Raid.time seconds; they're alerted at once and stop
 --          it by getting back to their dock. Too slow, and you take one of
 --          their creatures (never their best) and carry it home.
--- Both only between players who've played a while (no new players).
+-- Chum: players who've played a while. Raids: after your first rebirth
+-- (raider and owner both).
 
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
@@ -35,6 +36,12 @@ local function veteran(s: Game.Session, minPlaytime: number): boolean
 	return s.profile.tut >= 5 and s.profile.playtime >= minPlaytime
 end
 
+-- raids are for players past their first rebirth (raider and owner both):
+-- new players learn the sea first
+local function raider(s: Game.Session): boolean
+	return veteran(s, Config.Raid.minPlaytime) and s.profile.rebirths >= 1
+end
+
 -- on the beach / plaza / their dock (not in the water, not on an island)
 local function home(s: Game.Session): boolean
 	local hrp = Game.root(s.player)
@@ -43,7 +50,7 @@ end
 
 -- why this tank can't be raided right now (nil = it can)
 local function guardedBy(s: Game.Session): string?
-	if not veteran(s, Config.Raid.minPlaytime) then
+	if not raider(s) then
 		return "new" -- (raids aren't a thing for them yet: no shield shown)
 	elseif s.profile.lockUntil > os.time() then
 		return "lock"
@@ -179,8 +186,10 @@ local function startRaid(s: Game.Session, plotIndex: any)
 	if (hrp.Position - tankPos(plot)).Magnitude > cfg.stayRadius then
 		return
 	end
-	if not veteran(s, cfg.minPlaytime) or not veteran(v, cfg.minPlaytime) then
-		return no("Raids unlock after 10 minutes of play")
+	if not raider(s) then
+		return no("Raids unlock after your first rebirth")
+	elseif not raider(v) then
+		return no("They're too new to raid")
 	end
 	if now - (raiderAt[s.player] or -1e9) < cfg.raiderCooldown then
 		return no("Catch your breath before the next raid")

@@ -1,6 +1,6 @@
--- Treasure chests: every few minutes a glowing chest washes up somewhere
--- in each world's ocean (only zones someone there can reach) with a beam of
--- light over it. Everyone in that world gets told; the first rider to reach
+-- Treasure chests: every dawn (the reward for surviving the night) a
+-- glowing chest washes up somewhere in each world's ocean (only zones
+-- someone there can reach) with a beam of light over it. Everyone in that world gets told; the first rider to reach
 -- it wins coins, speed and maybe a rare creature. Unclaimed, it sinks.
 
 local Players = game:GetService("Players")
@@ -16,7 +16,6 @@ local Bubbles = require(script.Parent.Bubbles)
 
 local Treasure = {}
 
-local EVERY = { 150, 240 } -- seconds between chests, per world
 local LIFE = 100 -- seconds before an unclaimed chest sinks
 local REACH = 9 -- studs from the chest to claim it
 local CREATURE_CHANCE = 0.3
@@ -147,14 +146,11 @@ function Treasure.start()
 	folder = Instance.new("Folder")
 	folder.Name = "Treasure"
 	folder.Parent = Workspace
-	for w in Config.Worlds do
-		task.spawn(function()
-			task.wait(rng:NextNumber(60, 120)) -- the first one comes early
-			while true do
-				spawn(w)
-				task.wait(rng:NextNumber(EVERY[1], EVERY[2]))
-			end
-		end)
+	Game.onDawn = function()
+		task.wait(3) -- (once the sun is up)
+		for w in Config.Worlds do
+			spawn(w)
+		end
 	end
 	Game.onWorld = function(s)
 		Treasure.tell(s.player)

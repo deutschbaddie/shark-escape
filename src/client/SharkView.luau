@@ -1112,6 +1112,11 @@ function SharkView.removeLocal(sh: any)
 	end
 end
 
+-- the escape snap on a local shark (the onboarding drill)
+function SharkView.snapLocal(sh: any, at: Vector3)
+	leap(sh, at, true)
+end
+
 function SharkView.biteLocal(sh: any)
 	sh.biteT = os.clock()
 	Fx.splash(sh.pos + Vector3.new(0, 0.5, 0), math.clamp(sh.L / 10, 0.8, 3))

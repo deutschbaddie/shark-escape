@@ -592,14 +592,6 @@ Config.Luck = {
 	pityEpic = 30, -- and the 30th is at least Epic (if you've never had one)
 }
 
--- Lucky Storm: a server-wide event every 10-16 minutes (server/Storm.luau)
-Config.Storm = {
-	every = { 600, 960 }, -- seconds between storms
-	duration = 75,
-	luck = 0.25, -- extra chance a grab bumps up a rarity
-	mutations = 3, -- mutation chances x3
-}
-
 Config.BUBBLES_PER_ZONE = 9
 Config.GRAB_RADIUS = 6.5
 Config.RIDE_GRAB_MAX = 3 -- rarity index up to which riding through a bubble grabs it (Rare)

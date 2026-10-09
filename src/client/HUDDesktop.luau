@@ -30,6 +30,7 @@ local Notify = require(script.Parent.Notify)
 local Shop = require(script.Parent.Shop)
 
 local HUD = {}
+local introSeen = false -- (this session started inside the guide)
 local C = UI.C
 local player = Players.LocalPlayer
 
@@ -363,6 +364,18 @@ local function render(d: any)
 		goalFill.BackgroundColor3 = C.green
 	end
 	menuButtons.Rebirth.Visible = d.speed >= target
+	-- fewer buttons at the start: during the first-session guide only Rides
+	-- and Tank; Index and Daily show up once it's done (with a badge)
+	local intro = d.tut < 5
+	if menuButtons.Index.Visible == intro then
+		menuButtons.Index.Visible = not intro
+		menuButtons.Daily.Visible = not intro
+		if not intro and introSeen then
+			UI.badge(menuButtons.Index)
+			UI.badge(menuButtons.Daily)
+		end
+	end
+	introSeen = introSeen or intro
 	local shopOpen = d.playtime >= Config.SHOP_UNLOCK_SECONDS or d.rides.Duck == true
 	if shopOpen and not menuButtons.Shop.Visible then
 		menuButtons.Shop.Visible = true

@@ -955,8 +955,7 @@ local function buildRings()
 	for i, p in Layout.Rings do
 		local m = Build.model("Ring" .. i, folder)
 		local cf = CFrame.new(p) * CFrame.Angles(math.pi / 2, 0, 0) -- stand the hoop up, facing the lane
-		local chain = Layout.Chain[i] ~= nil -- slalom hoops are cyan
-		Build.ring(m, Layout.RING_RADIUS, 0.9, cf, chain and C(60, 220, 255) or C(255, 210, 50), 14, C(255, 255, 255))
+		Build.ring(m, Layout.RING_RADIUS, 0.9, cf, C(255, 210, 50), 14, C(255, 255, 255))
 		for _, part in m:GetChildren() do
 			if part:IsA("BasePart") then
 				part.Material = Enum.Material.Neon

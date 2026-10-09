@@ -80,10 +80,10 @@ Make it back to the sand for a big payout.**
 - [x] The escape: hit the sand with your shark right behind you, it snaps
       at the waterline (slow-mo, splash wall) and you get +speed
 - [x] Bites spill your haul as bubbles anyone can grab for 40 s
-- [ ] First 2 minutes: first grab in 15 s, a scripted first chase you
+- [x] First 2 minutes: first grab in 15 s, a scripted first chase you
       always escape, the Rubber Duck in ~90 s
-- [ ] Fewer buttons at the start (3), the rest appear when they matter
-- [ ] Cut / merge: no Lucky Storm, no ring chains, chests wash up at dawn,
+- [x] Fewer buttons at the start (3), the rest appear when they matter
+- [x] Cut / merge: no Lucky Storm, no ring chains, chests wash up at dawn,
       raids after the first rebirth
 - [ ] Zone unlock is a physical moment (buoys light up, water shifts)
 - [ ] Playtest checklist (below)

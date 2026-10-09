@@ -181,7 +181,9 @@ local function raidTick()
 		local prompt = m:FindFirstChild("RaidTank", true)
 		if prompt and prompt:IsA("ProximityPrompt") then
 			local lock = m:GetAttribute("LockUntil")
+			local d = State.data
 			prompt.Enabled = typeof(owner) == "number" and owner ~= player.UserId
+				and d ~= nil and d.rebirths >= 1 -- (raids come after your first rebirth)
 				and not (typeof(lock) == "number" and lock > os.time()) -- (Tank Lock)
 				and m:GetAttribute("Guarded") == nil -- (owner is home)
 		end
