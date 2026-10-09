@@ -596,7 +596,7 @@ Config.Tank = {
 -- to show up. Luckier catches, two sharks every night, double coins. The
 -- plaza board counts down to it. Admins can start one now with /event.
 Config.Event = {
-	name = "MEGALODON HOUR",
+	name = "Megalodon Hour",
 	weekday = 7, -- os.date wday: 1 Sunday .. 7 Saturday
 	hour = 19, -- UTC (3 pm US Eastern, noon Pacific)
 	minutes = 60,

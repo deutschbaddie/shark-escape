@@ -6,9 +6,9 @@
 --
 -- Grab prompts also teach (Onboarding sets Prompts.setTeach):
 --   "tap"   the very first grab: no hold at all (local HoldDuration 0) and a
---           big pulsing "TAP!" / "PRESS E!"
---   "hold"  until your first held grab: "HOLD!" over a pulsing ghost ring;
---           letting go too early says "KEEP HOLDING!"
+--           big pulsing "Tap" / "Press E"
+--   "hold"  until your first held grab: "Hold" over a pulsing ghost ring;
+--           letting go too early says "Keep holding"
 
 local Players = game:GetService("Players")
 local ProximityPromptService = game:GetService("ProximityPromptService")
@@ -265,7 +265,7 @@ local function build(prompt: ProximityPrompt, inputType: Enum.ProximityPromptInp
 	local hintScale: UIScale? = nil
 	local idleText = ""
 	if teach then
-		idleText = teach == "tap" and (touch and "TAP!" or ("PRESS " .. key.Text .. "!")) or "HOLD!"
+		idleText = teach == "tap" and (touch and "Tap" or ("PRESS " .. key.Text .. "!")) or "Hold"
 		local h = Instance.new("TextLabel")
 		h.BackgroundTransparency = 1
 		h.Size = UDim2.fromOffset(240, 36)
@@ -342,9 +342,9 @@ local function build(prompt: ProximityPrompt, inputType: Enum.ProximityPromptInp
 		if hint and hintScale then
 			local pulse = 0.5 + 0.5 * math.sin(os.clock() * 7)
 			local warn = os.clock() < warnUntil
-			hint.Text = warn and "KEEP HOLDING!" or (holding and "KEEP HOLDING..." or idleText)
+			hint.Text = warn and "Keep holding" or (holding and "KEEP HOLDING..." or idleText)
 			hint.TextColor3 = warn and RED or GOLD
-			hintScale.Scale = holding and 1 or 1 + 0.12 * pulse
+			hintScale.Scale = 1 -- (no bouncing words: PLAN.md)
 			if ghost then
 				ghost.Transparency = holding and 1 or 0.35 + 0.45 * pulse
 			end

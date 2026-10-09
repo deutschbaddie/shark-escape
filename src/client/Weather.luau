@@ -79,7 +79,7 @@ local function run()
 		return
 	end
 	running = true
-	Notify.takeover("LUCKY STORM!", "Rarer catches and more mutations", COLOR, 2.2)
+	Notify.takeover("Lucky storm", "Rarer catches and more mutations", COLOR, 2.2)
 	setLook(true)
 	local nextFlash = os.clock() + 3
 	while left() > 0 do

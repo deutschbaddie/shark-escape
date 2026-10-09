@@ -3,7 +3,7 @@
 -- bone-by-bone in code (swim wave, menacing jaw, bite lunge, dive, breach).
 -- Missing imports fall back to a part-built shark so the game always runs.
 -- Also the shark-side cues: the lunge (red landing ring + the leap through
--- the air + "SWERVE!"), island shelter running out, and a carried creature
+-- the air + "Swerve"), island shelter running out, and a carried creature
 -- wriggling free.
 
 local Players = game:GetService("Players")
@@ -405,7 +405,7 @@ updateDanger = function(now: number)
 		seg.Transparency = r < 1 and 1 or (charging and 0.05 or 0.3) + pulse * 0.25
 	end
 	local safeAt = Layout.nearestSafe(p)
-	Guide.set("danger", safeAt + Vector3.new(0, 2, 0), "SAFE!")
+	Guide.set("danger", safeAt + Vector3.new(0, 2, 0), "Safe")
 end
 
 RunService.RenderStepped:Connect(function(dt)
@@ -664,7 +664,6 @@ local function eatenCinematic(sh: Shark?, at: Vector3, carried: { r: string, m: 
 		Fx.shake(5)
 		Fx.flash(Color3.fromRGB(255, 40, 60), 0.35, 0.35)
 		tint.TintColor = Color3.fromRGB(255, 190, 195)
-		Fx.bigWord("CHOMP!", UI.C.red, 0.9)
 		if caption then
 			caption.Text = carried and ("The shark ate your %s!"):format(Config.fullName(carried.z, carried.r, carried.m, carried.s)) or "The shark got you!"
 		end
@@ -956,7 +955,7 @@ Remotes.get("Notify").OnClientEvent:Connect(function(kind, d)
 	elseif kind == "escaped" then
 		escapeRun += 1
 		Notify.clear("fresh")
-		Notify.word("IT GOT AWAY!", UI.C.red, 1)
+		Notify.word("It got away", UI.C.red, 1)
 		Notify.toast(("Your %s slipped back into the sea"):format(creatureName(d)), UI.C.red)
 		local hrp = myRoot()
 		if hrp then
@@ -1028,7 +1027,7 @@ Remotes.get("SharkEvent").OnClientEvent:Connect(function(kind, data)
 			Fx.splash(Vector3.new(sh.pos.X, 0.5, sh.pos.Z), math.clamp(sh.L / 9, 1, 3))
 		end
 		if data.victim == player.UserId then
-			Fx.bigWord("DODGED!", UI.C.sky, 0.9)
+			Fx.bigWord("Dodged it", UI.C.sky, 0.9)
 			Fx.sound("splash", 0.6, 1.3)
 			Fx.sound("dodge", 0.8)
 		end
@@ -1060,7 +1059,7 @@ Remotes.get("SharkEvent").OnClientEvent:Connect(function(kind, data)
 		Fx.splash(at, sh and math.clamp(sh.L / 10, 0.8, 3) or 1.2)
 		Fx.sound("chomp", 0.8, 1.2, at)
 		if data.victim == player.UserId then
-			Fx.bigWord("SHIELD!", UI.C.sky, 1)
+			Fx.bigWord("Your shield took the bite", UI.C.sky, 1)
 			Fx.ring(at, UI.C.sky, 30)
 			if hrp then
 				local away = (hrp.Position - at) * Vector3.new(1, 0, 1)

@@ -32,7 +32,7 @@ local function tick()
 	local ends = Workspace:GetAttribute("EventEnds")
 	local nextAt = Workspace:GetAttribute("EventNext")
 	local live = typeof(ends) == "number" and ends > now
-	local timeText = live and ("LIVE! %s left"):format(long(ends - now))
+	local timeText = live and ("Live now · %s left"):format(long(ends - now))
 		or (typeof(nextAt) == "number" and ("starts in %s"):format(long(nextAt - now)) or "")
 	local updateText = Config.NextUpdate > os.time() and ("NEXT UPDATE in %s"):format(long(Config.NextUpdate - os.time())) or ""
 	for _, map in Layout.worldFolders() do

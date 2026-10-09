@@ -59,7 +59,7 @@ local function tick()
 			scale.Scale = 1
 		end
 	else
-		timer.Text = "CLAIM!"
+		timer.Text = "Claim"
 		timer.TextColor3 = UI.C.gold
 		UI.badge(button)
 		if scale then
@@ -88,7 +88,7 @@ function PlayGifts.start()
 	end)
 	Remotes.get("Notify").OnClientEvent:Connect(function(kind, data)
 		if kind == "gift" and typeof(data) == "table" then
-			Notify.takeover("FREE GIFT!", tostring(data.text), UI.C.gold, 1.6)
+			Notify.takeover("Free gift", tostring(data.text), UI.C.gold, 1.6)
 			Fx.sound("discover", 0.8)
 			if data.last then
 				Notify.toast("That's every gift this session. Thanks for playing!", UI.C.gold)

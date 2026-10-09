@@ -150,7 +150,7 @@ local function raidTick()
 	end
 	local dleft = defendEnds - os.clock()
 	if dleft > 0 then
-		Notify.banner(("YOUR TANK IS BEING RAIDED! %d"):format(math.ceil(dleft)), { key = "raid", sticky = true, priority = 6, color = RED,
+		Notify.banner(("Your tank is being raided, %d"):format(math.ceil(dleft)), { key = "raid", sticky = true, priority = 6, color = RED,
 			sub = defendBy .. " is stealing from you. Get back to your dock!" })
 	end
 end
@@ -179,7 +179,7 @@ end
 handlers.raided = function(d)
 	defendEnds = os.clock() + (d.seconds or Config.Raid.time)
 	defendBy = tostring(d.by)
-	Notify.takeover("RAID!", ("%s is robbing your tank. Rush home!"):format(defendBy), RED, 1.6)
+	Notify.takeover("Raid", ("%s is robbing your tank. Rush home!"):format(defendBy), RED, 1.6)
 	Fx.sound("sharkAlarm", 1)
 	Guide.set("raid", Vector3.new(d.x, d.y + 2, d.z), "Your tank")
 end
@@ -191,13 +191,13 @@ end
 
 handlers.raidWon = function(d)
 	clearRaid()
-	Notify.takeover("STOLEN!", ("%s from %s. Get it home!"):format(tostring(d.name), tostring(d.from)), C.gold, 1.8)
+	Notify.takeover("Stolen", ("%s from %s. Get it home!"):format(tostring(d.name), tostring(d.from)), C.gold, 1.8)
 	Fx.sound("legendary", 0.8)
 end
 
 handlers.raidLost = function(d)
 	clearRaid()
-	Notify.takeover("ROBBED!", ("%s stole your %s"):format(tostring(d.by), tostring(d.name)), RED, 2)
+	Notify.takeover("Robbed", ("%s stole your %s"):format(tostring(d.by), tostring(d.name)), RED, 2)
 end
 
 handlers.raidDefended = function(d)
@@ -205,7 +205,7 @@ handlers.raidDefended = function(d)
 	if d.gaveUp then
 		Notify.toast(("%s gave up the raid"):format(tostring(d.by)), C.green)
 	else
-		Notify.takeover("DEFENDED!", ("You got home in time. %s got thrown off!"):format(tostring(d.by)), C.green, 1.6)
+		Notify.takeover("Defended", ("You got home in time. %s got thrown off!"):format(tostring(d.by)), C.green, 1.6)
 		Fx.sound("dodge", 0.9)
 	end
 end
@@ -213,7 +213,7 @@ end
 handlers.raidFail = function(d)
 	clearRaid()
 	if d.why == "defended" then
-		Notify.takeover("CAUGHT!", ("%s got home in time"):format(tostring(d.by)), RED, 1.4)
+		Notify.takeover("Caught", ("%s got home in time"):format(tostring(d.by)), RED, 1.4)
 	elseif d.why == "left" then
 		Notify.toast("You left the tank: raid failed", RED)
 	else

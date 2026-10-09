@@ -293,7 +293,7 @@ function Rewards.start()
 			if data.ok then
 				revealDay, revealAt = data.day, os.clock()
 				reveal(data.day)
-				Notify.takeover(("DAY %d!"):format(data.day), data.text, C.gold, 1.6)
+				Notify.takeover(("Day %d"):format(data.day), data.text, C.gold, 1.6)
 				Fx.sound("buy", 0.8)
 				Fx.confetti((player.Character and player.Character:GetPivot().Position) or Vector3.zero)
 			else
@@ -305,7 +305,7 @@ function Rewards.start()
 					task.wait(0.2)
 				end
 				task.wait(0.3)
-				Notify.takeover("CHEST CLAIMED!", ("+$%s · 2x speed for %d min"):format(UI.short(data.coins), data.minutes), C.gold, 1.6)
+				Notify.takeover("Chest claimed", ("+$%s · 2x speed for %d min"):format(UI.short(data.coins), data.minutes), C.gold, 1.6)
 				Fx.sound("buy", 0.8)
 				Fx.confetti((player.Character and player.Character:GetPivot().Position) or Vector3.zero)
 			elseif data.reason == "group" then

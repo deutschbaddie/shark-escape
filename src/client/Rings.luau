@@ -111,7 +111,7 @@ function Rings.start()
 	RunService.Heartbeat:Connect(step)
 	Remotes.get("Notify").OnClientEvent:Connect(function(kind, data)
 		if kind == "chain" and typeof(data) == "table" then
-			Notify.takeover("SLALOM!", ("+%s speed"):format(UI.short(data.amount or 0)), CYAN, 1.4)
+			Notify.takeover("Slalom", ("+%s speed"):format(UI.short(data.amount or 0)), CYAN, 1.4)
 			Fx.sound("lucky", 0.8)
 			return
 		end

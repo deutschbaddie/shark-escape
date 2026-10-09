@@ -51,12 +51,8 @@ function Warp.start()
 	end)
 	Remotes.get("Notify").OnClientEvent:Connect(function(kind, data)
 		if kind == "warped" and typeof(data) == "table" then
-			local zone = Config.zoneById(data.zone)
 			Fx.flash(Color3.new(1, 1, 1), 0.4, 0.2)
 			Fx.sound("rideKick", 0.6, 0.9)
-			if zone then
-				Fx.bigWord(zone.name:upper(), zone.water:Lerp(Color3.new(1, 1, 1), 0.4), 1)
-			end
 		end
 	end)
 end

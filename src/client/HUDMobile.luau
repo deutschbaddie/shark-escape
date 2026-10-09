@@ -140,9 +140,7 @@ local function floatText(anchor: GuiObject, key: string, text: string, color: Co
 	end
 	lastFloat[key] = now
 	local l = UI.label(anchor, "body", text, { Name = "Float", Size = UDim2.fromOffset(120, 24), Position = UDim2.new(1, SP[2], 0.5, 0),
-		AnchorPoint = Vector2.new(0, 0.5), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = color, ZIndex = anchor.ZIndex + 5,
-		Rotation = -6 })
-	UI.pop(l, 1.3)
+		AnchorPoint = Vector2.new(0, 0.5), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = color, ZIndex = anchor.ZIndex + 5 })
 	tween(l, 0.8, { Position = UDim2.new(1, SP[2] + 10, 0.5, -26) })
 	UI.fade(l, false, 0.8)
 	task.delay(0.85, function()
@@ -568,7 +566,7 @@ local function render(d: any)
 	else
 		local ready = d.speed >= target
 		zoneLabel.Text = "Rebirth"
-		goalText.Text = ready and "REBIRTH READY!" or ("%s / %s"):format(UI.short(d.speed), UI.short(target))
+		goalText.Text = ready and "Rebirth ready" or ("%s / %s"):format(UI.short(d.speed), UI.short(target))
 		frac = math.clamp(d.speed / target, 0.06, 1)
 		paintFill(goalFill, T.green)
 	end
@@ -696,24 +694,24 @@ local function sharkLine(pos: Vector3)
 		if safe then
 			text, sub, color = ("Night falls in %d"):format(left), "You're safe here", C.green
 		else
-			text, sub, color = ("NIGHT FALLS IN %d!"):format(left), "Get to sand or an island", C.red
+			text, sub, color = ("Night falls in %d"):format(left), "Get to sand or an island", C.red
 		end
 	else
 		local mine = SharkView.myHunter()
 		if mine and mine.state == "lunge" then
-			text, sub, color = "IT'S JUMPING! SWERVE!", "Turn hard, now!", C.red
+			text, sub, color = "It's jumping, swerve", "Turn hard, now!", C.red
 		elseif mine and mine.state == "chase" then
-			text, sub, color = "IT'S CHARGING!", "Swerve late, or reach sand!", C.red
+			text, sub, color = "It's charging", "Swerve late, or reach sand!", C.red
 		elseif mine and mine.state == "overshoot" then
-			text, sub, color = "IT MISSED!", "Now: get to sand or an island", C.gold
+			text, sub, color = "It missed", "Now: get to sand or an island", C.gold
 		elseif mine and mine.state == "stalk" then
-			text, sub, color = "A SHARK IS CIRCLING YOU!", "Follow the arrow to safety", C.red
+			text, sub, color = "A shark is circling you", "Follow the arrow to safety", C.red
 		elseif safe then
 			local onIsland = Layout.inWater(pos)
 			text, sub, color = (phase == "calm" and "Safe here · it will give up soon" or ("Safe here · dawn in %d"):format(left)), onIsland and "Islands only shelter you for a few seconds" or nil, C.green
 		else
 			if phase == "calm" then
-				text, sub, color = "A SHARK IS AFTER YOU!", "You took from its waters: get to sand or an island", C.red
+				text, sub, color = "A shark is after you", "You took from its waters: get to sand or an island", C.red
 			else
 				text, sub, color = "NIGHT: SHARKS HUNT EVERYONE", "Night catches are luckier... if you dare", C.gold
 			end
@@ -811,14 +809,14 @@ handlers.grab = function(d)
 	flyToTank(r.color)
 	-- the bigger the catch, the bigger the moment
 	if r.index >= 5 then
-		Notify.takeover("LEGENDARY!", name, r.color, 1.8)
+		Notify.takeover(name, "A Legendary catch. Get it home safe", r.color, 1.8)
 		Fx.shake(1.5)
 		Fx.sound("legendary", 0.8)
 	elseif d.lucky then
-		Notify.word("LUCKY " .. d.r:upper() .. "!", C.green, 1)
+		Notify.word(("Lucky catch: %s"):format(d.r), C.green, 1)
 		Fx.sound("lucky", 0.7)
 	elseif d.pity or r.index >= 3 then
-		Notify.word(d.r:upper() .. "!", r.color, 1)
+		Notify.word(("%s catch"):format(d.r), r.color, 1)
 		Fx.sound("grabRare", 0.6, 1 + r.index * 0.04)
 	end
 	local note = newDiscovery and "  · NEW!" or ""
@@ -835,8 +833,8 @@ handlers.discover = function()
 	if old then
 		old:Destroy()
 	end
-	local chip = UI.chip(b, "NEW!", T.gold, { Name = "New", Size = UDim2.fromOffset(54, 22), Position = UDim2.new(1, 4, 1, -2), AnchorPoint = Vector2.new(1, 0.5),
-		ZIndex = b.ZIndex + 6, Rotation = -6 })
+	local chip = UI.chip(b, "New", T.gold, { Name = "New", Size = UDim2.fromOffset(54, 22), Position = UDim2.new(1, 4, 1, -2), AnchorPoint = Vector2.new(1, 0.5),
+		ZIndex = b.ZIndex + 6 })
 	for _, c in chip:GetDescendants() do
 		if c:IsA("GuiObject") then
 			c.ZIndex = b.ZIndex + 7
@@ -853,7 +851,7 @@ handlers.discover = function()
 end
 
 handlers.indexClaim = function(d)
-	Notify.word("CLAIMED!", C.orange, 0.9)
+	Notify.word("Claimed", C.orange, 0.9)
 	Notify.toast(("+$%s  +%s speed"):format(UI.short(d.coins), UI.short(d.speed)), C.green)
 	UI.pop(cashPill, 1.15)
 	UI.pop(speedPill, 1.15)
@@ -889,7 +887,7 @@ handlers.code = function(d)
 		if d.shields then
 			table.insert(bits, ("+%d shield"):format(d.shields))
 		end
-		Notify.word("CODE REDEEMED!", C.green, 1)
+		Notify.word("Code redeemed", C.green, 1)
 		Notify.toast(table.concat(bits, "  "), C.green)
 		Fx.sound("coin", 0.7)
 	else
@@ -909,7 +907,7 @@ handlers.tankFull = function(d)
 end
 
 handlers.sold = function(d)
-	Notify.word(("SOLD %d!"):format(d.count), C.green, 0.9)
+	Notify.word(("Sold %d"):format(d.count), C.green, 0.9)
 	Notify.toast("+$" .. UI.short(d.coins), C.money)
 	Fx.sound("buy", 0.7)
 	UI.pop(cashPill, 1.15)
@@ -934,7 +932,7 @@ handlers.ride = function(d)
 	end
 	Fx.sound("buy", 0.8)
 	Fx.sound("rideNew", 0.8)
-	Notify.takeover("NEW RIDE!", ("%s · +%s speed every second"):format(ride and ride.name or "", UI.short(d.gain)), C.gold, 1.6, "Rides")
+	Notify.takeover("New ride", ("%s · +%s speed every second"):format(ride and ride.name or "", UI.short(d.gain)), C.gold, 1.6, "Rides")
 	UI.pop(speedPill, 1.15)
 end
 
@@ -945,9 +943,9 @@ end
 handlers.aggro = function(d)
 	local name = tostring(d.shark or "Shark"):gsub("(%l)(%u)", "%1 %2")
 	if d.why == "chum" then
-		Notify.takeover("CHUMMED!", ("%s threw chum at you. The %s is coming!"):format(tostring(d.by or "Someone"), name), C.red, 1.4, "Shark")
+		Notify.takeover("Chummed", ("%s threw chum at you. The %s is coming!"):format(tostring(d.by or "Someone"), name), C.red, 1.4, "Shark")
 	else
-		Notify.banner(("THE %s NOTICED YOU!"):format(name:upper()), { key = "aggro", priority = 4, time = 2.2, color = C.red,
+		Notify.banner(("The %s noticed you"):format(name), { key = "aggro", priority = 4, time = 2.2, color = C.red,
 			sub = "Get to sand or an island" })
 	end
 	Fx.sound("sharkAlarm", 0.7)
@@ -955,13 +953,13 @@ handlers.aggro = function(d)
 end
 
 handlers.closeCall = function(d)
-	Notify.takeover("CLOSE CALL!", ("+%s speed"):format(UI.short(d.amount or 0)), C.gold, 1.1)
+	Notify.takeover("Close call", ("+%s speed"):format(UI.short(d.amount or 0)), C.gold, 1.1)
 	Fx.sound("dodge", 0.9)
 	Fx.flash(Color3.new(1, 1, 1), 0.25, 0.5)
 end
 
 handlers.net = function(d)
-	Notify.takeover(d.name:upper() .. "!", ("Carry %d creatures per trip. A bite loses them all!"):format(d.cap), C.blue, 1.8)
+	Notify.takeover(d.name, ("Carry %d creatures per trip. A bite loses them all"):format(d.cap), C.blue, 1.8)
 	Fx.sound("buy", 0.8)
 end
 
@@ -972,7 +970,7 @@ end
 handlers.unlock = function(d)
 	local zone = Config.zoneById(d.zone)
 	if zone then
-		Notify.takeover(zone.name:upper() .. "!", "New zone unlocked · rarer creatures, bigger sharks", C.gold, 1.8, zone.id)
+		Notify.takeover(zone.name, "You're fast enough now · rarer creatures, bigger sharks", C.gold, 1.8, zone.id)
 		Fx.sound("zoneUnlock", 0.8)
 		local pos = myPos()
 		if pos then
@@ -1025,11 +1023,11 @@ end
 handlers.rebirth = function(d)
 	Fx.flash(Color3.new(1, 1, 1), 0.8, 0)
 	Fx.sound("rebirth", 0.8)
-	Notify.takeover("REBIRTH!", ("Permanent x%s speed gain"):format(tostring(Config.Rebirth.mult ^ d.rebirths)), C.green, 2, "Rebirth")
+	Notify.takeover("Rebirth", ("Permanent x%s speed gain"):format(tostring(Config.Rebirth.mult ^ d.rebirths)), C.green, 2, "Rebirth")
 end
 
 handlers.purchase = function(d)
-	Notify.takeover("THANK YOU!", d.name .. " is yours!", C.pink, 1.6)
+	Notify.takeover("Thank you", d.name .. " is yours!", C.pink, 1.6)
 	local pos = myPos()
 	if pos then
 		Fx.confetti(pos)
@@ -1051,7 +1049,7 @@ local function onPhase(kind: string, data: any)
 		phase, phaseEnds = "warning", os.clock() + (data.duration or 5)
 		local pos = myPos()
 		local exposed = pos ~= nil and not Layout.isSafe(pos)
-		Notify.takeover("NIGHT FALLS!", exposed and "Sharks hunt everyone till dawn: get to sand or an island!" or "Stay on the sand and you're safe till dawn", C.red, 1.4, "Shark")
+		Notify.takeover("Night falls", exposed and "Sharks hunt everyone till dawn: get to sand or an island!" or "Stay on the sand and you're safe till dawn", C.red, 1.4, "Shark")
 		Water.setSafeGlow(true)
 		Fx.sound("sharkAlarm", 0.8)
 		-- the horizon breach: a shark leaps where you can see it

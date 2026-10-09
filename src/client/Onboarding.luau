@@ -46,7 +46,7 @@ local function tutBanner(title: string?, sub: string?, color: Color3?)
 end
 
 -- a quick "nice!" between steps
-local CHEERS = { [1] = "NICE CATCH!", [2] = "IN THE TANK!", [3] = "CHA-CHING!", [4] = "SAFE!", [5] = "NEW RIDE!" }
+local CHEERS = { [1] = "Nice catch", [2] = "In the tank", [3] = "Cha-ching", [4] = "Safe", [5] = "New ride" }
 
 local function point(at: Vector3?, label: string?)
 	Guide.set("tut", at, label)
@@ -134,7 +134,7 @@ local function drillStart(pos: Vector3)
 	drill.state = "chase"
 	drill.t = os.clock()
 	Water.setSafeGlow(true)
-	Fx.bigWord("SHARK DRILL!", C.red, 1.2)
+	Fx.bigWord("Shark drill", C.red, 1.2)
 	Fx.shake(1)
 	drill.shark = SharkView.spawnLocal(zone.shark, zone.sharkLength, from, yaw, function(sh, dt)
 		if sh.state == "leave" then
@@ -216,7 +216,7 @@ local function drillTick(pos: Vector3): (Vector3?, string?, string?, string?)
 					advance(4, true)
 					return nil, nil, nil, nil
 				end
-				Notify.word("CHOMP! (just practice)", C.red, 1)
+				Notify.word("Chomp, (just practice)", C.red, 1)
 				Notify.toast("A real shark eats what you're carrying. Try again: it'll be slower!", C.red)
 				drill.state = "pause"
 				return nil, nil, "Shark drill", "Try again in a moment"
@@ -227,15 +227,15 @@ local function drillTick(pos: Vector3): (Vector3?, string?, string?, string?)
 		if drill.catches > 0 then
 			local sand = Vector3.new(pos.X, Config.BEACH_TOP + 2, Config.SHORE_Z - 6)
 			if circling then
-				return sand, "SAND!", "It's circling you!", "Swim straight back to the sand"
+				return sand, "Sand", "It's circling you!", "Swim straight back to the sand"
 			end
-			return sand, "SAND!", "IT'S CHARGING!", "Swim straight back to the sand", C.red
+			return sand, "Sand", "It's charging", "Swim straight back to the sand", C.red
 		end
 		local safeAt = Layout.nearestSafe(pos)
 		if circling then
-			return safeAt + Vector3.new(0, 2, 0), "SAFE!", "It's circling you!", "Get to sand or an island"
+			return safeAt + Vector3.new(0, 2, 0), "Safe", "It's circling you!", "Get to sand or an island"
 		end
-		return safeAt + Vector3.new(0, 2, 0), "SAFE!", "IT'S CHARGING!", "Keep going, or swerve late!", C.red
+		return safeAt + Vector3.new(0, 2, 0), "Safe", "It's charging", "Keep going, or swerve late!", C.red
 	end
 	if drill.state == "pause" and os.clock() - drill.t > 3 then
 		drill.state = "idle"
@@ -359,7 +359,7 @@ function Onboarding.start()
 			if drill.shark then
 				drillEnd("abort")
 			end
-			Notify.takeover("YOU'RE READY!", "Faster rides → deeper zones → rarer creatures", C.gold, 2)
+			Notify.takeover("You're ready", "Faster rides → deeper zones → rarer creatures", C.gold, 2)
 			Fx.confetti(myRoot() and (myRoot() :: BasePart).Position or Vector3.zero)
 		end
 	end)

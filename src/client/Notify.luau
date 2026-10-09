@@ -1,11 +1,9 @@
 -- Every message on screen goes through here, in a clear hierarchy, so the
 -- screen never piles up and the important thing is always the obvious one.
 --
---   takeover  the big moment (shark incoming, new zone, new ride, legendary):
---             center stage; the HUD and every other message step aside.
---             One at a time, in order.
---   word      a punchy center word (LUCKY!, DODGED!, PTOOEY!). Shares center
---             stage with takeovers and never stacks (one waits, extras drop).
+--   takeover  a big moment: a high-priority top banner (title + line).
+--   word      a small moment: a toast. (House rule, PLAN.md: no shouty,
+--             tilted or bouncing center words anywhere.)
 --   banner    the top-center message. A compact navy card (tutorial step
 --             with its "1/5" chip, shark status, tank full...) or, for
 --             `big` ones (zone titles), plain hero text. One at a time: the
@@ -18,7 +16,6 @@
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
 
 local UI = require(script.Parent.UI)
 local Fx = require(script.Parent.Fx)
@@ -44,14 +41,12 @@ export type BannerOpts = {
 	icon: string?, -- UI.icon name shown on the card's left
 }
 type Banner = BannerOpts & { text: string, left: number, order: number, born: number }
-type Center = { kind: string, text: string, sub: string?, color: Color3, time: number, icon: string? }
 
 local gui: ScreenGui
 local top: Frame
 local statusLabel: TextLabel
 local bannerSlot: Frame
 local toastSlot: Frame
-local stage: Frame
 
 local banners: { Banner } = {}
 local shownBanner: Banner? = nil
@@ -62,12 +57,9 @@ local order = 0
 local toastQueue: { { text: string, color: Color3 } } = {}
 local toastsUp = 0
 
-local centerQueue: { Center } = {}
-local centerBusy = false
-local takeoverOn = false
 
 local function suppressed(): boolean
-	return takeoverOn or player:GetAttribute("Cinematic") == true or player:GetAttribute("ViewingTank") == true
+	return player:GetAttribute("Cinematic") == true or player:GetAttribute("ViewingTank") == true
 end
 
 ----------------------------------------------------------------- build
@@ -133,9 +125,6 @@ local function build()
 	tl.Padding = UDim.new(0, SP[1])
 	tl.Parent = toastSlot
 
-	-- center stage: takeovers and words
-	stage = UI.frame(gui, { Name = "Stage", Size = UDim2.new(1, 0, 0, 230), Position = UDim2.fromScale(0.5, 0.38), AnchorPoint = Vector2.new(0.5, 0.5),
-		BackgroundTransparency = 1 })
 end
 
 ----------------------------------------------------------------- status line
@@ -344,138 +333,24 @@ function Notify.toast(text: string, color: Color3?)
 	pumpToasts()
 end
 
------------------------------------------------------------------ center stage
-local runCenter: () -> ()
-
-local function setTakeover(on: boolean)
-	if takeoverOn == on then
-		return
-	end
-	takeoverOn = on
-	if Notify.onTakeover then
-		Notify.onTakeover(on)
-	end
-	statusLabel.Visible = statusLabel.Visible and not on
-	swapBanner()
-	if not on then
-		pumpToasts()
-	end
+-- A big moment. House rule (PLAN.md): no shouty / tilted / bouncing center
+-- words, ever. A big moment is a plain notification at the top (title +
+-- line), high priority so it shows first. Unique moments get a physical
+-- effect instead (Fx.jaws, Fx.edgeWarn). (icon: kept for the old callers)
+function Notify.takeover(text: string, sub: string?, color: Color3?, time: number?, _icon: string?)
+	Notify.banner(text, { sub = sub, color = color or C.gold, priority = 4, time = (time or 1.7) + 1.2 })
 end
 
-local function playCenter(item: Center)
-	local big = item.kind == "takeover"
-	if big then
-		Fx.sound("uiTakeover", 0.7)
-	end
-	local holder = UI.frame(stage, { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1 })
-	if big then
-		-- a soft navy band behind the words so they read over anything,
-		-- with thin lines in the moment's color
-		local band = UI.frame(holder, { Name = "Band", Size = UDim2.new(1, 0, 0, 180), Position = UDim2.fromScale(0.5, 0.5), AnchorPoint = Vector2.new(0.5, 0.5),
-			BackgroundColor3 = T.navyDark, BackgroundTransparency = 0.3 })
-		local fade = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.25, 0), NumberSequenceKeypoint.new(0.75, 0),
-			NumberSequenceKeypoint.new(1, 1) })
-		local g = Instance.new("UIGradient")
-		g.Transparency = fade
-		g.Parent = band
-		for _, y in { 0, 1 } do
-			local edge = UI.frame(band, { Size = UDim2.new(1, 0, 0, 4), Position = UDim2.fromScale(0, y), AnchorPoint = Vector2.new(0, y), BackgroundColor3 = item.color })
-			local eg = Instance.new("UIGradient")
-			eg.Transparency = fade
-			eg.Parent = edge
-		end
-	end
-	local title = UI.outlined(holder, item.text, { Size = UDim2.new(0.8, 0, 0, big and 96 or 80), Position = UDim2.new(0.5, 0, 0.5, big and -16 or 0),
-		AnchorPoint = Vector2.new(0.5, 0.5), Font = UI.TYPE.hero[2], TextColor3 = item.color, Rotation = big and 0 or -3, StrokeColor = T.navyDark })
-	local stroke = title:FindFirstChildOfClass("UIStroke")
-	if stroke then
-		stroke.Thickness = 4
-	end
-	local shine = Instance.new("UIGradient")
-	shine.Rotation = 90
-	shine.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(210, 210, 210))
-	shine.Parent = title
-	if big and item.icon then
-		UI.icon(holder, item.icon, { Size = UDim2.fromOffset(110, 110), Position = UDim2.new(0.1, 0, 0.5, -16), AnchorPoint = Vector2.new(0.5, 0.5), Rotation = -8 })
-	end
-	if big and item.sub then
-		UI.label(holder, "body", item.sub, { Size = UDim2.new(0.7, 0, 0, 30), Position = UDim2.new(0.5, 0, 0.5, 52), AnchorPoint = Vector2.new(0.5, 0.5),
-			TextColor3 = SUB_COLOR })
-	end
-	local scale = Instance.new("UIScale")
-	scale.Scale = big and 1.6 or 2
-	scale.Parent = holder
-	UI.fade(holder, true, 0.15)
-	TweenService:Create(scale, TweenInfo.new(0.3, Enum.EasingStyle.Back), { Scale = 1 }):Play()
-	task.wait(item.time)
-	UI.fade(holder, false, 0.3)
-	TweenService:Create(scale, TweenInfo.new(0.3, Enum.EasingStyle.Quad), { Scale = big and 0.92 or 0.7 }):Play()
-	task.wait(0.3)
-	holder:Destroy()
-end
-
-runCenter = function()
-	if centerBusy then
-		return
-	end
-	centerBusy = true
-	task.spawn(function()
-		while #centerQueue > 0 do
-			-- takeovers jump ahead of waiting words
-			local idx = 1
-			for i, it in centerQueue do
-				if it.kind == "takeover" then
-					idx = i
-					break
-				end
-			end
-			local item = table.remove(centerQueue, idx) :: Center
-			if item.kind == "takeover" then
-				setTakeover(true)
-			end
-			playCenter(item)
-			local more = false
-			for _, it in centerQueue do
-				if it.kind == "takeover" then
-					more = true
-				end
-			end
-			if not more then
-				setTakeover(false)
-			end
-			task.wait(0.12)
-		end
-		centerBusy = false
-	end)
-end
-
--- the big moment: center stage, everything else steps aside
--- (icon: an optional UI.icon name shown beside the title)
-function Notify.takeover(text: string, sub: string?, color: Color3?, time: number?, icon: string?)
-	table.insert(centerQueue, { kind = "takeover", text = text, sub = sub, color = color or C.gold, time = time or 1.7, icon = icon })
-	runCenter()
-end
-
--- a punchy center word; one waits, extra ones are dropped
-function Notify.word(text: string, color: Color3?, time: number?)
-	local waiting = 0
-	for _, it in centerQueue do
-		if it.kind == "word" then
-			waiting += 1
-		end
-	end
-	if waiting >= 1 and centerBusy then
-		return
-	end
-	table.insert(centerQueue, { kind = "word", text = text, color = color or C.gold, time = time or 0.9 })
-	runCenter()
+-- a small moment: a toast
+function Notify.word(text: string, color: Color3?, _time: number?)
+	Notify.toast(text, color)
 end
 
 ----------------------------------------------------------------- tick
 function Notify.start()
 	build()
 	-- Fx.bigWord (used everywhere for punch words) lands on center stage
-	Fx.wordHook = Notify.word
+	Fx.wordHook = Notify.word -- (Fx.bigWord: also just a toast now)
 	RunService.Heartbeat:Connect(function(dt)
 		-- news that waited too long behind something more important is stale
 		for i = #banners, 1, -1 do

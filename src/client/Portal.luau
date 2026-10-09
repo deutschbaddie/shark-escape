@@ -35,7 +35,7 @@ local function refresh()
 		local open = d.unlocked and d.unlocked[tostring(w.id)] == true
 		local text
 		if open then
-			text = "OPEN! Step in"
+			text = "Open: step in"
 		else
 			local need = math.max(1, w.unlockRebirths - (d.world == 1 and d.wr or 0))
 			text = ("Rebirth %d more time%s to unlock"):format(need, need == 1 and "" or "s")
@@ -98,7 +98,7 @@ function Portal.start()
 		TweenService:Create(f, TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { BackgroundTransparency = 0 }):Play()
 		task.delay(1.3, function()
 			TweenService:Create(f, TweenInfo.new(0.8, Enum.EasingStyle.Quad), { BackgroundTransparency = 1 }):Play()
-			Notify.takeover(("WELCOME TO %s!"):format(tostring(data.name):upper()), "A whole new sea to catch", color, 2.2)
+			Notify.takeover(("Welcome to %s"):format(tostring(data.name)), "A whole new sea to catch", color, 2.2)
 			task.delay(0.85, function()
 				f:Destroy()
 			end)

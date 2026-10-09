@@ -40,7 +40,7 @@ function Treasure.start()
 			end
 			local at = Vector3.new(data.x, data.y + 3, data.z)
 			Guide.set("treasure", at, "Treasure")
-			Notify.banner("TREASURE CHEST!", { key = "treasure", color = GOLD, priority = 2, time = data.quiet and 3 or 6,
+			Notify.banner("Treasure chest", { key = "treasure", color = GOLD, priority = 2, time = data.quiet and 3 or 6,
 				sub = ("Washed up in %s. First one there wins it!"):format(tostring(data.zone)) })
 			if not data.quiet then
 				Fx.sound("discover", 0.8)
@@ -55,7 +55,7 @@ function Treasure.start()
 			if data.creature then
 				sub ..= ("  +%s creature!"):format(tostring(data.creature))
 			end
-			Notify.takeover("TREASURE!", sub, GOLD, 2)
+			Notify.takeover("Treasure", sub, GOLD, 2)
 		elseif data.kind == "claimed" or data.kind == "gone" then
 			if data.world == liveWorld then
 				liveWorld = nil
