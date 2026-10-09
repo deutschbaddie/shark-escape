@@ -356,6 +356,27 @@ function Config.creatureKg(zoneId: string?, rarityId: string, size: number?): nu
 	return base * (size or 1)
 end
 
+-- $/s and other small rates: whole numbers from 10 up (K/M/B...), one
+-- decimal under 10 ("2.5"), two under 1 ("0.25") so a slow fish never says 0
+function Config.formatRate(n: number): string
+	if n >= 10 or n <= 0 then
+		local units = { "", "K", "M", "B", "T", "Qa", "Qi" }
+		local i = 1
+		while n >= 1000 and i < #units do
+			n /= 1000
+			i += 1
+		end
+		if i == 1 then
+			return tostring(math.max(math.floor(n), 0))
+		end
+		local s = string.format(n >= 100 and "%.0f" or "%.1f", n):gsub("%.0$", "")
+		return s .. units[i]
+	end
+	local s = string.format(n < 1 and "%.2f" or "%.1f", n)
+	s = s:gsub("0+$", ""):gsub("%.$", "")
+	return s
+end
+
 function Config.formatKg(kg: number): string
 	if kg >= 1000 then
 		return ("%.1f t"):format(kg / 1000)

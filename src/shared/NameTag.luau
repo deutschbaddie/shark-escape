@@ -11,16 +11,6 @@ local NameTag = {}
 
 local INK = Color3.fromRGB(22, 22, 34)
 
-local function short(n: number): string
-	local units = { "", "K", "M", "B", "T", "Qa" }
-	local i = 1
-	while n >= 1000 and i < #units do
-		n /= 1000
-		i += 1
-	end
-	return (i == 1 and tostring(math.floor(n)) or (string.format("%.1f", n):gsub("%.0$", ""))) .. units[i]
-end
-
 local function line(parent: Instance, text: string, color: Color3, order: number, h: number)
 	local t = Instance.new("TextLabel")
 	t.BackgroundTransparency = 1
@@ -53,7 +43,7 @@ function NameTag.attach(part: BasePart, c: { r: string, z: string?, m: string?, 
 		bb.LightInfluence = 0
 		bb.AlwaysOnTop = o.top == true
 		bb.Parent = part
-		line(bb, "$" .. short(perSecond) .. "/s", Color3.fromRGB(130, 255, 90), 1, 1)
+		line(bb, "$" .. Config.formatRate(perSecond) .. "/s", Color3.fromRGB(130, 255, 90), 1, 1)
 		return bb
 	end
 	local lines = perSecond and 3 or 2
@@ -76,7 +66,7 @@ function NameTag.attach(part: BasePart, c: { r: string, z: string?, m: string?, 
 	line(bb, (size and (size .. " ") or "") .. Config.species(c.z, c.r).name, Color3.new(1, 1, 1), 1, each * 1.08)
 	line(bb, (c.m and (c.m .. " · ") or "") .. rarity.id, c.m and (Config.mutation(c.m) :: any).color or rarity.color, 2, each * 0.86)
 	if perSecond then
-		line(bb, "$" .. short(perSecond) .. "/s", Color3.fromRGB(130, 255, 90), 3, each * 1.0)
+		line(bb, "$" .. Config.formatRate(perSecond) .. "/s", Color3.fromRGB(130, 255, 90), 3, each * 1.0)
 	end
 	return bb
 end

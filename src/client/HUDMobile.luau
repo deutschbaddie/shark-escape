@@ -500,7 +500,7 @@ local function render(d: any)
 	gainLabel.Text = mult > 1 and ("+%s/s x%s"):format(UI.short(d.gain), string.format("%g", math.floor(mult * 100 + 0.5) / 100))
 		or ("+%s/s"):format(UI.short(d.gain))
 	tankLabel.Text = ("%d/%d Active"):format(d.active, d.slots)
-	incomeLabel.Text = ("+$%s/s"):format(UI.short(d.income))
+	incomeLabel.Text = ("+$%s/s"):format(Config.formatRate(d.income))
 	friendLabel.Text = ("Friends +%d%%"):format(math.floor(d.friendBoost * 100 + 0.5))
 
 	-- "!" on the Tank when a stored creature would earn more than an active one
@@ -793,7 +793,7 @@ handlers.grab = function(d)
 	local pos = myPos()
 	if pos then
 		Fx.sparkle(pos + Vector3.new(0, 3, 0), r.color, 20 + r.index * 12)
-		Fx.popup3D(pos + Vector3.new(0, 5, 0), ("+$%s/s"):format(UI.short(d.v)), r.color)
+		Fx.popup3D(pos + Vector3.new(0, 5, 0), ("+$%s/s"):format(Config.formatRate(d.v)), r.color)
 	end
 	Fx.sound("grab", 0.6, 1 + r.index * 0.05)
 	flyToTank(r.color)
@@ -859,7 +859,7 @@ handlers.deposit = function(d)
 	Fx.sparkle(tank + Vector3.new(0, 6, 0), r.color, 40)
 	Fx.sound("deposit", 0.7, 1, tank)
 	if d.active then
-		Fx.popup3D(tank + Vector3.new(0, 11, 0), ("+$%s/s"):format(UI.short(d.v)), C.money, true)
+		Fx.popup3D(tank + Vector3.new(0, 11, 0), ("+$%s/s"):format(Config.formatRate(d.v)), C.money, true)
 	else
 		Fx.popup3D(tank + Vector3.new(0, 11, 0), "Not equipped", Color3.fromRGB(170, 170, 180), true)
 	end

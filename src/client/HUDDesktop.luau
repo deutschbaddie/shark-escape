@@ -295,7 +295,7 @@ local function render(d: any)
 	local mult = Config.Rebirth.mult ^ d.rebirths
 	gainLabel.Text = mult > 1 and ("+%s SPEED/S (x%s)"):format(UI.short(d.gain), string.format("%g", math.floor(mult * 100 + 0.5) / 100))
 		or ("+%s SPEED/S"):format(UI.short(d.gain))
-	tankLabel.Text = ("%d/%d Active  +$%s/s"):format(d.active, d.slots, UI.short(d.income))
+	tankLabel.Text = ("%d/%d Active  +$%s/s"):format(d.active, d.slots, Config.formatRate(d.income))
 	friendLabel.Text = ("Friend Boost +%d%%"):format(math.floor(d.friendBoost * 100 + 0.5))
 	if setSlow and d.slow ~= lastSlow then
 		lastSlow = d.slow
@@ -520,7 +520,7 @@ handlers.grab = function(d)
 	local pos = myPos()
 	if pos then
 		Fx.sparkle(pos + Vector3.new(0, 3, 0), r.color, 20 + r.index * 12)
-		Fx.popup3D(pos + Vector3.new(0, 5, 0), ("+$%s/s"):format(UI.short(d.v)), r.color)
+		Fx.popup3D(pos + Vector3.new(0, 5, 0), ("+$%s/s"):format(Config.formatRate(d.v)), r.color)
 	end
 	Fx.sound("grab", 0.6, 1 + r.index * 0.05)
 	-- the bigger the catch, the bigger the moment
@@ -565,7 +565,7 @@ handlers.deposit = function(d)
 	Fx.sparkle(tank + Vector3.new(0, 6, 0), r.color, 40)
 	Fx.sound("deposit", 0.7, 1, tank)
 	if d.active then
-		Fx.popup3D(tank + Vector3.new(0, 11, 0), ("+$%s/s"):format(UI.short(d.v)), C.money, true)
+		Fx.popup3D(tank + Vector3.new(0, 11, 0), ("+$%s/s"):format(Config.formatRate(d.v)), C.money, true)
 	else
 		Fx.popup3D(tank + Vector3.new(0, 11, 0), "Not equipped", Color3.fromRGB(170, 170, 180), true)
 	end

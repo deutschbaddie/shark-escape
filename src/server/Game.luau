@@ -455,7 +455,7 @@ function Game.updateTankSign(s: Session)
 		return
 	end
 	local inc = Game.income(s)
-	plot.tankIncome.Text = ("$%s/s  ·  %d/%d Active"):format(formatShort(inc), Game.activeCount(s), tankSlots(s))
+	plot.tankIncome.Text = ("$%s/s  ·  %d/%d Active"):format(Config.formatRate(inc), Game.activeCount(s), tankSlots(s))
 	plot.tankOffline.Text = ("$%s / day offline"):format(formatShort(Config.offlinePerDay(inc)))
 end
 

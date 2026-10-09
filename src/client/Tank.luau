@@ -47,7 +47,7 @@ end
 
 local function renderHeader(d: any)
 	activeText.Text = ("%d / %d"):format(d.active, d.slots)
-	incomeText.Text = ("+$%s/s"):format(UI.short(d.income))
+	incomeText.Text = ("+$%s/s"):format(Config.formatRate(d.income))
 	local maxDead = d.maxDead or Config.Tank.maxDead
 	deadText.Text = ("%d / %d"):format(d.dead or 0, maxDead)
 	deadText.TextColor3 = (d.dead or 0) >= maxDead and T.red or T.white
@@ -71,7 +71,7 @@ local function row(c: any, order: number, best: number, free: boolean)
 	UI.label(f, "meta", Config.formatKg(Config.creatureKg(c.z, c.r, c.s)), { Size = UDim2.fromOffset(80, 20), Position = UDim2.fromOffset(200, 48),
 		TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = T.mute })
 	-- $/s with a bar against your best creature: easy to compare
-	UI.label(f, "body", ("$%s/s"):format(UI.short(c.v)), { Size = UDim2.fromOffset(120, 26), Position = UDim2.new(1, -150, 0, 14), AnchorPoint = Vector2.new(1, 0),
+	UI.label(f, "body", ("$%s/s"):format(Config.formatRate(c.v)), { Size = UDim2.fromOffset(120, 26), Position = UDim2.new(1, -150, 0, 14), AnchorPoint = Vector2.new(1, 0),
 		TextXAlignment = Enum.TextXAlignment.Right, TextColor3 = c.e and UI.C.money or T.mute })
 	local _, fill = UI.bar(f, c.e and T.green or T.mute, { Size = UDim2.fromOffset(120, 14), Position = UDim2.new(1, -150, 0, 50), AnchorPoint = Vector2.new(1, 0) })
 	UI.setBar(fill, c.v / math.max(best, 1), true)

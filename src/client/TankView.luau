@@ -160,7 +160,7 @@ local function show(m: Model)
 		-- not earning: dimmed $/s
 		line(box, ("$%s/s  ·  not equipped"):format(UI.short(perSecond)), UI.TYPE.meta[1] + 2, UI.dark(T.mute, 0.25), 4)
 	else
-		line(box, ("$%s/s"):format(UI.short(perSecond)), UI.TYPE.body[1], C.money, 4)
+		line(box, ("$%s/s"):format(Config.formatRate(perSecond)), UI.TYPE.body[1], C.money, 4)
 	end
 	card = bb
 	UI.fade(box, true, 0.12)
