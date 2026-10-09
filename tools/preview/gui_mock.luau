@@ -27,6 +27,7 @@ Vector2 = { new = function(x, y) return setmetatable({ X = x or 0, Y = y or 0 },
 	__index = function(t, k) if k == "Magnitude" then return math.sqrt(t.X * t.X + t.Y * t.Y) end return nil end,
 }) end }
 Vector2.zero = Vector2.new(0, 0)
+Rect = { new = function(a, b, c, d) return { Min = Vector2.new(a, b), Max = Vector2.new(c, d) } end }
 NumberSequenceKeypoint = { new = function(t, v) return { Time = t, Value = v } end }
 ColorSequenceKeypoint = { new = function(t, v) return { Time = t, Value = v } end }
 NumberSequence = { new = function(...) return { ... } end }

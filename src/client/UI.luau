@@ -90,9 +90,166 @@ UI.NUMFONT = Enum.Font.LuckiestGuy
 local function apply(inst: Instance, props: { [string]: any }?)
 	if props then
 		for k, v in props do
-			(inst :: any)[k] = v
+			if k ~= "Kit" then
+				(inst :: any)[k] = v
+			end
 		end
 	end
+end
+
+----------------------------------------------------------------- UI kit art
+-- The developer's kit (Config.Kit): 9-slice images. Every component uses
+-- them when present and falls back to the drawn look otherwise.
+local KIT = (Config :: any).Kit or {}
+function UI.hasKit(name: string?): boolean
+	local k = name and KIT[name]
+	return k ~= nil and typeof(k.id) == "string" and k.id ~= ""
+end
+
+-- corner = share of the image's short side that stays unstretched;
+-- fitShare / fitMax = how big those corners draw on the element
+local function slicer(img: ImageLabel, owner: GuiObject, name: string, corner: number, fitShare: number, fitMax: number)
+	local k = KIT[name]
+	local c = math.max(1, math.floor(math.min(k.w, k.h) * corner))
+	img.Image = k.id
+	img.ScaleType = Enum.ScaleType.Slice
+	img.SliceCenter = Rect.new(c, c, k.w - c, k.h - c)
+	local function fit()
+		local a = owner.AbsoluteSize
+		local short = math.min(a.X, a.Y)
+		if short > 0 then
+			img.SliceScale = math.clamp(math.min(short * fitShare, fitMax) / c, 0.02, 2)
+		end
+	end
+	fit()
+	return fit
+end
+
+-- how each kind of art slices: { corner share, drawn corner share of the
+-- element's short side, max drawn corner px }
+local SKIN_SPEC = {
+	Button = { 0.46, 0.5, 999 }, Bar = { 0.46, 0.5, 999 }, Toggle = { 0.46, 0.5, 999 },
+	Card = { 0.2, 0.18, 34 }, Panel = { 0.16, 0.12, 40 }, Tab = { 0.4, 0.5, 999 }, Tooltip = { 0.4, 0.5, 999 },
+}
+local function spec(name: string): { number }
+	for prefix, s in SKIN_SPEC do
+		if name:sub(1, #prefix) == prefix then
+			return s
+		end
+	end
+	return { 0.3, 0.3, 40 }
+end
+-- a 9-slice skin that fills `owner` (nil without the art)
+function UI.skin(owner: GuiObject, name: string, z: number?): ImageLabel?
+	if not UI.hasKit(name) then
+		return nil
+	end
+	local img = Instance.new("ImageLabel")
+	img.Name = "Skin"
+	img.BackgroundTransparency = 1
+	img.Size = UDim2.fromScale(1, 1)
+	img.ZIndex = z or owner.ZIndex
+	local sp = spec(name)
+	local current = name
+	local fit = slicer(img, owner, name, sp[1], sp[2], sp[3])
+	owner:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+		local s2 = spec(current)
+		slicer(img, owner, current, s2[1], s2[2], s2[3])
+	end)
+	img:SetAttribute("Kit", name)
+	img:GetAttributeChangedSignal("Kit"):Connect(function()
+		current = img:GetAttribute("Kit") :: string
+	end)
+	img.Parent = owner
+	local _ = fit
+	return img
+end
+function UI.setSkin(img: ImageLabel?, owner: GuiObject, name: string)
+	if img and UI.hasKit(name) then
+		local sp = spec(name)
+		img:SetAttribute("Kit", name)
+		slicer(img, owner, name, sp[1], sp[2], sp[3])
+	end
+end
+
+-- turn a drawn "X" button into the kit's round close button
+function UI.kitClose(x: GuiObject)
+	if not UI.hasKit("Close") then
+		return
+	end
+	for _, d in x:GetChildren() do
+		if d:IsA("GuiObject") then
+			d.Visible = false
+		end
+	end
+	x.BackgroundTransparency = 1
+	local st = x:FindFirstChild("Edge")
+	if st and st:IsA("UIStroke") then
+		st.Enabled = false
+	end
+	UI.kitImage(x, "Close", { Size = UDim2.new(1, 10, 1, 10), Position = UDim2.fromOffset(-5, -5), ZIndex = x.ZIndex + 1 })
+	x:GetPropertyChangedSignal("BackgroundTransparency"):Connect(function()
+		x.BackgroundTransparency = 1
+	end)
+end
+
+-- the kit's green check badge (claimed / owned), or a drawn tick
+function UI.check(parent: Instance, props: { [string]: any }?): GuiObject
+	return UI.kitImage(parent, "BadgeCheck", props) or UI.outlined(parent, "✓", props)
+end
+
+-- which kit color a UI color maps to (nil = keep the drawn look)
+function UI.kitColor(c: Color3): string?
+	local h, s, v = c:ToHSV()
+	if v < 0.45 or s < 0.25 then
+		return "Grey"
+	elseif h < 0.035 or h > 0.93 then
+		return "Red"
+	elseif h < 0.17 then
+		return "Gold"
+	elseif h < 0.45 then
+		return "Green"
+	elseif h < 0.7 then
+		return "Blue"
+	elseif h < 0.82 then
+		return "Purple"
+	end
+	return nil -- pinks keep the drawn look
+end
+
+-- a plain (unsliced) kit image: effects, badges, close/back buttons
+function UI.kitImage(parent: Instance, name: string, props: { [string]: any }?): ImageLabel?
+	if not UI.hasKit(name) then
+		return nil
+	end
+	local img = Instance.new("ImageLabel")
+	img.Name = name
+	img.BackgroundTransparency = 1
+	img.Image = KIT[name].id
+	img.ScaleType = Enum.ScaleType.Fit
+	img.Size = UDim2.fromScale(1, 1)
+	apply(img, props)
+	img.Parent = parent
+	return img
+end
+
+-- a reward glow behind something (rays / burst turn slowly; sparkles,
+-- bubbles stay); cancelled with its parent
+function UI.effect(parent: GuiObject, name: string, size: number, props: { [string]: any }?): ImageLabel?
+	local img = UI.kitImage(parent, name, { Size = UDim2.fromOffset(size, size), Position = UDim2.fromScale(0.5, 0.5), AnchorPoint = Vector2.new(0.5, 0.5),
+		ZIndex = math.max(parent.ZIndex - 1, 1) })
+	if not img then
+		return nil
+	end
+	apply(img, props)
+	if name == "EffectRewardRays" or name == "EffectZoneBurst" then
+		local t = TweenService:Create(img, TweenInfo.new(10, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), { Rotation = 360 })
+		t:Play()
+		img.Destroying:Connect(function()
+			t:Cancel()
+		end)
+	end
+	return img
 end
 
 -- One scale for every screen: everything is designed on a 1280x720 canvas
@@ -286,11 +443,29 @@ function UI.button(parent: Instance, text: string, color: Color3, onClick: () ->
 	local stroke = UI.stroke(b, color, UI.S.cta)
 	stroke.Name = "Edge"
 	local busy = false
+	local skin: ImageLabel? = nil
+	local kitName: string? = nil
+	local baseTransparency = b.BackgroundTransparency
 	local function paint(c: Color3)
 		busy = true
 		face.BackgroundColor3 = c
 		b.BackgroundColor3 = UI.dark(c, 0.38)
 		stroke.Color = UI.dark(c, 0.5)
+		-- the kit's button art for this color, if uploaded
+		local kc = UI.kitColor(c)
+		kitName = kc and UI.hasKit("Button" .. kc) and ("Button" .. kc) or nil
+		if kitName then
+			skin = skin or UI.skin(b, kitName, b.ZIndex)
+			UI.setSkin(skin, b, kitName)
+		end
+		local drawn = kitName == nil
+		if skin then
+			skin.Visible = not drawn
+		end
+		b.BackgroundTransparency = drawn and baseTransparency or 1
+		face.BackgroundTransparency = drawn and 0 or 1
+		shine.Visible = drawn
+		stroke.Enabled = drawn
 		busy = false
 	end
 	paint(color)
@@ -304,9 +479,15 @@ function UI.button(parent: Instance, text: string, color: Color3, onClick: () ->
 	-- press: the face sinks onto its base
 	b.MouseButton1Down:Connect(function()
 		TweenService:Create(face, TweenInfo.new(0.06), { Position = UDim2.fromOffset(0, 3) }):Play()
+		if kitName and UI.hasKit(kitName .. "Pressed") then
+			UI.setSkin(skin, b, kitName .. "Pressed")
+		end
 	end)
 	local function up()
 		TweenService:Create(face, TweenInfo.new(0.12, Enum.EasingStyle.Back), { Position = UDim2.fromOffset(0, 0) }):Play()
+		if kitName then
+			UI.setSkin(skin, b, kitName)
+		end
 	end
 	b.MouseButton1Up:Connect(up)
 	b.MouseLeave:Connect(up)
@@ -497,9 +678,24 @@ function UI.toggle(parent: Instance, caption: string, on: boolean, onChange: (bo
 	UI.stroke(track, UI.T.navyDark, UI.S.card)
 	local knob = UI.frame(track, { Size = UDim2.fromOffset(32, 32), Position = UDim2.new(0, 4, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), BackgroundColor3 = UI.T.white })
 	UI.corner(knob, 16)
+	-- kit art: the whole switch is one image per state
+	local art = UI.hasKit("ToggleOn") and UI.hasKit("ToggleOff")
+	local artImg: ImageLabel? = nil
+	if art then
+		track.BackgroundTransparency = 1
+		local st = track:FindFirstChildOfClass("UIStroke")
+		if st then
+			st.Enabled = false
+		end
+		knob.Visible = false
+		artImg = UI.kitImage(track, "ToggleOff", { Size = UDim2.new(1, 8, 1, 8), Position = UDim2.fromOffset(-4, -4), ZIndex = track.ZIndex + 1 })
+	end
 	local state = on
 	local function set(v: boolean)
 		state = v
+		if artImg then
+			artImg.Image = (Config :: any).Kit[v and "ToggleOn" or "ToggleOff"].id
+		end
 		track.BackgroundColor3 = v and UI.T.green or UI.T.navyLight
 		TweenService:Create(knob, TweenInfo.new(0.12), { Position = v and UDim2.new(1, -36, 0.5, 0) or UDim2.new(0, 4, 0.5, 0) }):Play()
 		label.TextColor3 = v and UI.T.white or UI.T.mute
@@ -529,7 +725,12 @@ function UI.badge(b: GuiObject, text: string?): Frame
 	local f = UI.frame(b, { Name = "Badge", Size = UDim2.fromOffset(26, 26), Position = UDim2.new(1, 8, 0, -8), AnchorPoint = Vector2.new(1, 0),
 		BackgroundColor3 = UI.T.red, ZIndex = b.ZIndex + 4 })
 	UI.corner(f, 13)
-	UI.stroke(f, UI.T.white, 2)
+	local bs = UI.stroke(f, UI.T.white, 2)
+	if UI.kitImage(f, "BadgeNotification", { Size = UDim2.fromScale(1.3, 1.3), Position = UDim2.fromScale(0.5, 0.5), AnchorPoint = Vector2.new(0.5, 0.5),
+		ZIndex = f.ZIndex }) then
+		f.BackgroundTransparency = 1
+		bs.Enabled = false
+	end
 	UI.outlined(f, text or "!", { Size = UDim2.new(1, -8, 1, -8), Position = UDim2.fromOffset(4, 4), ZIndex = f.ZIndex + 1, StrokeColor = UI.dark(UI.T.red, 0.5) })
 	UI.pop(f, 1.5) -- one pop when it appears, no endless bounce
 	return f
@@ -573,7 +774,11 @@ function UI.window(parent: Instance, title: string, color: Color3, size: Vector2
 		dim:Destroy()
 	end)
 	UI.corner(f, UI.R.panel)
-	UI.stroke(f, UI.dark(color, 0.35), UI.S.cta)
+	local wst = UI.stroke(f, UI.dark(color, 0.35), UI.S.cta)
+	if UI.skin(f, "PanelMenu", f.ZIndex) then
+		f.BackgroundTransparency = 1
+		wst.Enabled = false
+	end
 	local g = Instance.new("UIGradient")
 	g.Rotation = 90
 	g.Color = ColorSequence.new(RGB(255, 255, 255), RGB(200, 205, 225))
@@ -595,6 +800,7 @@ function UI.window(parent: Instance, title: string, color: Color3, size: Vector2
 		TextXAlignment = Enum.TextXAlignment.Left, StrokeColor = UI.dark(color, 0.55) })
 	local x = UI.button(f, "X", UI.T.red, close, { Name = "Close", Size = UDim2.fromOffset(52, 52), Position = UDim2.new(1, -10, 0, 7),
 		AnchorPoint = Vector2.new(1, 0), ZIndex = head.ZIndex + 3 })
+	UI.kitClose(x)
 	if UI.onOpen then
 		UI.onOpen()
 	end
@@ -619,6 +825,14 @@ function UI.card(parent: Instance, accent: Color3?, props: { [string]: any }?): 
 	UI.corner(f, UI.R.card)
 	local st = UI.stroke(f, accent or UI.T.line, accent and UI.S.cta or UI.S.subtle)
 	st.Name = "Accent"
+	-- kit art: a card per accent color (or props.Kit, e.g. "CardEquipped")
+	local kc = accent and UI.kitColor(accent) or "Blue"
+	local name = (props and props.Kit) or ("Card" .. (kc or "Blue"))
+	if UI.skin(f, name, f.ZIndex) then
+		f.BackgroundTransparency = 1
+		st.Enabled = false
+		return f
+	end
 	local g = Instance.new("UIGradient")
 	g.Rotation = 90
 	g.Color = ColorSequence.new(RGB(255, 255, 255), RGB(190, 196, 220))
@@ -652,6 +866,10 @@ function UI.chip(parent: Instance, text: string, color: Color3, props: { [string
 	local f = UI.frame(parent, { Size = UDim2.fromOffset(96, 24), BackgroundColor3 = color })
 	apply(f, props)
 	UI.corner(f, 12)
+	if text == "NEW!" and UI.kitImage(f, "BadgeNew", { Size = UDim2.new(1, 8, 1, 8), Position = UDim2.fromOffset(-4, -4), ZIndex = f.ZIndex }) then
+		f.BackgroundTransparency = 1
+		return f -- the art already says NEW!
+	end
 	UI.label(f, "meta", text, { Size = UDim2.new(1, -12, 1, -6), Position = UDim2.fromOffset(6, 3), StrokeColor = UI.dark(color, 0.55) })
 	return f
 end
@@ -706,6 +924,36 @@ function UI.bar(parent: Instance, color: Color3, props: { [string]: any }?): (Fr
 		BackgroundTransparency = 0.7 })
 	UI.corner(shine, 100)
 	local label = UI.label(back, "body", "", { Size = UDim2.new(1, -16, 1, -6), Position = UDim2.fromOffset(8, 3), ZIndex = back.ZIndex + 2 })
+	-- kit art: track + a colored fill (follows the fill's color when it changes)
+	if UI.skin(back, "BarTrack", back.ZIndex) then
+		back.BackgroundTransparency = 1
+		local bst = back:FindFirstChildOfClass("UIStroke")
+		if bst then
+			bst.Enabled = false
+		end
+		local FILL = { Blue = "BarFillCyan", Gold = "BarFillGold", Green = "BarFillGreen", Purple = "BarFillPurple" }
+		local fskin: ImageLabel? = nil
+		local function paintFill()
+			local name = FILL[UI.kitColor(fill.BackgroundColor3) or ""]
+			if name and UI.hasKit(name) then
+				fskin = fskin or UI.skin(fill, name, fill.ZIndex)
+				UI.setSkin(fskin, fill, name)
+				if fskin then
+					fskin.Visible = true
+				end
+				fill.BackgroundTransparency = 1
+				shine.Visible = false
+			else
+				if fskin then
+					fskin.Visible = false
+				end
+				fill.BackgroundTransparency = 0
+				shine.Visible = true
+			end
+		end
+		paintFill()
+		fill:GetPropertyChangedSignal("BackgroundColor3"):Connect(paintFill)
+	end
 	return back, fill, label
 end
 

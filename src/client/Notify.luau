@@ -385,6 +385,11 @@ local function playCenter(item: Center)
 			eg.Parent = edge
 		end
 	end
+	if big then
+		-- kit glow behind the title (UI.effect turns the rays; fades with the holder)
+		UI.effect(holder, item.color == C.gold and "EffectRewardRays" or "EffectZoneBurst", 520, { Position = UDim2.new(0.5, 0, 0.5, -16), ImageTransparency = 0.25 })
+		UI.effect(holder, "EffectSparkles", 360, { Position = UDim2.new(0.5, 0, 0.5, -16) })
+	end
 	local title = UI.outlined(holder, item.text, { Size = UDim2.new(0.8, 0, 0, big and 96 or 80), Position = UDim2.new(0.5, 0, 0.5, big and -16 or 0),
 		AnchorPoint = Vector2.new(0.5, 0.5), Font = UI.TYPE.hero[2], TextColor3 = item.color, Rotation = big and 0 or -3, StrokeColor = T.navyDark })
 	local stroke = title:FindFirstChildOfClass("UIStroke")
