@@ -339,7 +339,7 @@ local function render(d: any)
 	local gate = Config.nextGate(d.speed)
 	if gate then
 		goalText.Text = ("%s   %s / %s"):format(gate.name, UI.short(d.speed), UI.short(gate.gate))
-		goalFill.Size = UDim2.fromScale(math.clamp(d.speed / gate.gate, 0.06, 1) -- fill matches the numbers; never a sliver, 1)
+		goalFill.Size = UDim2.fromScale(math.clamp(d.speed / gate.gate, 0.06, 1), 1) -- fill matches the numbers; never a sliver
 		goalFill.BackgroundColor3 = C.blue
 	else
 		local ready = d.speed >= Config.Rebirth.speed
