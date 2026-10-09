@@ -1,7 +1,10 @@
 -- Player vs player, shark style:
 --   Chum   throw a bucket at a rider near you: their zone's shark comes for
 --          them (Config.Chum; by day; cooldown)
---   Raid   hold RAID at another player's tank while they're out at sea. It
+--   Raid   hold RAID at another player's tank while they're out at sea (in
+--          the water or on an island: anywhere off the beach). While the
+--          owner is home a shield shimmers over the tank (plot attribute
+--          "Guarded" = "home" / "lock" / "new"; client Pvp.luau signs). It
 --          takes Config.Raid.time seconds; they're alerted at once and stop
 --          it by getting back to their dock. Too slow, and you take one of
 --          their creatures (never their best) and carry it home.
@@ -29,6 +32,45 @@ local rng = Random.new()
 
 local function veteran(s: Game.Session, minPlaytime: number): boolean
 	return s.profile.tut >= 5 and s.profile.playtime >= minPlaytime
+end
+
+-- on the beach / plaza / their dock (not in the water, not on an island)
+local function home(s: Game.Session): boolean
+	local hrp = Game.root(s.player)
+	return hrp == nil or not Layout.inWater(hrp.Position)
+end
+
+-- why this tank can't be raided right now (nil = it can)
+local function guardedBy(s: Game.Session): string?
+	if not veteran(s, Config.Raid.minPlaytime) then
+		return "new" -- (raids aren't a thing for them yet: no shield shown)
+	elseif s.profile.lockUntil > os.time() then
+		return "lock"
+	elseif home(s) then
+		return "home"
+	end
+	return nil
+end
+
+-- the shield over each tank, from its owner's state
+local function updateGuards()
+	for _, s in Game.sessions do
+		local plot = s.plot
+		if plot then
+			local why = guardedBy(s)
+			if raids[s.player] then
+				why = nil -- (mid-raid: they're on their way)
+			end
+			if plot.model:GetAttribute("Guarded") ~= why then
+				plot.model:SetAttribute("Guarded", why)
+				local dome = plot.model:FindFirstChild("Guard", true) :: BasePart?
+				if dome then
+					dome.Transparency = (why == "home" or why == "lock") and 0.15 or 1
+					dome.Color = why == "lock" and Color3.fromRGB(255, 200, 60) or Color3.fromRGB(90, 255, 140)
+				end
+			end
+		end
+	end
 end
 
 local function atSea(s: Game.Session): boolean
@@ -144,11 +186,11 @@ local function startRaid(s: Game.Session, plotIndex: any)
 	if now - (raidedAt[owner :: Player] or -1e9) < cfg.victimCooldown then
 		return no("This tank was raided recently")
 	end
-	if not atSea(v) then
-		return no("Only while they're out at sea")
-	end
 	if v.profile.lockUntil > os.time() then
 		return no("That tank is locked")
+	end
+	if home(v) then
+		return no("They're home: tanks can only be raided while the owner is out at sea")
 	end
 	if #v.profile.creatures < 2 then
 		return no("Nothing worth taking")
@@ -251,6 +293,7 @@ function Raids.start()
 		if acc >= 0.2 then
 			acc = 0
 			tick()
+			updateGuards()
 		end
 	end)
 	Players.PlayerRemoving:Connect(function(p)

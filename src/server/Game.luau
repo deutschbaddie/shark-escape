@@ -1061,6 +1061,11 @@ local function emptyPlot(plot: World.Plot)
 	plot.slots:ClearAllChildren()
 	plot.model:SetAttribute("Owner", nil)
 	plot.model:SetAttribute("LockUntil", nil)
+	plot.model:SetAttribute("Guarded", nil)
+	local guard = plot.model:FindFirstChild("Guard") :: BasePart?
+	if guard then
+		guard.Transparency = 1
+	end
 end
 
 local function claimPlot(s: Session)

@@ -4,6 +4,9 @@
 --   Raid: other players' docks get a RAID prompt (hold F). While a raid is
 --         on, a red countdown hangs over that tank for everyone; the owner
 --         gets an alarm and the guide arrow home; the raider a countdown.
+--         While an owner is home (or has a Tank Lock) the server shows a
+--         shield over their tank ("Guarded"); here a sign under it says so,
+--         and you get one heads-up when you leave the beach / come home.
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -32,6 +35,10 @@ local raidEnds = 0 -- my raid (as the raider)
 local defendEnds = 0 -- my tank under raid
 local defendBy = ""
 local raidBoards: { [Model]: BillboardGui } = {}
+local safeBoards: { [Model]: BillboardGui } = {}
+local GREEN = Color3.fromRGB(110, 255, 150)
+local myGuard: string? = "start"
+local toldOut, toldHome = false, false
 
 local function myRoot(): BasePart?
 	local char = player.Character
@@ -92,6 +99,8 @@ local function chumTick()
 end
 
 ----------------------------------------------------------------- raid prompts + boards
+local safeSign: (Model, any) -> ()
+
 local function plotModels(): { Model }
 	local out = {}
 	for _, map in Layout.worldFolders() do
@@ -110,6 +119,61 @@ local function clearRaid()
 	Guide.set("raid", nil)
 end
 
+-- the line over a tank that says whether it can be raided
+function safeSign(m: Model, owner: any)
+	local why = m:GetAttribute("Guarded")
+	local mine = owner == player.UserId
+	local text, color
+	if typeof(owner) ~= "number" or why == "new" or (typeof(m:GetAttribute("RaidEnds")) == "number") then
+		text = nil
+	elseif why == "lock" then
+		text, color = "Tank Lock: safe from raids", Color3.fromRGB(255, 205, 70)
+	elseif why == "home" then
+		text, color = mine and "Safe from raids while you're home" or "Owner is home: safe from raids", GREEN
+	elseif mine then
+		text, color = "Can be raided while you're out", RED
+	end
+	local board = safeBoards[m]
+	if not text then
+		if board then
+			board:Destroy()
+			safeBoards[m] = nil
+		end
+	else
+		if not board then
+			local anchor = m:FindFirstChild("TankSign", true) :: BasePart?
+			if not anchor then
+				return
+			end
+			board = Instance.new("BillboardGui")
+			board.Size = UDim2.fromScale(11, 1.5)
+			board.StudsOffsetWorldSpace = Vector3.new(0, 4.6, 0)
+			board.LightInfluence = 0
+			board.MaxDistance = 130
+			board.Adornee = anchor
+			board.Parent = player:WaitForChild("PlayerGui")
+			UI.outlined(board, "", { Name = "T", Size = UDim2.fromScale(1, 1) })
+			safeBoards[m] = board
+		end
+		local t = (board :: BillboardGui):FindFirstChild("T") :: TextLabel?
+		if t then
+			t.Text = text
+			t.TextColor3 = color
+		end
+	end
+	-- my own tank: one heads-up each way per session
+	if mine and why ~= myGuard then
+		if myGuard == "home" and why == nil and not toldOut then
+			toldOut = true
+			Notify.toast("Off the beach: your tank can be raided until you're back", RED)
+		elseif myGuard == nil and why == "home" and not toldHome then
+			toldHome = true
+			Notify.toast("Home: your tank is safe from raids", GREEN)
+		end
+		myGuard = why
+	end
+end
+
 local function raidTick()
 	local now = Workspace:GetServerTimeNow()
 	for _, m in plotModels() do
@@ -119,7 +183,9 @@ local function raidTick()
 			local lock = m:GetAttribute("LockUntil")
 			prompt.Enabled = typeof(owner) == "number" and owner ~= player.UserId
 				and not (typeof(lock) == "number" and lock > os.time()) -- (Tank Lock)
+				and m:GetAttribute("Guarded") == nil -- (owner is home)
 		end
+		safeSign(m, owner)
 		-- a red countdown over a tank being raided (everyone sees it)
 		local ends = m:GetAttribute("RaidEnds")
 		local board = raidBoards[m]

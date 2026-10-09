@@ -39,6 +39,9 @@ serves that, in this order. `[x]` = built (not yet playtested), `[ ]` = to do.
 - [x] Chum: throw at a nearby rider, their shark comes for them (cooldown)
 - [x] A Shark Shield blocks chum (and is used up)
 - [x] Raids: 35 s at their tank while they're at sea; they rush home to stop it
+- [x] Obvious raid safety: a shield shimmers over your tank while you're on
+      the beach; signs say "Owner is home: safe from raids" / "Can be raided
+      while you're out"; one heads-up when you leave / come home
 - [x] Tank Lock (Robux product): no raids for 30 min (needs a product id)
 - [x] Server-wide announcements for Legendary / Huge catches
 - [x] A light beam over the catcher's dock for a minute

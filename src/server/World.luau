@@ -827,6 +827,9 @@ local function buildPlot(i: number, cf: CFrame): Plot
 	for _, x in { -11.1, 11.1 } do
 		studAll(Build.part(tk, Vector3.new(0.8, 0.8, 7.4), tcf * CFrame.new(x, 9.8, 0), frame))
 	end
+	-- the raid shield (Raids.luau shows it while the owner is home)
+	Build.part(m, Vector3.new(25, 11.5, 11), tcf * CFrame.new(0, 5.2, 0), C(90, 255, 140), { Name = "Guard", Material = Enum.Material.ForceField,
+		Transparency = 1, CanCollide = false, CanQuery = false, CanTouch = false, CastShadow = false })
 	local water = Build.part(tk, Vector3.new(21.4, 7.2, 7.4), tcf * CFrame.new(0, 5.2, 0), C(70, 200, 240),
 		{ Name = "TankWater", Transparency = 0.78, CanCollide = false, CanQuery = false, CastShadow = false })
 	local light = Instance.new("PointLight")
