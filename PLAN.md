@@ -85,8 +85,24 @@ Make it back to the sand for a big payout.**
 - [x] Fewer buttons at the start (3), the rest appear when they matter
 - [x] Cut / merge: no Lucky Storm, no ring chains, chests wash up at dawn,
       raids after the first rebirth
-- [ ] Zone unlock is a physical moment (buoys light up, water shifts)
-- [ ] Playtest checklist (below)
+- [x] Zone unlock is a physical moment (buoys light up, water shifts)
+- [x] Playtest checklist (below)
+
+### Playtest checklist (3-5 people, phones, 15 minutes, watch, don't help)
+- [ ] First grab within 15 s of spawning?
+- [ ] Did anyone yell or laugh in the first 2 minutes (the practice chase,
+      the snap at the waterline)?
+- [ ] Rubber Duck bought within ~90 s?
+- [ ] Ask after 5 min: "what's the game?" Can they say it in one sentence
+      (grab, carry, don't get eaten)?
+- [ ] Do they go for a second creature before heading home (the haul)?
+      Do they look at the hunger bar before grabbing?
+- [ ] Did a spilled haul cause a scramble?
+- [ ] Did anyone say "one more trip"?
+- [ ] Anything they tapped that did nothing, or asked "what's this"? Write
+      it down: that's the next fix.
+- [ ] After: Analytics custom events Escaped / Haul / CloseCall, and the
+      onboarding funnel. Fix the biggest drop first.
 
 ## Needs from the owner
 - Product id for **Tank Lock** (and MoneyPack1, still missing)

@@ -1009,6 +1009,8 @@ handlers.unlock = function(d)
 			Fx.confetti(pos)
 		end
 		unlockBurst()
+		-- the zone line lights up across the water
+		Fx.gateWave(zone.zStart, Config.originX(zone.world), Config.LANE_WIDTH, Color3.fromRGB(110, 255, 140))
 	end
 end
 

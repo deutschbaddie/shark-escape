@@ -298,6 +298,16 @@ local function gateTick()
 					tex.Transparency = open and 1 or 0
 				end
 			end
+			-- the line's buoys: yellow until you're fast enough, then green
+			if g:GetAttribute("Open") ~= open then
+				g:SetAttribute("Open", open)
+				for _, b in g:GetChildren() do
+					local ball = b.Name == "Buoy" and b:FindFirstChildWhichIsA("Part")
+					if ball and ball.Shape == Enum.PartType.Ball then
+						ball.Color = open and Color3.fromRGB(90, 230, 110) or Color3.fromRGB(255, 196, 40)
+					end
+				end
+			end
 			local banner = g:FindFirstChild("Banner")
 			if banner then
 				for _, sg in banner:GetChildren() do

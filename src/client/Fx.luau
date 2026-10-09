@@ -255,6 +255,37 @@ end
 
 -- Near miss: the world drains of color, blurs and the view punches in for a
 -- moment, then snaps back (time "slows" without slowing the game)
+-- a zone opens up: columns of light rise out of the water across the whole
+-- zone line, in a wave from the middle out (the physical "you can go now")
+function Fx.gateWave(z: number, originX: number, width: number, color: Color3)
+	local folder = Instance.new("Folder")
+	folder.Name = "GateWave"
+	folder.Parent = Workspace
+	local n = math.floor(width / 10)
+	for i = 0, n do
+		local x = originX - width / 2 + i * (width / n)
+		local delay = math.abs(x - originX) / (width / 2) * 0.6
+		task.delay(delay, function()
+			local p = Instance.new("Part")
+			p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
+			p.Material = Enum.Material.Neon
+			p.Color = color
+			p.Transparency = 0.2
+			p.Size = Vector3.new(2.2, 0.2, 2.2)
+			p.CFrame = CFrame.new(x, 0.2, z)
+			p.Parent = folder
+			TweenService:Create(p, TweenInfo.new(0.5, Enum.EasingStyle.Quad), { Size = Vector3.new(2.2, 26, 2.2), CFrame = CFrame.new(x, 13, z) }):Play()
+			task.delay(0.6, function()
+				TweenService:Create(p, TweenInfo.new(0.9), { Transparency = 1 }):Play()
+			end)
+			if i % 3 == 0 then
+				Fx.splash(Vector3.new(x, 0.5, z), 0.8)
+			end
+		end)
+	end
+	Debris:AddItem(folder, 2.6)
+end
+
 function Fx.nearMiss()
 	local Lighting = game:GetService("Lighting")
 	local cam = Workspace.CurrentCamera
