@@ -1092,6 +1092,25 @@ Config.Daily = {
 } :: { { [string]: any } }
 Config.DAILY_GAP_HOURS, Config.DAILY_RESET_HOURS = 20, 48
 
+-- Daily quests: 3 a day (new ones at midnight UTC), picked from this pool.
+-- Each pays cash when done (income-scaled); all 3 add a Luck Potion.
+-- `vet` = only for players who can chum (Config.Chum.minPlaytime).
+Config.Quests = {
+	perDay = 3,
+	coinSeconds = 180,
+	minCoins = 300,
+	bonus = { kind = "luck", minutes = 15 },
+	pool = {
+		{ id = "rares", text = "Catch %d Rares or better", goal = 3 },
+		{ id = "home", text = "Bring %d creatures home", goal = 15 },
+		{ id = "close", text = "Survive %d close calls", goal = 2 },
+		{ id = "dodge", text = "Dodge %d shark lunges", goal = 3 },
+		{ id = "rings", text = "Ride through %d boost rings", goal = 5 },
+		{ id = "night", text = "Catch %d creatures at night", goal = 5 },
+		{ id = "chum", text = "Chum %d riders", goal = 2, vet = true },
+	},
+}
+
 -- Playtime gifts: free, every session, the longer you stay the better
 -- (at = minutes played this session). The HUD gift square counts down.
 Config.PlayGifts = {

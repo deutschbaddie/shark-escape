@@ -53,10 +53,11 @@ serves that, in this order. `[x]` = built (not yet playtested), `[ ]` = to do.
       board and the codes card). Owner: add the code + raise `Config.LikeGoal`
 
 ## Phase 4: added
-- [ ] Daily quests (3 a day: catch 2 Rares, chum someone, survive a night)
+- [x] Daily quests (3 a day from a pool of 7: Rares, bring home, close calls,
+      dodges, rings, night catches, chum; cash each, Luck Potion for all 3)
 - [ ] Speed feel past the cap (wider FOV, stronger lines, wind)
 - [ ] Onboarding teaches night + grudges in one line each (no new steps)
-- [ ] Analytics: log chum, raids (start / defended / stolen), close calls,
+- [x] Analytics: log chum, raids (start / defended / stolen), close calls,
       Megalodon Hour joins, Legendary reel success rate
 - [ ] Rename + thumbnail around the shark, chum and raids (owner)
 - [ ] 10-15 short clips: close calls, chum betrayals, raids (owner)

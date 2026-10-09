@@ -371,7 +371,6 @@ local function update(dt: number)
 						v.profile.speed += amount
 						v.dirty = true
 						Game.notify(v.player, "closeCall", { amount = amount })
-						Game.track(v.player, "closeCall", {})
 					end
 				end
 				if not hit then
@@ -380,6 +379,7 @@ local function update(dt: number)
 					h.state, h.timer = hunting(h) and "overshoot" or "leave", 0
 					if alive then
 						EventRemote:FireAllClients("miss", { id = h.id, victim = (s :: Game.Session).player.UserId, x = h.to.X, z = h.to.Z })
+						Game.track((s :: Game.Session).player, "dodge", {})
 					end
 				end
 			end

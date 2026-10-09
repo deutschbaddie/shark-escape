@@ -252,6 +252,7 @@ Game.action("reel", function(s, ok)
 	b.reservedBy, b.reservedUntil = nil, nil
 	if ok == true and took >= REEL_MIN and took <= REEL_TIME + 2 and not b.taken then
 		tryGrab(s.player, b, false, true)
+		Game.track(s.player, "reelWon", {})
 	else
 		Game.notify(s.player, "slipped", { name = Config.fullName(b.zone.id, b.r, b.m, b.s) })
 	end

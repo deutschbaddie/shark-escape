@@ -452,6 +452,9 @@ SAMPLE.creatures = {
 }
 SAMPLE.rebirths = 1
 SAMPLE.speed = 30000
+SAMPLE.quests = { { text = "Catch 3 Rares or better", n = 1, goal = 3 }, { text = "Bring 15 creatures home", n = 15, goal = 15 },
+	{ text = "Ride through 5 boost rings", n = 0, goal = 5 } }
+SAMPLE.questsReset = 5 * 3600 + 120
 """
 MENU_SCENES = {
     "index": 'require("cmod:Shop").start()\nrequire("cmod:Index").open()',

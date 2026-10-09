@@ -74,10 +74,16 @@ One session per prompt: Prompted → Bought. The item is in custom field 1, and 
 |---|---|---|
 | SessionMinutes | Minutes; field 1 = new or returning | Track average session length. Target 15+ min for new players. |
 | SharkEaten | Field 1 = zone | Find where sharks are too hard. Compare with players per zone. |
-| GateBlocked | Field 1 = zone | Spot zone gates players bump into before they're ready. |
+| GateBlocked | Field 1 = zone | Players who rode into a zone below its recommended speed (its shark hunts them nonstop). Lots here = the recommended speed is too high, or the sign is unclear. |
 | Rebirth | Rebirth number | Count rebirths over time. |
 | DailyClaim | Day 1–7 | Day 7 claims ÷ Day 1 claims = your weekly retention hook. |
 | GroupChest | 1 | Count group-chest claims (each also asks them to join the group). |
+| Chum | 1 | Chum thrown. Near zero = the button isn't noticed; very high = it may feel unfair (watch SessionMinutes). |
+| RaidStart / RaidStolen / RaidDefended | 1 | Stolen ÷ Start should sit around 30-50%. Near 100% = owners can't get home in time (raise Config.Raid.time). |
+| CloseCall | 1 | How often the shark just misses. The chase is working when this is a few per session. |
+| ReelStart / ReelWon / ReelSlipped | 1 | Won ÷ Start for the Legendary reel. Aim for ~60%. Lower: widen the green band or slow the marker in Reel.luau. |
+| BossReward | 1 | Players who got a Legendary from the boss Megalodon. Compare with players online during Megalodon Hour. |
+| Quest | Field 1 = quest id | Which daily quests get finished. A quest nobody finishes needs a smaller goal. |
 
 ## Also check (built into Roblox, no code)
 

@@ -54,6 +54,7 @@ Game.sessions = {} :: { [Player]: Session }
 Game.frenzy = false -- set by Sharks while a hunt is on
 Game.storm = false -- set by Storm while a Lucky Storm is on
 Game.event = false -- set by Events during Megalodon Hour
+Game.questList = nil :: ((Session) -> { any })? -- set by Quests
 -- set by Sharks: has this player used up their shelter on this island?
 Game.islandExposed = nil :: ((Session, Layout.Island) -> boolean)?
 
@@ -77,12 +78,12 @@ function Game.notify(player: Player, kind: string, data: { [string]: any }?)
 	Game.track(player, kind, data or {})
 end
 
--- analytics hook (Analytics.luau sets it): every player event passes here,
--- plus internal ones starting with "_" (join, leave, water, tut)
-Game.onTrack = nil :: ((Player, string, { [string]: any }) -> ())?
+-- listeners (Analytics, Quests): every player event passes here, plus
+-- internal ones starting with "_" (join, leave, water, tut)
+Game.trackers = {} :: { (Player, string, { [string]: any }) -> () }
 function Game.track(player: Player, kind: string, data: { [string]: any })
-	if Game.onTrack then
-		task.spawn(Game.onTrack, player, kind, data)
+	for _, fn in Game.trackers do
+		task.spawn(fn, player, kind, data)
 	end
 end
 
@@ -305,6 +306,8 @@ function Game.push(s: Session)
 		starterNext = Config.StarterLadder[p.starterTier + 1], -- next pack to offer (nil = all bought)
 		dealBought = p.dealBought,
 		dailyDay = p.daily.day,
+		quests = Game.questList and Game.questList(s) or nil,
+		questsReset = 86400 - now % 86400, -- seconds to new quests (midnight UTC)
 		dailyWait = math.max(0, p.daily.last + Config.DAILY_GAP_HOURS * 3600 - now),
 		groupWait = math.max(0, p.groupClaim + Config.GroupChest.cooldownHours * 3600 - now),
 		plot = s.plot and s.plot.index or 0,

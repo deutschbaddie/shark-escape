@@ -19,6 +19,7 @@ local Storm = require(script.Storm)
 local Treasure = require(script.Treasure)
 local Raids = require(script.Raids)
 local Events = require(script.Events)
+local Quests = require(script.Quests)
 
 World.build()
 Analytics.start()
@@ -34,6 +35,7 @@ Storm.start()
 Treasure.start()
 Raids.start()
 Events.start()
+Quests.start()
 
 Players.CharacterAutoLoads = true
 for _, p in Players:GetPlayers() do

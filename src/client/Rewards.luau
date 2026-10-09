@@ -1,5 +1,6 @@
 -- Daily Rewards window + the group chest (client side; the server decides).
---   Daily:  a 7-day calendar (days 1-6 in a grid, Day 7 the big Limited one).
+--   Daily:  a 7-day calendar (days 1-6 in a grid, Day 7 the big Limited one)
+--           and today's 3 quests under it (server: Quests.luau).
 --           Opens by itself once per session when a reward is ready (after
 --           the tutorial), or from the gift square on the HUD.
 --   Chest:  "Join Group & Like to Claim!". Pressing E asks the server; if
@@ -34,6 +35,8 @@ local askedLike = false
 ----------------------------------------------------------------- daily window
 local T = UI.T
 local revealDay, revealAt = 0, -math.huge
+
+local questsRow: (Instance, number, any) -> ()
 
 local function close()
 	if window then
@@ -144,13 +147,35 @@ local function tile(parent: Instance, day: number, state: string, size: UDim2, p
 	end
 end
 
+-- today's quests: three cards with a progress bar each
+function questsRow(parent: Instance, y: number, d: any)
+	local list = d.quests or {}
+	if #list == 0 then
+		return
+	end
+	UI.label(parent, "body", ("Today's quests · new ones in %s"):format(UI.timeWords(d.questsReset or 0)),
+		{ Size = UDim2.new(1, 0, 0, 24), Position = UDim2.fromOffset(0, y), TextXAlignment = Enum.TextXAlignment.Left })
+	local gap = 12
+	for i, q in list do
+		local done = q.n >= q.goal
+		local card = UI.card(parent, done and T.green or T.navyLight, { Size = UDim2.new(1 / #list, -gap * (#list - 1) / #list, 0, 78),
+			Position = UDim2.new((i - 1) / #list, (i - 1) * gap / #list, 0, y + 28) })
+		UI.label(card, "body", q.text, { Size = UDim2.new(1, -16, 0, 40), Position = UDim2.fromOffset(8, 4), TextWrapped = true,
+			TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top })
+		local track = UI.frame(card, { Size = UDim2.new(1, -20, 0, 20), Position = UDim2.new(0, 10, 1, -26), BackgroundColor3 = T.navyDark })
+		UI.corner(track, 10)
+		UI.corner(UI.frame(track, { Size = UDim2.fromScale(math.clamp(q.n / q.goal, 0, 1), 1), BackgroundColor3 = done and T.gold or T.green }), 10)
+		UI.label(track, "meta", done and "Done" or ("%d / %d"):format(q.n, q.goal), { Size = UDim2.fromScale(1, 1), ZIndex = track.ZIndex + 2 })
+	end
+end
+
 function Rewards.openDaily()
 	close()
 	local d = State.data
 	if not d then
 		return
 	end
-	local f, body = UI.window(gui, "Daily Rewards", T.pink, Vector2.new(720, 470), close, "Gift")
+	local f, body = UI.window(gui, "Daily Rewards", T.pink, Vector2.new(720, 556), close, "Gift")
 	window = f
 	local nextDay = d.dailyDay or 1
 	local ready = os.clock() >= dailyReadyAt
@@ -163,12 +188,13 @@ function Rewards.openDaily()
 		return "later"
 	end
 	-- days 1-6: 3 x 2 grid; day 7: tall on the right
-	local cw, ch, gap = 140, 146, 12
+	local cw, ch, gap = 140, 124, 10
 	for day = 1, 6 do
 		local col, row = (day - 1) % 3, (day - 1) // 3
 		tile(body, day, state(day), UDim2.fromOffset(cw, ch), UDim2.fromOffset(col * (cw + gap), row * (ch + gap)))
 	end
 	tile(body, 7, state(7), UDim2.new(1, -3 * (cw + gap), 0, ch * 2 + gap), UDim2.fromOffset(3 * (cw + gap), 0))
+	questsRow(body, ch * 2 + gap * 2, d)
 	-- claim button / time to the next one
 	local footer = { Size = UDim2.fromOffset(380, 58), Position = UDim2.new(0.5, 0, 1, 0), AnchorPoint = Vector2.new(0.5, 1) }
 	if ready then
@@ -257,7 +283,7 @@ function Rewards.start()
 	gui.ResetOnSpawn = false
 	gui.DisplayOrder = 9
 	gui.Parent = player:WaitForChild("PlayerGui")
-	UI.autoScale(gui, Vector2.new(740, 480))
+	UI.autoScale(gui, Vector2.new(740, 566))
 
 	local function onState(d: any)
 		local wasReady = os.clock() >= dailyReadyAt
@@ -299,6 +325,13 @@ function Rewards.start()
 			else
 				Notify.toast("Next daily reward in " .. UI.timeWords(data.wait or 0), C.gold)
 			end
+		elseif kind == "quest" then
+			local sub = ("+$%s"):format(UI.short(data.coins or 0))
+			if data.bonus then
+				sub ..= (" · all 3 done: Luck Potion %d min"):format(data.bonus)
+			end
+			Notify.banner(("Quest done: %s"):format(tostring(data.text)), { color = C.gold, priority = 2, time = 3.5, sub = sub })
+			Fx.sound("coin", 0.8)
 		elseif kind == "groupChest" then
 			if data.ok then
 				while os.clock() < likeOpenUntil do

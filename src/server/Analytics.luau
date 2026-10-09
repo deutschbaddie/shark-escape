@@ -8,7 +8,9 @@
 --   Rides (every rebirth run)         Pool Noodle -> Rubber Duck -> ... -> Golden Comet
 --   Store (every Robux prompt)        Prompted -> Bought
 --   Economy  coins in (tank cash, Index, chest, codes) and out (rides, tank slots)
---   Custom   SharkEaten, GateBlocked, Rebirth, DailyClaim, GroupChest, SessionMinutes
+--   Custom   SharkEaten, GateBlocked, Rebirth, DailyClaim, GroupChest, SessionMinutes,
+--            Chum, RaidStart / RaidStolen / RaidDefended, CloseCall,
+--            ReelStart / ReelWon / ReelSlipped, BossReward, Quest
 
 local AnalyticsService = game:GetService("AnalyticsService")
 local HttpService = game:GetService("HttpService")
@@ -169,6 +171,27 @@ handlers.spat = function(player)
 	local zone = s and s.lastPos and Config.zoneAtPos(s.lastPos)
 	call("LogCustomEvent", player, "SharkEaten", 1, { [F1] = zone and zone.name or "?" })
 end
+-- the plan's new systems: are people using them, and do they work?
+local function count(name: string): (Player, any) -> ()
+	return function(player)
+		call("LogCustomEvent", player, name, 1)
+	end
+end
+handlers.chum = count("Chum")
+handlers.closeCall = count("CloseCall")
+handlers.reel = count("ReelStart")
+handlers.reelWon = count("ReelWon")
+handlers.slipped = count("ReelSlipped")
+handlers.bossReward = count("BossReward")
+handlers.raid = function(player, d)
+	local name = ({ start = "RaidStart", won = "RaidStolen", defended = "RaidDefended" } :: any)[d.stage]
+	if name then
+		call("LogCustomEvent", player, name, 1)
+	end
+end
+handlers.quest = function(player, d)
+	call("LogCustomEvent", player, "Quest", 1, { [F1] = tostring(d.id) })
+end
 handlers.gate = function(player, d)
 	local zone = Config.zoneById(d.zone)
 	call("LogCustomEvent", player, "GateBlocked", 1, { [F1] = zone and zone.name or tostring(d.zone) })
@@ -198,12 +221,12 @@ local function store(player: Player?, isPass: boolean, id: number, bought: boole
 end
 
 function Analytics.start()
-	Game.onTrack = function(player, kind, data)
+	table.insert(Game.trackers, function(player, kind, data)
 		local fn = handlers[kind]
 		if fn then
 			fn(player, data)
 		end
-	end
+	end)
 	MarketplaceService.PromptProductPurchaseFinished:Connect(function(userId, productId, bought)
 		store(Players:GetPlayerByUserId(userId), false, productId, bought)
 	end)
