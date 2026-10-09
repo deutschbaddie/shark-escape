@@ -814,9 +814,9 @@ local function onLunge(data: any)
 		lungeArc(sh, Vector3.new(data.x or sh.pos.X, 0, data.z or sh.pos.Z), to, dur)
 	end
 	if data.victim == player.UserId then
-		Notify.word("SWERVE!", UI.C.red, 0.6)
+		-- glow on the side it's coming from: swerve away from the red
+		Fx.edgeWarn(sh and sh.pos or Vector3.new(data.x or 0, 0, data.z or 0), dur)
 		Fx.shake(1.2)
-		Fx.flash(RED, 0.2, 0.8)
 	end
 end
 
@@ -825,7 +825,7 @@ end
 function SharkView.lungeLocal(sh: any, to: Vector3, dur: number, radius: number)
 	lungeMarker(to, radius, dur)
 	lungeArc(sh, sh.pos, to, dur)
-	Notify.word("SWERVE!", UI.C.red, 0.6)
+	Fx.edgeWarn(sh.pos, dur)
 end
 
 ----------------------------------------------------------------- island shelter

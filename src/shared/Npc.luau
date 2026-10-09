@@ -151,6 +151,12 @@ function Npc.build(parent: Instance, kind: string, feet: CFrame): Model?
 		gear(m, head, "VisorBrim", Vector3.new(1.2, 0.1, 0.75), CFrame.new(0, 0.44, -0.9), hc)
 	end
 
+	-- solid body (players bump into it instead of walking through); the hats
+	-- and gear stay non-colliding
+	for _, p in { root, torso, rl, ll } do
+		p.CanCollide = true
+	end
+
 	local hum = Instance.new("Humanoid")
 	hum.RigType = Enum.HumanoidRigType.R6
 	hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None

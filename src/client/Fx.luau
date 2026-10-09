@@ -208,6 +208,88 @@ function Fx.flash(color: Color3, duration: number?, startT: number?)
 	Debris:AddItem(f, (duration or 0.5) + 0.1)
 end
 
+-- The shark's jaws snap shut over the whole screen, hold, then fling open:
+-- the "spat out" moment. Blocky stepped teeth (the game's stud look) that
+-- interlock when closed. onClosed runs while the screen is covered.
+local GUM, GUM_EDGE, TOOTH = Color3.fromRGB(176, 52, 74), Color3.fromRGB(110, 24, 44), Color3.fromRGB(250, 247, 236)
+local TEETH, TOOTH_H = 10, 54
+function Fx.jaws(onClosed: (() -> ())?)
+	local root = UI.frame(Fx.screen(), { Name = "Jaws", Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ZIndex = 55 })
+	local jaws = {}
+	for i, top in { true, false } do
+		-- the jaw: gums filling half the screen; teeth hang off its inner edge
+		local jaw = UI.frame(root, { Size = UDim2.fromScale(1.2, 0.5), AnchorPoint = Vector2.new(0.5, top and 1 or 0),
+			Position = UDim2.new(0.5, 0, top and 0 or 1, top and -TOOTH_H or TOOTH_H), BackgroundColor3 = GUM, ZIndex = 55 })
+		UI.frame(jaw, { Size = UDim2.new(1, 0, 0, 10), Position = UDim2.fromScale(0, top and 1 or 0), AnchorPoint = Vector2.new(0, top and 1 or 0),
+			BackgroundColor3 = GUM_EDGE, ZIndex = 56 })
+		for t = 0, TEETH do
+			-- bottom row sits half a tooth over, so the rows interlock
+			local x = (t + (i == 2 and 0.5 or 0)) / TEETH
+			local tooth = UI.frame(jaw, { Size = UDim2.new(1 / TEETH * 0.72, 0, 0, TOOTH_H), AnchorPoint = Vector2.new(0.5, top and 0 or 1),
+				Position = UDim2.new(x * (1 / 1.2) + 0.1 / 1.2 * 1, 0, top and 1 or 0, 0), BackgroundTransparency = 1, ZIndex = 57 })
+			for step, w in { 1, 0.68, 0.36 } do
+				UI.frame(tooth, { Size = UDim2.new(w, 0, 1 / 3, 0), AnchorPoint = Vector2.new(0.5, top and 0 or 1),
+					Position = UDim2.fromScale(0.5, top and (step - 1) / 3 or 1 - (step - 1) / 3), BackgroundColor3 = TOOTH, ZIndex = 57 })
+			end
+		end
+		jaws[i] = jaw
+	end
+	-- snap shut (teeth meet in the middle)
+	local shut = TweenInfo.new(0.13, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+	TweenService:Create(jaws[1], shut, { Position = UDim2.new(0.5, 0, 0.5, -TOOTH_H / 2) }):Play()
+	TweenService:Create(jaws[2], shut, { Position = UDim2.new(0.5, 0, 0.5, TOOTH_H / 2) }):Play()
+	task.delay(0.13, function()
+		Fx.shake(1.6)
+		if onClosed then
+			onClosed()
+		end
+	end)
+	-- then spit: the jaws fling open past the screen edges
+	task.delay(0.42, function()
+		local open = TweenInfo.new(0.32, Enum.EasingStyle.Back, Enum.EasingDirection.In)
+		TweenService:Create(jaws[1], open, { Position = UDim2.new(0.5, 0, 0, -TOOTH_H) }):Play()
+		TweenService:Create(jaws[2], open, { Position = UDim2.new(0.5, 0, 1, TOOTH_H) }):Play()
+	end)
+	Debris:AddItem(root, 0.9)
+end
+
+-- Danger glow on the screen edge the threat comes from (a lunging shark):
+-- pulses for `dur` seconds, so you know which way to swerve without words.
+function Fx.edgeWarn(from: Vector3, dur: number, color: Color3?)
+	local cam = Workspace.CurrentCamera
+	if not cam then
+		return
+	end
+	local rel = cam.CFrame:PointToObjectSpace(from)
+	local ang = math.atan2(rel.X, -rel.Z) -- 0 ahead, + right, +-pi behind
+	local side = math.abs(ang) < math.rad(40) and "top" or math.abs(ang) > math.rad(140) and "bottom" or (ang > 0 and "right" or "left")
+	local horiz = side == "left" or side == "right"
+	local f = UI.frame(Fx.screen(), {
+		Name = "EdgeWarn",
+		Size = horiz and UDim2.fromScale(0.22, 1) or UDim2.fromScale(1, 0.26),
+		Position = UDim2.fromScale(side == "right" and 1 or 0, side == "bottom" and 1 or 0),
+		AnchorPoint = Vector2.new(side == "right" and 1 or 0, side == "bottom" and 1 or 0),
+		BackgroundColor3 = color or Color3.fromRGB(255, 50, 60), BackgroundTransparency = 1, ZIndex = 50,
+	})
+	local g = Instance.new("UIGradient")
+	g.Rotation = ({ left = 0, right = 180, top = 90, bottom = 270 })[side]
+	g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(1, 1) })
+	g.Parent = f
+	local pulses = math.max(2, math.floor(dur / 0.3))
+	local each = dur / pulses
+	task.spawn(function()
+		for _ = 1, pulses do
+			TweenService:Create(f, TweenInfo.new(each * 0.35, Enum.EasingStyle.Quad), { BackgroundTransparency = 0.15 }):Play()
+			task.wait(each * 0.35)
+			TweenService:Create(f, TweenInfo.new(each * 0.65, Enum.EasingStyle.Quad), { BackgroundTransparency = 0.75 }):Play()
+			task.wait(each * 0.65)
+		end
+		TweenService:Create(f, TweenInfo.new(0.2), { BackgroundTransparency = 1 }):Play()
+		task.wait(0.22)
+		f:Destroy()
+	end)
+end
+
 -- big center-screen word ("CHOMP!", "LUCKY!"). One at a time: a word that
 -- arrives while another is up waits its turn (and stale ones are dropped).
 local wordBusyUntil = 0

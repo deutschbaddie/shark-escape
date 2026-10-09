@@ -963,7 +963,7 @@ handlers.spat = function()
 	if hrp then
 		hrp.AssemblyLinearVelocity = Vector3.new(0, 60, -55)
 	end
-	Notify.word("PTOOEY!", C.sky, 1)
+	Fx.jaws() -- the jaws snap shut over the screen, then spit you out
 	Fx.sound("spat", 0.8)
 	local d = State.data
 	if d and d.playtime >= Config.SHOP_UNLOCK_SECONDS and Config.Products.Shield.id ~= 0 then

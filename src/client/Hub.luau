@@ -241,6 +241,12 @@ local function updateShowcase()
 			local m = Rides.build(nxt.id)
 			Build.ghost(m)
 			m:ScaleTo(1.7)
+			-- big rides would sweep through the keeper: keep it within 12 studs across
+			local _, size = m:GetBoundingBox()
+			local across = math.max(size.X, size.Z)
+			if across > 12 then
+				m:ScaleTo(1.7 * 12 / across)
+			end
 			m.Parent = Workspace
 			showcase = m
 		end
