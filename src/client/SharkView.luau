@@ -29,7 +29,7 @@ local TweenService = game:GetService("TweenService")
 local SharkView = {}
 
 local player = Players.LocalPlayer
-local VARIANTS = { "Baby", "Hammerhead", "Tiger", "GreatWhite", "Mecha", "Megalodon", "Frost", "Magma", "King" }
+local VARIANTS = { "Baby", "Hammerhead", "Tiger", "GreatWhite", "Mecha", "Megalodon", "Frost", "Magma", "King", "Gummy", "Jelly", "Licorice", "Peppermint", "Fudge", "SugarKing" }
 -- wire codes from server Sharks.luau ("chase" = the charge)
 local STATE_NAMES = { "chase", "circle", "leave", "bite", "stalk", "overshoot", "lunge" }
 local BONES = { "Root", "Head", "Jaw", "Spine2", "Spine3", "Spine4", "Tail", "PecL", "PecR" }
@@ -91,6 +91,13 @@ local LOOKS: { [string]: { base: string, tint: Color3 } } = {
 	Frost = { base = "GreatWhite", tint = Color3.fromRGB(185, 230, 255) },
 	Magma = { base = "Megalodon", tint = Color3.fromRGB(255, 120, 70) },
 	King = { base = "GreatWhite", tint = Color3.fromRGB(255, 205, 80) },
+	-- Candy Bay
+	Gummy = { base = "Baby", tint = Color3.fromRGB(120, 235, 120) },
+	Jelly = { base = "Hammerhead", tint = Color3.fromRGB(255, 130, 205) },
+	Licorice = { base = "Tiger", tint = Color3.fromRGB(70, 40, 50) },
+	Peppermint = { base = "GreatWhite", tint = Color3.fromRGB(240, 70, 90) },
+	Fudge = { base = "Mecha", tint = Color3.fromRGB(130, 80, 50) },
+	SugarKing = { base = "Megalodon", tint = Color3.fromRGB(255, 90, 210) },
 }
 
 local function tint(model: Instance, color: Color3)

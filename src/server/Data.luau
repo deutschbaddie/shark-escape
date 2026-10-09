@@ -36,6 +36,9 @@ export type Profile = {
 	index: { [string]: boolean }, -- "Zone:Rarity" discovered
 	claimed: { [string]: boolean }, -- index rewards already taken
 	lastSeen: number,
+	world: number, -- the world these top-level fields belong to
+	wr: number, -- rebirths in this world (sets this run's goal; `rebirths` is the total)
+	worlds: { [string]: { [string]: any } }, -- the other worlds' progress, stashed
 }
 
 local VERSION = "SharkEscape_v1"
@@ -71,7 +74,46 @@ function Data.default(): Profile
 		index = {},
 		claimed = {},
 		lastSeen = 0,
+		world = 1,
+		wr = 0,
+		worlds = {},
 	}
+end
+
+-- progress that belongs to one world; everything else (Robux, daily, codes,
+-- shields, total rebirths, playtime) is shared
+Data.PER_WORLD = { "speed", "coins", "rides", "ride", "creatures", "slots", "index", "claimed", "wr" }
+
+-- swap the world-specific fields so the profile's top level is world `w`
+function Data.enterWorld(p: Profile, w: number)
+	if p.world == w then
+		return
+	end
+	local stash = {}
+	local src: any = p
+	for _, k in Data.PER_WORLD do
+		stash[k] = src[k]
+	end
+	p.worlds[tostring(p.world)] = stash
+	local saved = p.worlds[tostring(w)]
+	local fresh: any = Data.default()
+	local target: any = p
+	for _, k in Data.PER_WORLD do
+		local v = saved and saved[k]
+		target[k] = if v ~= nil and typeof(v) == typeof(fresh[k]) then v else fresh[k]
+	end
+	p.worlds[tostring(w)] = nil
+	p.world = w
+	p.rides.Noodle = true
+end
+
+-- a world's rebirth count, wherever its progress currently lives
+function Data.worldRebirths(p: Profile, w: number): number
+	if p.world == w then
+		return p.wr
+	end
+	local saved = p.worlds[tostring(w)]
+	return saved and tonumber(saved.wr) or 0
 end
 
 local function reconcile(saved: any): Profile
@@ -84,6 +126,9 @@ local function reconcile(saved: any): Profile
 		end
 	end
 	p.rides.Noodle = true
+	if type(saved) == "table" and saved.world == nil then
+		p.wr = p.rebirths -- saves from before worlds: all rebirths were in Shark Beach
+	end
 	if p.starter and p.starterTier < 1 then
 		p.starterTier = 1 -- bought the Starter Pack before the ladder existed
 	end

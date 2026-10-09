@@ -111,7 +111,7 @@ end
 
 function Hub.confirmRebirth()
 	local d = State.data
-	if not d or d.speed < Config.rebirthSpeed(d.rebirths) then
+	if not d or d.speed < Config.rebirthSpeed(d.wr or d.rebirths) then
 		return
 	end
 	local now = Config.Rebirth.mult ^ d.rebirths

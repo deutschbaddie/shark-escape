@@ -17,6 +17,12 @@ local COLORS = {
 	Frost = { C(170, 220, 245), C(250, 253, 255) },
 	Magma = { C(50, 36, 36), C(255, 120, 40) },
 	King = { C(220, 170, 40), C(255, 245, 210) },
+	Gummy = { C(120, 230, 120), C(220, 255, 220) },
+	Jelly = { C(255, 120, 200), C(255, 225, 245) },
+	Licorice = { C(40, 30, 36), C(220, 50, 70) },
+	Peppermint = { C(230, 40, 60), C(255, 255, 255) },
+	Fudge = { C(100, 60, 38), C(230, 190, 150) },
+	SugarKing = { C(255, 80, 200), C(255, 230, 250) },
 }
 
 function SharkFallback.build(variant: string, length: number): Model

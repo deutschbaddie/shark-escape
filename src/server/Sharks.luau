@@ -30,7 +30,7 @@ local Sharks = {}
 local SharkRemote = Remotes.get("Sharks")
 local EventRemote = Remotes.get("SharkEvent")
 
-local VARIANTS = { "Baby", "Hammerhead", "Tiger", "GreatWhite", "Mecha", "Megalodon", "Frost", "Magma", "King" }
+local VARIANTS = { "Baby", "Hammerhead", "Tiger", "GreatWhite", "Mecha", "Megalodon", "Frost", "Magma", "King", "Gummy", "Jelly", "Licorice", "Peppermint", "Fudge", "SugarKing" }
 local VARIANT_INDEX = {}
 for i, v in VARIANTS do
 	VARIANT_INDEX[v] = i

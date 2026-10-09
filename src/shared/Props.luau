@@ -208,6 +208,59 @@ function Props.column(parent: Instance, base: CFrame, h: number, broken: boolean
 	return m
 end
 
+----------------------------------------------------------------- Candy Bay
+local CANDY = { C(255, 90, 160), C(120, 220, 255), C(255, 210, 60), C(130, 230, 120), C(190, 120, 255), C(255, 140, 60) }
+
+-- a sugar-coated gumdrop (a squat dome on the floor)
+function Props.gumdrop(parent: Instance, base: CFrame, size: number, rng: Random)
+	local m = Build.model("Gumdrop", parent)
+	local c = CANDY[rng:NextInteger(1, #CANDY)]
+	Build.ell(m, Vector3.new(size, size * 0.9, size), base * CFrame.new(0, size * 0.25, 0), c, { Material = Enum.Material.Glass, Transparency = 0.15 })
+	Build.ell(m, Vector3.new(size * 0.7, size * 0.5, size * 0.7), base * CFrame.new(0, size * 0.42, 0), c:Lerp(C(255, 255, 255), 0.4))
+	return m
+end
+
+-- a swirl lollipop: stick + disc of stripes
+function Props.lollipop(parent: Instance, base: CFrame, h: number, rng: Random)
+	local m = Build.model("Lollipop", parent)
+	Build.cyl(m, h, h * 0.06, base * CFrame.new(0, h / 2, 0), C(255, 255, 255))
+	local a, b = CANDY[rng:NextInteger(1, #CANDY)], C(255, 255, 255)
+	local face = base * CFrame.new(0, h + h * 0.18, 0) * CFrame.Angles(0, rng:NextNumber(0, 6), 0)
+	for i, k in { 1, 0.78, 0.56, 0.34 } do
+		local p = Build.part(m, Vector3.new(h * 0.08 + i * 0.01, h * 0.42 * k, h * 0.42 * k), face * CFrame.Angles(0, math.pi / 2, 0), i % 2 == 1 and a or b)
+		p.Shape = Enum.PartType.Cylinder
+	end
+	return m
+end
+
+-- a candy cane: red and white rings up a pole, hooked at the top
+function Props.candyCane(parent: Instance, base: CFrame, h: number)
+	local m = Build.model("CandyCane", parent)
+	local seg = h / 10
+	for i = 0, 9 do
+		Build.cyl(m, seg, h * 0.08, base * CFrame.new(0, seg * (i + 0.5), 0), i % 2 == 0 and C(235, 40, 60) or C(255, 255, 255))
+	end
+	-- the hook: a few blocks around a half circle
+	local r = h * 0.12
+	for i = 1, 6 do
+		local a = i / 6 * math.pi
+		Build.ball(m, h * 0.085, base * CFrame.new(r - math.cos(a) * r, h + math.sin(a) * r, 0), i % 2 == 0 and C(235, 40, 60) or C(255, 255, 255))
+	end
+	return m
+end
+
+-- a chocolate bar: a slab of studded squares, half sunk
+function Props.chocoBar(parent: Instance, base: CFrame, size: number)
+	local m = Build.model("ChocoBar", parent)
+	for x = 0, 2 do
+		for z = 0, 1 do
+			Build.studs(Build.part(m, Vector3.new(size * 0.31, size * 0.18, size * 0.31),
+				base * CFrame.new((x - 1) * size * 0.33, size * 0.09, (z - 0.5) * size * 0.33), C(100, 58, 34)), Build.ALL_FACES)
+		end
+	end
+	return m
+end
+
 -- giant fossil jaw arch at the end of the Abyss
 function Props.jawArch(parent: Instance, cf: CFrame, width: number)
 	local m = Build.model("MegalodonJaw", parent)

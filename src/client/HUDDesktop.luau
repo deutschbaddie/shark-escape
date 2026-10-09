@@ -336,7 +336,7 @@ local function render(d: any)
 	boost("Luck", d.luckLeft > 0, UI.timeWords(d.luckLeft))
 
 	-- goal: the next zone gate up to this run's rebirth target, then rebirth
-	local target = Config.rebirthSpeed(d.rebirths)
+	local target = Config.rebirthSpeed(d.wr or d.rebirths)
 	local gate = Config.nextGate(d.speed)
 	if gate and gate.gate > target then
 		gate = nil

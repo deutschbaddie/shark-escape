@@ -44,7 +44,7 @@ export type Zone = {
 	index: number,
 }
 
-Config.Zones = {
+local OCEAN_ZONES = {
 	{ id = "Lagoon", name = "Lagoon", gate = 0, length = 260, depth = 7, shark = "Baby", sharkLength = 8,
 		sharkSpeed = 44, value = 1, islandEvery = 70, islandRadius = 11,
 		water = Color3.fromRGB(40, 222, 226), clarity = 0.92, floor = Enum.Material.Sand,
@@ -80,9 +80,73 @@ Config.Zones = {
 		floorColor = Color3.fromRGB(45, 30, 30), tint = Color3.fromRGB(255, 232, 220) },
 	{ id = "Atlantis", name = "Lost City", gate = 350000, length = 1800, depth = 60, shark = "King", sharkLength = 34,
 		sharkSpeed = 360, value = 375000, islandEvery = 300, islandRadius = 8, aggro = 1.2,
-		water = Color3.fromRGB(40, 190, 170), clarity = 0.5, floor = Enum.Material.Marble,
+		water = Color3.fromRGB(40, 190, 170), clarity = 0.5, floor = Enum.Material.Limestone,
 		floorColor = Color3.fromRGB(235, 225, 200), tint = Color3.fromRGB(240, 255, 250) },
 } :: { Zone }
+
+-- World 2: Candy Bay. Same game, sweeter sea: every zone pays 4x its
+-- Shark Beach twin, speed gain is x2.5 (on top of your rebirths), and gates
+-- / rebirth goals are x4.
+local function rgb(r: number, g: number, b: number): Color3
+	return Color3.fromRGB(r, g, b)
+end
+local CANDY_ZONES = {
+	{ id = "Soda", name = "Soda Shallows", gate = 0, length = 260, depth = 7, shark = "Gummy", sharkLength = 8,
+		sharkSpeed = 60, value = 4, islandEvery = 70, islandRadius = 11, aggro = 0.9,
+		water = rgb(120, 230, 255), clarity = 0.9, floor = Enum.Material.Sand,
+		floorColor = rgb(255, 214, 236), tint = rgb(255, 250, 255) },
+	{ id = "Gumdrop", name = "Gumdrop Reef", gate = 400, length = 400, depth = 12, shark = "Jelly", sharkLength = 12,
+		sharkSpeed = 95, value = 20, islandEvery = 95, islandRadius = 10, aggro = 1.3,
+		water = rgb(255, 140, 210), clarity = 0.8, floor = Enum.Material.Snow,
+		floorColor = rgb(255, 190, 230), tint = rgb(255, 245, 252) },
+	{ id = "Lolly", name = "Lollipop Lagoon", gate = 2000, length = 560, depth = 18, shark = "Licorice", sharkLength = 14,
+		sharkSpeed = 120, value = 100, islandEvery = 120, islandRadius = 9, aggro = 1.25,
+		water = rgb(190, 130, 255), clarity = 0.7, floor = Enum.Material.Pavement,
+		floorColor = rgb(225, 200, 255), tint = rgb(250, 245, 255) },
+	{ id = "Cane", name = "Candy Cane Cove", gate = 4000, length = 720, depth = 26, shark = "Peppermint", sharkLength = 18,
+		sharkSpeed = 160, value = 480, islandEvery = 150, islandRadius = 9,
+		water = rgb(255, 110, 130), clarity = 0.6, floor = Enum.Material.Salt,
+		floorColor = rgb(255, 235, 235), tint = rgb(255, 245, 245) },
+	{ id = "Choco", name = "Chocolate Deep", gate = 20000, length = 1000, depth = 48, shark = "Fudge", sharkLength = 22,
+		sharkSpeed = 230, value = 2400, islandEvery = 210, islandRadius = 8,
+		water = rgb(120, 70, 40), clarity = 0.4, floor = Enum.Material.Mud,
+		floorColor = rgb(90, 55, 35), tint = rgb(255, 240, 228) },
+	{ id = "Sugar", name = "Sugar Abyss", gate = 100000, length = 1400, depth = 80, shark = "SugarKing", sharkLength = 40,
+		sharkSpeed = 320, value = 12000, islandEvery = 300, islandRadius = 8, aggro = 1.1,
+		water = rgb(70, 30, 100), clarity = 0.3, floor = Enum.Material.Basalt,
+		floorColor = rgb(60, 30, 80), tint = rgb(250, 235, 255) },
+} :: { Zone }
+
+----------------------------------------------------------------- worlds
+-- Each world is its own place in the experience (publish this same build to
+-- every place). The place id picks the world; in Studio, set a "World"
+-- number attribute on ReplicatedStorage to test another world.
+export type World = {
+	id: number, name: string, placeId: number, zones: { Zone },
+	gainMult: number, rebirthSteps: { number }, unlockRebirths: number, color: Color3,
+}
+Config.Worlds = {
+	{ id = 1, name = "Shark Beach", placeId = 0, zones = OCEAN_ZONES, gainMult = 1,
+		rebirthSteps = { 25000, 60000, 150000, 350000 }, unlockRebirths = 0, color = rgb(40, 170, 255) },
+	{ id = 2, name = "Candy Bay", placeId = 0, zones = CANDY_ZONES, gainMult = 2.5,
+		rebirthSteps = { 100000, 240000, 600000, 1400000 }, unlockRebirths = 3, color = rgb(255, 110, 200) },
+} :: { World }
+
+Config.WORLD = 1
+pcall(function()
+	local forced = game:GetService("ReplicatedStorage"):GetAttribute("World")
+	if typeof(forced) == "number" and Config.Worlds[forced] then
+		Config.WORLD = forced
+	else
+		for _, w in Config.Worlds do
+			if w.placeId ~= 0 and w.placeId == game.PlaceId then
+				Config.WORLD = w.id
+			end
+		end
+	end
+end)
+Config.World = Config.Worlds[Config.WORLD]
+Config.Zones = Config.World.zones
 
 do
 	local z = Config.SHORE_Z
@@ -308,6 +372,49 @@ Config.Species = {
 		Rare = { name = "Pearl Turtle", kind = "turtle", icon = "", c1 = RGB(235, 240, 245), c2 = RGB(200, 170, 220) },
 		Epic = { name = "Temple Ray", kind = "ray", icon = "", c1 = RGB(30, 140, 130), c2 = RGB(255, 215, 90), glow = true },
 		Legendary = { name = "Poseidon Whale", kind = "whale", icon = "", c1 = RGB(40, 170, 160), c2 = RGB(255, 225, 120), horn = true, glow = true, size = 1.25 },
+	},
+	-- Candy Bay (World 2)
+	Soda = {
+		Common = { name = "Fizz Fish", kind = "fish", icon = "", c1 = RGB(120, 220, 255), c2 = RGB(255, 255, 255), c3 = RGB(255, 90, 160) },
+		Uncommon = { name = "Taffy Crab", kind = "crab", icon = "", c1 = RGB(255, 150, 200), c2 = RGB(255, 235, 245), shell = true },
+		Rare = { name = "Bubblegum Puffer", kind = "puffer", icon = "", c1 = RGB(255, 130, 200), c2 = RGB(255, 225, 240) },
+		Epic = { name = "Mint Turtle", kind = "turtle", icon = "", c1 = RGB(120, 230, 180), c2 = RGB(255, 255, 255) },
+		Legendary = { name = "Cotton Candy Whale", kind = "whale", icon = "", c1 = RGB(255, 170, 225), c2 = RGB(170, 220, 255), horn = true },
+	},
+	Gumdrop = {
+		Common = { name = "Gummy Fish", kind = "fish", icon = "", c1 = RGB(255, 80, 80), c2 = RGB(255, 200, 60), c3 = RGB(80, 200, 90) },
+		Uncommon = { name = "Jelly Bean Horse", kind = "seahorse", icon = "", c1 = RGB(170, 90, 255), c2 = RGB(255, 210, 120) },
+		Rare = { name = "Gumdrop Octopus", kind = "ceph", icon = "", c1 = RGB(80, 220, 120), c2 = RGB(200, 255, 200) },
+		Epic = { name = "Sour Ray", kind = "ray", icon = "", c1 = RGB(255, 230, 60), c2 = RGB(120, 255, 120), glow = true },
+		Legendary = { name = "Gummy Dragon", kind = "serpent", icon = "", c1 = RGB(255, 80, 120), c2 = RGB(255, 220, 90), horns = true },
+	},
+	Lolly = {
+		Common = { name = "Swirl Fish", kind = "fish", icon = "", c1 = RGB(255, 120, 220), c2 = RGB(255, 255, 255), c3 = RGB(120, 90, 255) },
+		Uncommon = { name = "Rock Candy Crab", kind = "crab", icon = "", c1 = RGB(150, 210, 255), c2 = RGB(240, 250, 255), long = true },
+		Rare = { name = "Jelly Jelly", kind = "jelly", icon = "", c1 = RGB(255, 160, 80), c2 = RGB(255, 230, 190), glow = true },
+		Epic = { name = "Lollipop Squid", kind = "ceph", icon = "", c1 = RGB(255, 80, 160), c2 = RGB(255, 210, 240), long = true },
+		Legendary = { name = "Rainbow Serpent", kind = "serpent", icon = "", c1 = RGB(120, 120, 255), c2 = RGB(255, 140, 220), glow = true },
+	},
+	Cane = {
+		Common = { name = "Peppermint Eel", kind = "serpent", icon = "", c1 = RGB(240, 40, 60), c2 = RGB(255, 255, 255), size = 0.8 },
+		Uncommon = { name = "Licorice Lobster", kind = "crab", icon = "", c1 = RGB(30, 25, 30), c2 = RGB(220, 40, 60), long = true, shell = false },
+		Rare = { name = "Cane Swordfish", kind = "fish", icon = "", c1 = RGB(255, 255, 255), c2 = RGB(240, 40, 60), c3 = RGB(60, 160, 80), bill = true },
+		Epic = { name = "Frosting Octopus", kind = "ceph", icon = "", c1 = RGB(255, 245, 250), c2 = RGB(255, 170, 200), ghost = true },
+		Legendary = { name = "Candy Orca", kind = "whale", icon = "", c1 = RGB(220, 30, 60), c2 = RGB(255, 255, 255), size = 1.05 },
+	},
+	Choco = {
+		Common = { name = "Cocoa Fish", kind = "fish", icon = "", c1 = RGB(110, 65, 40), c2 = RGB(255, 225, 180), c3 = RGB(60, 35, 20) },
+		Uncommon = { name = "Truffle Angler", kind = "fish", icon = "", c1 = RGB(80, 45, 30), c2 = RGB(255, 210, 80), c3 = RGB(40, 25, 15), lure = true },
+		Rare = { name = "Fudge Squid", kind = "ceph", icon = "", c1 = RGB(130, 75, 45), c2 = RGB(230, 170, 120), long = true },
+		Epic = { name = "Caramel Ray", kind = "ray", icon = "", c1 = RGB(200, 120, 50), c2 = RGB(255, 220, 150), glow = true },
+		Legendary = { name = "Chocolate Leviathan", kind = "serpent", icon = "", c1 = RGB(90, 50, 30), c2 = RGB(255, 200, 120), horns = true, size = 1.2 },
+	},
+	Sugar = {
+		Common = { name = "Sprinkle Fish", kind = "fish", icon = "", c1 = RGB(255, 120, 230), c2 = RGB(60, 30, 90), c3 = RGB(120, 255, 230), glow = true },
+		Uncommon = { name = "Sugar Jelly", kind = "jelly", icon = "", c1 = RGB(200, 140, 255), c2 = RGB(255, 230, 255), glow = true },
+		Rare = { name = "Candy Vampire Squid", kind = "ceph", icon = "", c1 = RGB(120, 20, 80), c2 = RGB(255, 90, 200), glow = true },
+		Epic = { name = "Gummy Megalodon", kind = "whale", icon = "", c1 = RGB(255, 100, 180), c2 = RGB(255, 230, 245), fin = true },
+		Legendary = { name = "Sugar Kraken", kind = "ceph", icon = "", c1 = RGB(255, 60, 200), c2 = RGB(120, 255, 240), glow = true, size = 1.15 },
 	},
 } :: any
 
@@ -560,7 +667,7 @@ end
 ----------------------------------------------------------------- rebirth
 -- Each rebirth asks for more speed: the first at The Abyss, then one zone
 -- further each time (Frozen Sea, Volcano Vents, Lost City), then x2 each.
-Config.Rebirth = { speed = 25000, mult = 1.5, steps = { 25000, 60000, 150000, 350000 } }
+Config.Rebirth = { speed = 25000, mult = 1.5, steps = Config.World.rebirthSteps }
 function Config.rebirthSpeed(rebirths: number?): number
 	local n = (rebirths or 0) + 1
 	local steps = Config.Rebirth.steps
@@ -814,6 +921,7 @@ Config.Icons = {
 		Lagoon = "ZonePalm", Reef = "Coral", Kelp = "ZoneKelp", Shipwreck = "ZoneAnchor", Deep = "ZoneWhale", Abyss = "ZoneSquid",
 		-- (no art yet for these: upload ZoneIce / ZoneVolcano / ZoneTemple and add them to ids)
 		Frozen = "ZoneWhale", Volcano = "ZoneSquid", Atlantis = "Crown",
+		Soda = "ZonePalm", Gumdrop = "Coral", Lolly = "ZoneKelp", Cane = "ZoneAnchor", Choco = "ZoneWhale", Sugar = "ZoneSquid",
 	},
 	SheetA = "",
 	SheetB = "",

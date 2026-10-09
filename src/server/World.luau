@@ -700,6 +700,44 @@ local function buildDecor()
 				Props.spikeRock(deco, CFrame.new(x, 0, z) * CFrame.Angles(0, rng:NextNumber(0, 6), 0), rng:NextNumber(10, 22))
 			end
 			Props.jawArch(deco, CFrame.new(0, -2, zone.zEnd - 30), W * 0.8)
+		elseif zone.id == "Soda" then
+			for _ = 1, 8 do
+				local x, z = laneXZ(zone)
+				Props.beachBall(deco, Vector3.new(x, 0.9, z))
+			end
+			for _ = 1, 14 do
+				local x, z = laneXZ(zone)
+				Props.gumdrop(deco, CFrame.new(x, floorY, z), rng:NextNumber(3, 5), rng)
+			end
+		elseif zone.id == "Gumdrop" then
+			for _ = 1, 40 do
+				local x, z = laneXZ(zone)
+				Props.gumdrop(deco, CFrame.new(x, floorY, z), rng:NextNumber(4, 9), rng)
+			end
+		elseif zone.id == "Lolly" then
+			for _ = 1, 30 do
+				local x, z = laneXZ(zone)
+				Props.lollipop(deco, CFrame.new(x, floorY, z), zone.depth - rng:NextNumber(3, 7), rng)
+			end
+		elseif zone.id == "Cane" then
+			for _ = 1, 26 do
+				local x, z = laneXZ(zone)
+				Props.candyCane(deco, CFrame.new(x, floorY, z) * CFrame.Angles(0, rng:NextNumber(0, 6), 0), zone.depth - rng:NextNumber(4, 9))
+			end
+		elseif zone.id == "Choco" then
+			for _ = 1, 20 do
+				local x, z = laneXZ(zone)
+				Props.chocoBar(deco, CFrame.new(x, floorY, z) * CFrame.Angles(0, rng:NextNumber(0, 6), 0), rng:NextNumber(10, 20))
+			end
+		elseif zone.id == "Sugar" then
+			for _ = 1, 14 do
+				local x, z = laneXZ(zone)
+				Props.spikeRock(deco, CFrame.new(x, 0, z) * CFrame.Angles(0, rng:NextNumber(0, 6), 0), rng:NextNumber(10, 22))
+			end
+			for _ = 1, 20 do
+				local x, z = laneXZ(zone)
+				Props.lollipop(deco, CFrame.new(x, floorY, z), rng:NextNumber(20, 40), rng)
+			end
 		elseif zone.id == "Frozen" then
 			for _ = 1, 30 do
 				local x, z = laneXZ(zone)
@@ -884,6 +922,52 @@ local function buildGroupChest()
 	prompt.Parent = box
 end
 
+----------------------------------------------------------------- portal
+-- A studded arch in the next world's color with a swirling force field;
+-- its prompt asks the server to teleport (Game actions.portal). The client
+-- shows locked / open on the sign (Portal.luau).
+local function buildPortal()
+	local other = Config.Worlds[Config.WORLD == 1 and 2 or 1]
+	local m = Build.model("Portal", map)
+	local base = CFrame.new(Layout.Portal)
+	local col, trim = other.color, other.color:Lerp(C(255, 255, 255), 0.5)
+	studAll(Build.part(m, Vector3.new(18, 1, 8), base * CFrame.new(0, 0.5, 0), C(70, 74, 100), { Name = "Base" }))
+	for _, sx in { -1, 1 } do
+		studAll(Build.part(m, Vector3.new(3, 15, 3), base * CFrame.new(sx * 7.5, 8.5, 0), col))
+		studAll(Build.part(m, Vector3.new(3.6, 1.2, 3.6), base * CFrame.new(sx * 7.5, 1.6, 0), trim))
+		studAll(Build.part(m, Vector3.new(3.6, 1.2, 3.6), base * CFrame.new(sx * 7.5, 15.4, 0), trim))
+	end
+	studAll(Build.part(m, Vector3.new(19, 3, 3.4), base * CFrame.new(0, 17.5, 0), col, { Name = "Top" }))
+	-- the gateway itself
+	local field = Build.part(m, Vector3.new(12, 14, 0.6), base * CFrame.new(0, 8, 0), col:Lerp(C(255, 255, 255), 0.25), {
+		Name = "Field", Material = Enum.Material.ForceField, Transparency = 0.05, CanCollide = false, CanQuery = false, CastShadow = false,
+	})
+	local light = Instance.new("PointLight")
+	light.Color = col
+	light.Range = 18
+	light.Brightness = 2
+	light.Parent = field
+	-- sign: where it goes (the client adds the lock line)
+	local anchor = Build.part(m, Vector3.new(0.2, 0.2, 0.2), base * CFrame.new(0, 21.5, 0), C(255, 255, 255),
+		{ Name = "Sign", Transparency = 1, CanCollide = false, CanQuery = false, CanTouch = false })
+	local title = label(anchor, Vector2.new(18, 3.6), Vector3.new(0, 1.2, 0), other.name:upper(), C(255, 255, 255), 160)
+	title.Name = "Title"
+	title.Font = Enum.Font.LuckiestGuy
+	local sub = label(anchor, Vector2.new(18, 1.8), Vector3.new(0, -1.4, 0), "", trim, 160)
+	sub.Name = "Sub"
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "Portal"
+	prompt.ActionText = "Enter"
+	prompt.ObjectText = other.name
+	prompt.HoldDuration = 0.4
+	prompt.MaxActivationDistance = 14
+	prompt.RequiresLineOfSight = false
+	prompt.Style = Enum.ProximityPromptStyle.Custom
+	prompt.KeyboardKeyCode = Enum.KeyCode.E
+	prompt.Parent = field
+	m:SetAttribute("Target", other.id)
+end
+
 -- Builds everything. Safe to run again (and from the Studio command bar to
 -- preview the map in edit mode): the old map is removed first.
 function World.build()
@@ -913,6 +997,7 @@ function World.build()
 	end
 	buildBoards()
 	buildGroupChest()
+	buildPortal()
 	buildTerrain()
 	buildLane()
 	buildGates()

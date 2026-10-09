@@ -546,7 +546,7 @@ local function render(d: any)
 	boostCol.Visible = d.shields > 0 or d.boostLeft > 0 or d.luckLeft > 0
 
 	-- goal: the next zone gate up to this run's rebirth target, then rebirth
-	local target = Config.rebirthSpeed(d.rebirths)
+	local target = Config.rebirthSpeed(d.wr or d.rebirths)
 	local gate = Config.nextGate(d.speed)
 	if gate and gate.gate > target then
 		gate = nil

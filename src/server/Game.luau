@@ -2,6 +2,7 @@
 -- rebirth, gates, the shark's bite consequences, and state sync.
 
 local Players = game:GetService("Players")
+local TeleportService = game:GetService("TeleportService")
 
 local Shared = game.ReplicatedStorage.Shared
 local Config = require(Shared.Config)
@@ -41,6 +42,7 @@ export type Session = {
 	offline: number, -- welcome-back coins waiting to be claimed
 	carryUntil: number?, -- os.clock() when the carried creature wriggles free
 	carryWarned: boolean?,
+	teleporting: boolean?, -- saved and on the way to another world: never save again here
 }
 
 Game.sessions = {} :: { [Player]: Session }
@@ -100,7 +102,7 @@ function Game.gain(s: Session): number
 			best = math.max(best, ride.gain)
 		end
 	end
-	local mult = Config.Rebirth.mult ^ s.profile.rebirths
+	local mult = Config.Rebirth.mult ^ s.profile.rebirths * Config.World.gainMult
 	if s.passes.TwoXSpeed then
 		mult *= 2
 	end
@@ -226,6 +228,16 @@ end
 Game.short = formatShort
 
 ----------------------------------------------------------------- state sync
+-- worlds this player may enter (World n: unlockRebirths in the world before)
+function Game.unlockedWorlds(s: Session): { [string]: boolean }
+	local out = {}
+	for i, w in Config.Worlds do
+		local prev = Config.Worlds[i - 1]
+		out[tostring(i)] = prev == nil or Data.worldRebirths(s.profile, prev.id) >= w.unlockRebirths
+	end
+	return out
+end
+
 function Game.push(s: Session)
 	local p = s.profile
 	-- everyone's client colors your wake from these (rebirth tier / VIP gold)
@@ -261,6 +273,9 @@ function Game.push(s: Session)
 		slow = s.slow,
 		slotPrice = Game.slotPrice(s),
 		rebirths = p.rebirths,
+		wr = p.wr,
+		world = Config.WORLD,
+		unlocked = Game.unlockedWorlds(s),
 		tut = p.tut,
 		shields = p.shields,
 		carrying = s.carrying,
@@ -732,12 +747,46 @@ actions.buySlot = function(s)
 	end
 end
 
+-- the plaza portal: save, then teleport to the other world's place
+actions.portal = function(s)
+	local target = Config.WORLD == 1 and 2 or 1
+	local w = Config.Worlds[target]
+	local here = Config.Worlds[Config.WORLD]
+	if not w or s.teleporting then
+		return
+	end
+	if not Game.unlockedWorlds(s)[tostring(target)] then
+		local need = w.unlockRebirths - Data.worldRebirths(s.profile, here.id)
+		Game.notify(s.player, "announce", { text = ("Rebirth %d more time%s in %s to open %s"):format(need, need == 1 and "" or "s", here.name, w.name) })
+		return
+	end
+	if w.placeId == 0 then
+		Game.notify(s.player, "announce", { text = w.name .. " opens soon!" })
+		return
+	end
+	s.teleporting = true
+	s.profile.coins += s.pending + s.offline
+	s.pending, s.offline = 0, 0
+	if s.canSave and not Data.save(s.player.UserId, s.profile) then
+		s.teleporting = false
+		Game.notify(s.player, "announce", { text = "Couldn't save, try the portal again" })
+		return
+	end
+	Game.notify(s.player, "portal", { name = w.name })
+	local ok = pcall(TeleportService.TeleportAsync, TeleportService, w.placeId, { s.player })
+	if not ok then
+		s.teleporting = false
+		Game.notify(s.player, "announce", { text = "The portal fizzled (teleports only work in the live game)" })
+	end
+end
+
 actions.rebirth = function(s)
 	local p = s.profile
-	if p.speed < Config.rebirthSpeed(p.rebirths) then
+	if p.speed < Config.rebirthSpeed(p.wr) then
 		return
 	end
 	p.rebirths += 1
+	p.wr += 1
 	p.speed = 0
 	p.coins = 0
 	p.rides = { Noodle = true }
@@ -845,6 +894,7 @@ function Game.join(player: Player)
 	if not player.Parent then
 		return
 	end
+	Data.enterWorld(profile, Config.WORLD) -- this place's world (Config.Worlds)
 	local s: Session = {
 		player = player,
 		profile = profile,
@@ -917,7 +967,9 @@ function Game.leave(player: Player)
 	end
 	Game.sessions[player] = nil
 	Game.track(player, "_leave", { minutes = (os.clock() - s.joinedAt) / 60, rebirths = s.profile.rebirths })
-	s.profile.coins += s.pending + s.offline
+	if not s.teleporting then
+		s.profile.coins += s.pending + s.offline
+	end
 	if s.plot then
 		s.plot.owner = nil
 		s.plot.signLabel.Text = "Empty Dock"
@@ -928,7 +980,7 @@ function Game.leave(player: Player)
 		s.plot.slots:ClearAllChildren()
 		s.plot.model:SetAttribute("Owner", nil)
 	end
-	if s.canSave then
+	if s.canSave and not s.teleporting then -- (a teleport already saved; the next world owns the save now)
 		Data.save(player.UserId, s.profile)
 	end
 	for _, other in Game.sessions do
@@ -946,6 +998,7 @@ function Game.resetProfile(s: Session)
 		(s.profile :: any)[k] = v
 	end
 	s.profile.receipts = receipts
+	s.profile.world = Config.WORLD -- the fresh save belongs to the world you're in
 	s.pending, s.offline = 0, 0
 	Game.setCarry(s, nil)
 	if s.canSave then
@@ -960,7 +1013,7 @@ end
 
 function Game.saveAll()
 	for player, s in Game.sessions do
-		if s.canSave then
+		if s.canSave and not s.teleporting then
 			task.spawn(Data.save, player.UserId, s.profile)
 		end
 	end
@@ -1083,6 +1136,14 @@ local function fastTick()
 end
 
 function Game.start()
+	-- a teleport that fails after it started: you're still here, saves resume
+	TeleportService.TeleportInitFailed:Connect(function(player)
+		local s = Game.sessions[player]
+		if s then
+			s.teleporting = false
+			Game.notify(player, "announce", { text = "The portal fizzled, try again" })
+		end
+	end)
 	Players.PlayerAdded:Connect(Game.join)
 	Players.PlayerRemoving:Connect(Game.leave)
 	for _, p in Players:GetPlayers() do
@@ -1108,6 +1169,9 @@ function Game.start()
 	end)
 	game:BindToClose(function()
 		for player, s in Game.sessions do
+			if s.teleporting then
+				continue
+			end
 			s.profile.coins += s.pending + s.offline
 			s.pending, s.offline = 0, 0
 			if s.canSave then
