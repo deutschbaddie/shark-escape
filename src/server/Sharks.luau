@@ -526,6 +526,7 @@ function Sharks.onGrab(s: Game.Session, rarityId: string)
 	local hrp = Game.root(s.player)
 	local zone = hrp and Config.zoneAtPos(hrp.Position)
 	chance *= zone and zone.aggro or 1
+	chance *= 1 + 0.08 * ((zone and zone.index or 1) - 1) -- deeper = noisier
 	if rng:NextNumber() < chance then
 		Sharks.aggro(s, nil, "grab")
 	end

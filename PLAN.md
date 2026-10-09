@@ -16,31 +16,31 @@ serves that, in this order. `[x]` = built (not yet playtested), `[ ]` = to do.
 ## Phase 0: stop the bleeding
 - [x] Save protection (session locking)
 - [x] Hide Robux offers for the first 10 minutes
-- [ ] Bug sweep of everything since worlds (review running) and fixes
+- [x] Bug sweep of everything since worlds (review running) and fixes
 - [ ] Performance pass for cheap phones (stud textures, World 2 detail)
-- [ ] Remove every shouty center word (Notify.word / takeover / Fx.bigWord)
+- [x] Remove every shouty center word (Notify.word / takeover / Fx.bigWord)
 
 ## Phase 1: make the shark the game (1 week)
-- [ ] **No boundaries.** No gate walls: ride as far as you dare. Each zone has
+- [x] **No boundaries.** No gate walls: ride as far as you dare. Each zone has
       a *recommended speed*; below it, that zone's shark hunts you the whole
       time you're there (day or night). You can go; you just won't make it back.
 - [x] Chase loop: deeper = worth more (each zone x5) and meaner sharks (aggro)
-- [ ] Deeper = the grudge chance grows with depth too
+- [x] Deeper = the grudge chance grows with depth too
 - [x] Ride-over grabs (Common to Rare)
 - [x] Grabbing makes noise: the zone's shark may come for you (grudge)
 - [x] Close call reward (+speed)
-- [ ] Near-miss slow-mo feel (blur, desaturate, FOV punch, heartbeat)
-- [ ] Legendary reel: grabbing a Legendary starts a timing minigame while
+- [x] Near-miss slow-mo feel (blur, desaturate, FOV punch, heartbeat)
+- [x] Legendary reel: grabbing a Legendary starts a timing minigame while
       its shark charges; miss and it slips away
 - [x] Day / night (night = everyone hunted, luckier; dawn resets)
 
 ## Phase 2: make players matter to each other (1-2 weeks)
 - [x] Chum: throw at a nearby rider, their shark comes for them (cooldown)
-- [ ] A Shark Shield blocks chum (and is used up)
+- [x] A Shark Shield blocks chum (and is used up)
 - [x] Raids: 35 s at their tank while they're at sea; they rush home to stop it
-- [ ] Tank Lock (Robux product): no raids for 30 min (needs a product id)
+- [x] Tank Lock (Robux product): no raids for 30 min (needs a product id)
 - [x] Server-wide announcements for Legendary / Huge catches
-- [ ] A light beam over the catcher's dock for a minute
+- [x] A light beam over the catcher's dock for a minute
 
 ## Phase 3: reasons to come back at set times (ongoing)
 - [x] Megalodon Hour every Saturday 3 PM ET + plaza countdown board

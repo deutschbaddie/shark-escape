@@ -418,6 +418,36 @@ function Game.takeCatch(s: Session, c: Data.Creature)
 	s.dirty = true
 end
 
+-- a pillar of light over your dock for a while (big catches: the server
+-- sees where the brag came from)
+function Game.beamDock(s: Session, color: Color3, seconds: number)
+	local plot = s.plot
+	if not plot then
+		return
+	end
+	local old = plot.model:FindFirstChild("Beam")
+	if old then
+		old:Destroy()
+	end
+	local at = Layout.tankPos(plot.cf)
+	local beam = Instance.new("Part")
+	beam.Name = "Beam"
+	beam.Anchored, beam.CanCollide, beam.CanQuery, beam.CanTouch, beam.CastShadow = true, false, false, false, false
+	beam.Shape = Enum.PartType.Cylinder
+	beam.Size = Vector3.new(160, 3, 3)
+	beam.CFrame = CFrame.new(at + Vector3.new(0, 80, 0)) * CFrame.Angles(0, 0, math.pi / 2)
+	beam.Material = Enum.Material.Neon
+	beam.Color = color
+	beam.Transparency = 0.45
+	local light = Instance.new("PointLight")
+	light.Color, light.Range, light.Brightness = color, 30, 3
+	light.Parent = beam
+	beam.Parent = plot.model
+	task.delay(seconds, function()
+		beam:Destroy()
+	end)
+end
+
 -- drop everything you carry (shark bite, portal, reset)
 function Game.dropAll(s: Session)
 	s.bag = nil
@@ -1015,6 +1045,7 @@ local function dressPlot(s: Session)
 		plot.signLabel.Text = s.player.DisplayName .. "'s Dock"
 		plot.viewPrompt.ObjectText = s.player.DisplayName .. "'s Tank"
 		plot.model:SetAttribute("Owner", s.player.UserId)
+		plot.model:SetAttribute("LockUntil", s.profile.lockUntil) -- (Tank Lock: no raid prompt)
 	end
 end
 
@@ -1026,6 +1057,7 @@ local function emptyPlot(plot: World.Plot)
 	plot.tankOffline.Text = ""
 	plot.slots:ClearAllChildren()
 	plot.model:SetAttribute("Owner", nil)
+	plot.model:SetAttribute("LockUntil", nil)
 end
 
 local function claimPlot(s: Session)

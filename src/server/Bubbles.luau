@@ -16,12 +16,20 @@ local Game = require(script.Parent.Game)
 
 local Bubbles = {}
 
-type Bubble = { model: Model, pos: Vector3, r: string, m: string?, s: number, zone: Config.Zone, taken: boolean? }
+type Bubble = { model: Model, pos: Vector3, r: string, m: string?, s: number, zone: Config.Zone, taken: boolean?,
+	reservedBy: Player?, reservedUntil: number? }
 
 local live: { Bubble } = {}
 local byId: { [number]: Bubble } = {}
 local nextBubbleId = 0
-local tryGrab: (Player, Bubble, boolean?) -> ()
+local tryGrab: (Player, Bubble, boolean?, boolean?) -> ()
+
+-- Legendary reel: grabbing a Legendary starts a timing minigame on the
+-- client (Reel.luau) while its zone's shark charges you. Land it and it's
+-- yours; fumble (or take too long) and it slips back into the water.
+local REEL_TIME = 7 -- seconds the client gets
+local REEL_MIN = 1.2 -- faster than this isn't a real reel
+local reels: { [Player]: { b: Bubble, started: number } } = {}
 local folder: Folder
 local rng = Random.new()
 
@@ -164,20 +172,38 @@ local function grab(s: Game.Session, b: Bubble)
 	local idx = Config.rarity(r).index
 	if idx >= 5 or (b.s or 1) >= 2 or (b.m and idx >= 4) then
 		Game.notifyAll("bigCatch", { by = s.player.DisplayName, userId = s.player.UserId, name = Config.fullName(b.zone.id, r, b.m, b.s), r = r })
+		Game.beamDock(s, Config.rarity(r).color, 60) -- everyone can see whose dock it went to
 	end
 	Game.notify(s.player, "grab", { r = r, m = b.m, z = b.zone.id, s = b.s, lucky = lucky, pity = pity,
 		v = Config.creatureValue(r, b.zone.id, b.m, b.s) * Game.coinMult(s) })
 end
 
 -- hold the prompt to grab (server checks you're really there)
--- swept = the ride-over sweep already checked your path passed through it
-tryGrab = function(player: Player, b: Bubble, swept: boolean?)
+-- swept = the ride-over sweep already checked your path passed through it;
+-- reeled = you just won the Legendary reel for it
+tryGrab = function(player: Player, b: Bubble, swept: boolean?, reeled: boolean?)
 	local s = Game.sessions[player]
 	if not s or b.taken or Game.handsFull(s) or os.clock() < s.eatenUntil then
 		return
 	end
 	local hrp = Game.root(player)
-	if not hrp or (not swept and Vector2.new(hrp.Position.X - b.pos.X, hrp.Position.Z - b.pos.Z).Magnitude > 16) then
+	local reach = reeled and 40 or 16 -- (you drift a little while reeling)
+	if not hrp or (not swept and Vector2.new(hrp.Position.X - b.pos.X, hrp.Position.Z - b.pos.Z).Magnitude > reach) then
+		return
+	end
+	if b.reservedBy and b.reservedBy ~= player and os.clock() < (b.reservedUntil or 0) then
+		return -- someone's reeling this one in
+	end
+	if not reeled and Config.rarity(b.r).index >= 5 and s.profile.tut >= 5 then
+		if reels[player] then
+			return
+		end
+		b.reservedBy, b.reservedUntil = player, os.clock() + REEL_TIME + 2
+		reels[player] = { b = b, started = os.clock() }
+		Game.notify(player, "reel", { time = REEL_TIME, name = Config.fullName(b.zone.id, b.r, b.m, b.s) })
+		if Game.sharkAggro then
+			Game.sharkAggro(s, REEL_TIME + 6, "reel")
+		end
 		return
 	end
 	local i = table.find(live, b)
@@ -208,6 +234,23 @@ function Bubbles.give(s: Game.Session, r: string, zoneId: string?, size: number?
 		Game.notify(s.player, "grab", { r = c.r, m = c.m, z = c.z, s = c.s, gift = true, v = Config.creatureValue(c.r, c.z, c.m, c.s) * Game.coinMult(s) })
 	end
 end
+
+-- the reel's result from the client
+Game.action("reel", function(s, ok)
+	local r = reels[s.player]
+	if not r then
+		return
+	end
+	reels[s.player] = nil
+	local b = r.b
+	local took = os.clock() - r.started
+	b.reservedBy, b.reservedUntil = nil, nil
+	if ok == true and took >= REEL_MIN and took <= REEL_TIME + 2 and not b.taken then
+		tryGrab(s.player, b, false, true)
+	else
+		Game.notify(s.player, "slipped", { name = Config.fullName(b.zone.id, b.r, b.m, b.s) })
+	end
+end)
 
 -- touch screens grab through this action (Prompts.luau runs the hold on
 -- the button itself, which works on every phone); same checks as the prompt
@@ -266,6 +309,11 @@ function Bubbles.start()
 	end)
 	Players.PlayerRemoving:Connect(function(p)
 		last[p] = nil
+		local r = reels[p]
+		if r then
+			r.b.reservedBy, r.b.reservedUntil = nil, nil
+			reels[p] = nil
+		end
 	end)
 end
 

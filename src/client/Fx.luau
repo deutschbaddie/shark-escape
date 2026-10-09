@@ -253,6 +253,36 @@ function Fx.jaws(onClosed: (() -> ())?)
 	Debris:AddItem(root, 0.9)
 end
 
+-- Near miss: the world drains of color, blurs and the view punches in for a
+-- moment, then snaps back (time "slows" without slowing the game)
+function Fx.nearMiss()
+	local Lighting = game:GetService("Lighting")
+	local cam = Workspace.CurrentCamera
+	local blur = Instance.new("BlurEffect")
+	blur.Size = 0
+	blur.Parent = Lighting
+	local cc = Instance.new("ColorCorrectionEffect")
+	cc.Parent = Lighting
+	local into = TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	local out = TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+	TweenService:Create(blur, into, { Size = 10 }):Play()
+	TweenService:Create(cc, into, { Saturation = -0.75, Contrast = 0.15 }):Play()
+	local fov = cam and cam.FieldOfView
+	if cam and fov then
+		TweenService:Create(cam, into, { FieldOfView = fov - 10 }):Play()
+	end
+	task.delay(0.35, function()
+		TweenService:Create(blur, out, { Size = 0 }):Play()
+		TweenService:Create(cc, out, { Saturation = 0, Contrast = 0 }):Play()
+		if cam and fov then
+			TweenService:Create(cam, out, { FieldOfView = fov }):Play()
+		end
+		task.wait(0.75)
+		blur:Destroy()
+		cc:Destroy()
+	end)
+end
+
 -- Danger glow on the screen edge the threat comes from (a lunging shark):
 -- pulses for `dur` seconds, so you know which way to swerve without words.
 function Fx.edgeWarn(from: Vector3, dur: number, color: Color3?)

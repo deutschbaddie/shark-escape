@@ -795,7 +795,9 @@ Config.Products = {
 	Rescue = { iconName = "Shield", id = 3717313850, price = 9, name = "Save Your Creature", icon = "", desc = "Get back the creature the shark just ate" },
 	SpeedPack0 = { iconName = "SpeedPack0", id = 3717313910, price = 9, name = "Mini Speed Pack", icon = "", desc = "3 minutes of your speed gain" },
 	MoneyPack0 = { iconName = "MoneyPack0", id = 3717314065, price = 9, name = "Mini Cash Pack", icon = "", desc = "3 minutes of your tank income" },
-	Shield = { iconName = "Shield", id = 3717314118, price = 9, name = "Shark Shield", icon = "", desc = "Survive one bite, keep your creature" },
+	Shield = { iconName = "Shield", id = 3717314118, price = 9, name = "Shark Shield", icon = "", desc = "Survive one bite (or one chum), keep your creature" },
+	-- id 0 = shows SOON until you create the product and paste its id here
+	TankLock = { iconName = "Lock", id = 0, price = 29, name = "Tank Lock", icon = "", desc = "No one can raid your tank for 30 minutes" },
 	SpeedBoost = { iconName = "Boost", id = 3717315209, price = 49, name = "2x Speed (15 min)", icon = "", desc = "Double speed gain for 15 minutes" },
 	LuckPotion = { iconName = "Potion", id = 3717315275, price = 49, name = "Luck Potion (10 min)", icon = "", desc = "+15% rarity upgrade chance" },
 	GoldenBubble = { iconName = "GoldBubble", id = 3717315347, price = 99, name = "Golden Bubble", icon = "",

@@ -38,6 +38,7 @@ export type Profile = {
 	lastSeen: number,
 	world: number, -- the world these top-level fields belong to
 	net: number, -- Config.Nets tier (shared by every world)
+	lockUntil: number, -- Tank Lock (os.time): no raids until then
 	wr: number, -- rebirths in this world (sets this run's goal; `rebirths` is the total)
 	worlds: { [string]: { [string]: any } }, -- the other worlds' progress, stashed
 }
@@ -77,6 +78,7 @@ function Data.default(): Profile
 		lastSeen = 0,
 		world = 1,
 		net = 1,
+		lockUntil = 0,
 		wr = 0,
 		worlds = {},
 	}

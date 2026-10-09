@@ -57,6 +57,15 @@ local function chum(s: Game.Session, targetId: any)
 		Game.notify(s.player, "announce", { text = "They're out of reach" })
 		return
 	end
+	if t.profile.shields > 0 then
+		-- a Shark Shield eats the chum (and is used up)
+		t.profile.shields -= 1
+		t.dirty = true
+		chumAt[s.player] = now
+		Game.notify(t.player, "announce", { text = ("Your shield blocked %s's chum"):format(s.player.DisplayName) })
+		Game.notify(s.player, "announce", { text = ("%s's shield blocked your chum"):format(target.DisplayName) })
+		return
+	end
 	local ok = Game.sharkAggro and Game.sharkAggro(t, cfg.grudge, "chum", s.player.DisplayName)
 	if not ok then
 		Game.notify(s.player, "announce", { text = "No shark would come right now" })
@@ -137,6 +146,9 @@ local function startRaid(s: Game.Session, plotIndex: any)
 	end
 	if not atSea(v) then
 		return no("Only while they're out at sea")
+	end
+	if v.profile.lockUntil > os.time() then
+		return no("That tank is locked")
 	end
 	if #v.profile.creatures < 2 then
 		return no("Nothing worth taking")

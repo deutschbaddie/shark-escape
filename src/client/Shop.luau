@@ -338,7 +338,7 @@ local CATEGORIES = {
 	{ id = "Boosts", icon = "Potion", color = T.blue },
 }
 local PASSES = { "AutoCollect", "LuckyNet", "BigTank", "VIP", "GoldDuck", "SharkBoard", "RainbowSki" }
-local BOOSTS = { "Rescue", "Shield", "SpeedBoost", "LuckPotion", "GoldenBubble", "DoubleOffline" }
+local BOOSTS = { "Rescue", "Shield", "TankLock", "SpeedBoost", "LuckPotion", "GoldenBubble", "DoubleOffline" }
 local SPEED_TEXT = UI.light(T.gold, 0.2)
 local MONEY_TEXT = UI.C.money
 

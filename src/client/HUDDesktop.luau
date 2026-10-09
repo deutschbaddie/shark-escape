@@ -663,7 +663,7 @@ end
 handlers.closeCall = function(d)
 	Notify.takeover("Close call", ("+%s speed"):format(UI.short(d.amount or 0)), C.gold, 1.1)
 	Fx.sound("dodge", 0.9)
-	Fx.flash(Color3.new(1, 1, 1), 0.25, 0.5)
+	Fx.nearMiss()
 end
 
 handlers.net = function(d)

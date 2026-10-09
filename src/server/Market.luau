@@ -55,6 +55,13 @@ local function loadPasses(s: Game.Session)
 end
 
 local grants: { [string]: (Game.Session) -> boolean } = {
+	TankLock = function(s)
+		s.profile.lockUntil = math.max(s.profile.lockUntil, os.time()) + 30 * 60
+		if s.plot then
+			s.plot.model:SetAttribute("LockUntil", s.profile.lockUntil)
+		end
+		return true
+	end,
 	Shield = function(s)
 		s.profile.shields += 1
 		return true

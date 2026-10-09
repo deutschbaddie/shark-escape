@@ -26,6 +26,7 @@ local Warp = require(script.Warp)
 local News = require(script.News)
 local Pvp = require(script.Pvp)
 local Countdown = require(script.Countdown)
+local Reel = require(script.Reel)
 
 -- no reset button: resetting would be a free ride home (or a free raid
 -- defense). Sharks spit you out instead of killing you anyway.
@@ -50,6 +51,7 @@ Warp.start()
 News.start()
 Pvp.start()
 Countdown.start()
+Reel.start()
 Prompts.start()
 Ride.start()
 Shop.start()

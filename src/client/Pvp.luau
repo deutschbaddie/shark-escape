@@ -116,7 +116,9 @@ local function raidTick()
 		local owner = m:GetAttribute("Owner")
 		local prompt = m:FindFirstChild("RaidTank", true)
 		if prompt and prompt:IsA("ProximityPrompt") then
+			local lock = m:GetAttribute("LockUntil")
 			prompt.Enabled = typeof(owner) == "number" and owner ~= player.UserId
+				and not (typeof(lock) == "number" and lock > os.time()) -- (Tank Lock)
 		end
 		-- a red countdown over a tank being raided (everyone sees it)
 		local ends = m:GetAttribute("RaidEnds")
