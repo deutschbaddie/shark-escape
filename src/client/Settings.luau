@@ -2,6 +2,7 @@
 --   Slow Mode   caps your speed so the water is easier to steer (server action)
 --   Music       the Music sound group on / off
 --   Sounds      effects, UI clicks and ambience on / off
+--   Fewer details  side stud textures off (Perf.luau; on by default on phones)
 -- Music / Sounds are this session's choice (SoundGroup volume 0 or 1).
 
 local Players = game:GetService("Players")
@@ -9,6 +10,7 @@ local Players = game:GetService("Players")
 local UI = require(script.Parent.UI)
 local State = require(script.Parent.State)
 local Sounds = require(script.Parent.Sounds)
+local Perf = require(script.Parent.Perf)
 
 local Settings = {}
 local T = UI.T
@@ -41,7 +43,7 @@ function Settings.open()
 	if win then
 		return
 	end
-	local f, body = UI.window(gui, "Settings", T.blue, Vector2.new(440, 340), Settings.close, "Settings")
+	local f, body = UI.window(gui, "Settings", T.blue, Vector2.new(440, 420), Settings.close, "Settings")
 	win = f
 	local list = Instance.new("UIListLayout")
 	list.SortOrder = Enum.SortOrder.LayoutOrder
@@ -68,6 +70,7 @@ function Settings.open()
 		prefs.sounds = on
 		applySound()
 	end)
+	row(4, "Fewer details", "Runs smoother on phones", Perf.enabled(), Perf.set)
 end
 
 function Settings.toggle()
@@ -85,7 +88,7 @@ function Settings.start()
 	gui.DisplayOrder = 8
 	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	gui.Parent = player:WaitForChild("PlayerGui")
-	UI.autoScale(gui, Vector2.new(460, 360))
+	UI.autoScale(gui, Vector2.new(460, 440))
 	applySound()
 	local lastSlow: boolean? = nil
 	-- keep the Slow Mode switch in step with the server

@@ -17,7 +17,8 @@ serves that, in this order. `[x]` = built (not yet playtested), `[ ]` = to do.
 - [x] Save protection (session locking)
 - [x] Hide Robux offers for the first 10 minutes
 - [x] Bug sweep of everything since worlds (review running) and fixes
-- [ ] Performance pass for cheap phones (stud textures, World 2 detail)
+- [x] Performance pass for cheap phones: "Fewer details" (Settings, on for
+      phones) keeps studs on top faces only. Owner: keep StreamingEnabled on
 - [x] Remove every shouty center word (Notify.word / takeover / Fx.bigWord)
 
 ## Phase 1: make the shark the game (1 week)

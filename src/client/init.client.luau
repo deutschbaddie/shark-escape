@@ -29,6 +29,7 @@ local Countdown = require(script.Countdown)
 local Reel = require(script.Reel)
 local Boss = require(script.Boss)
 local SpeedFeel = require(script.SpeedFeel)
+local Perf = require(script.Perf)
 
 -- no reset button: resetting would be a free ride home (or a free raid
 -- defense). Sharks spit you out instead of killing you anyway.
@@ -56,6 +57,7 @@ Countdown.start()
 Reel.start()
 Boss.start()
 SpeedFeel.start()
+Perf.start()
 Prompts.start()
 Ride.start()
 Shop.start()
