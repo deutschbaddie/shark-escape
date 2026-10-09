@@ -34,13 +34,20 @@ local function tick()
 	local live = typeof(ends) == "number" and ends > now
 	local timeText = live and ("Live now · %s left"):format(long(ends - now))
 		or (typeof(nextAt) == "number" and ("starts in %s"):format(long(nextAt - now)) or "")
-	local updateText = Config.NextUpdate > os.time() and ("NEXT UPDATE in %s"):format(long(Config.NextUpdate - os.time())) or ""
+	local limited, limitedEnds = Config.limitedNow()
+	local limitedText = ("This week only: %s catches · %s left"):format(limited.id, long(limitedEnds - os.time()))
+	local updateText = Config.NextUpdate > os.time() and ("Next update in %s"):format(long(Config.NextUpdate - os.time())) or ""
 	for _, map in Layout.worldFolders() do
 		local board = map:FindFirstChild("EventBoard")
 		local sg = board and board:FindFirstChild("Countdown", true)
 		if sg then
 			local t = sg:FindFirstChild("Time") :: TextLabel?
 			local u = sg:FindFirstChild("Update") :: TextLabel?
+			local l = sg:FindFirstChild("Limited") :: TextLabel?
+			if l then
+				l.Text = limitedText
+				l.TextColor3 = limited.color
+			end
 			if t then
 				t.Text = timeText
 				t.TextColor3 = live and RED or Color3.new(1, 1, 1)
@@ -52,7 +59,7 @@ local function tick()
 	end
 	if live then
 		Notify.banner(Config.Event.name, { key = "event", sticky = true, priority = 1, color = RED,
-			sub = ("Luckier catches · 2x coins · two sharks a night · %s left"):format(long(ends - now)) })
+			sub = ("x3 luck · 2x coins · the boss Megalodon · %s left"):format(long(ends - now)) })
 	else
 		Notify.clear("event")
 	end
@@ -69,7 +76,7 @@ function Countdown.start()
 	end)
 	Remotes.get("Notify").OnClientEvent:Connect(function(kind)
 		if kind == "event" then
-			Notify.takeover(Config.Event.name .. "!", "Luckier catches, 2x coins... and two sharks a night", RED, 2.4, "Shark")
+			Notify.takeover(Config.Event.name, "x3 luck, 2x coins, and the boss Megalodon surfaces soon", RED, 2.4, "Shark")
 			Fx.sound("sharkAlarm", 0.9)
 			Fx.shake(1)
 		end

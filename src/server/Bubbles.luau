@@ -55,6 +55,11 @@ function Bubbles.rollMutation(): string?
 			return m.id
 		end
 	end
+	-- this week's limited one (Config.limitedNow)
+	local limited = Config.limitedNow()
+	if rng:NextNumber() < limited.chance * mult then
+		return limited.id
+	end
 	return nil
 end
 

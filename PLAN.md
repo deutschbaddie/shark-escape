@@ -44,11 +44,13 @@ serves that, in this order. `[x]` = built (not yet playtested), `[ ]` = to do.
 
 ## Phase 3: reasons to come back at set times (ongoing)
 - [x] Megalodon Hour every Saturday 3 PM ET + plaza countdown board
-- [ ] Make it x3 luck and add the **boss Megalodon** the whole server fights
+- [x] Make it x3 luck and add the **boss Megalodon** the whole server fights
       with harpoons; everyone who hit it gets a Legendary
-- [ ] Limited catches: a weekly limited mutation (e.g. "Spooky") only
-      catchable during its week, with the update countdown on the board
-- [ ] Codes: a new code at every like milestone ("1K likes = new code" on the board)
+- [x] Limited catches: a weekly limited mutation (Spooky, Toxic, Molten,
+      Frozen, Galaxy, rotating every Monday) only catchable during its week,
+      shown on the plaza board
+- [x] Codes: a new code at every like milestone ("New code at 1K likes" on the
+      board and the codes card). Owner: add the code + raise `Config.LikeGoal`
 
 ## Phase 4: added
 - [ ] Daily quests (3 a day: catch 2 Rares, chum someone, survive a night)
@@ -63,5 +65,6 @@ serves that, in this order. `[x]` = built (not yet playtested), `[ ]` = to do.
 ## Needs from the owner
 - Product id for **Tank Lock** (and MoneyPack1, still missing)
 - Zone icons for the 3 new Shark Beach zones and the 6 Candy Bay zones
+- Test the boss with `/boss` (and the whole event with `/event`) on a live server
 - Sound ids: thunder, portal whoosh, chest open, boss roar, reel click
 - Badge ids if you want badges

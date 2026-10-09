@@ -215,7 +215,7 @@ function Game.luck(s: Session): number
 		l += Config.Storm.luck
 	end
 	if Game.event then
-		l += Config.Event.luck
+		l = math.min(l * Config.Event.luckMult, 0.85) -- Megalodon Hour: x3
 	end
 	return l
 end

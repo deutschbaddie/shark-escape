@@ -998,10 +998,14 @@ local function buildEventBoard()
 		s.Color = C(10, 10, 20)
 		s.Parent = t
 	end
-	line("Title", 10, 70, Config.Event.name, C(255, 90, 100))
-	line("When", 82, 34, "Every Saturday · 3 PM ET", C(200, 210, 230))
-	line("Time", 124, 80, "", C(255, 255, 255))
-	line("Update", 220, 60, "", C(255, 210, 60))
+	line("Title", 6, 56, Config.Event.name, C(255, 90, 100))
+	line("When", 64, 28, "Every Saturday · 3 PM ET", C(200, 210, 230))
+	line("Time", 96, 58, "", C(255, 255, 255))
+	line("Limited", 160, 40, "", C(255, 255, 255)) -- this week's limited catch (client Countdown)
+	line("Update", 206, 38, "", C(255, 210, 60))
+	local goal = Config.LikeGoal
+	line("Likes", 250, 36, goal > 0 and ("New code at %s likes"):format(goal >= 1000 and (goal / 1000 .. "K") or tostring(goal)) or "",
+		C(120, 230, 255))
 end
 
 ----------------------------------------------------------------- zone warp

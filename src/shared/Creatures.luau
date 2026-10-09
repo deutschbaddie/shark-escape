@@ -333,6 +333,12 @@ function Creatures.build(rarityId: string, mutationId: string?, scale: number?, 
 	elseif mutationId == "Rainbow" then
 		m:SetAttribute("Rainbow", true) -- clients cycle the hue
 		CollectionService:AddTag(m, "Rainbow")
+	else
+		for _, l in Config.Limited do
+			if l.id == mutationId then
+				Build.recolor(m, l.color, l.material)
+			end
+		end
 	end
 	if mutationId then
 		m:SetAttribute("Mutation", mutationId)

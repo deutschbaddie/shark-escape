@@ -494,7 +494,7 @@ local function codesCard(parent: Instance, y: number, h: number)
 	UI.icon(codes, "Gift", { Size = UDim2.fromOffset(56, 56), Position = UDim2.new(0, 10, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5) })
 	UI.label(codes, "body", "CODES", { Size = UDim2.fromOffset(150, 26), Position = UDim2.new(0, 76, 0.5, -14), AnchorPoint = Vector2.new(0, 0.5),
 		TextXAlignment = Enum.TextXAlignment.Left })
-	UI.label(codes, "meta", "Free rewards", { Size = UDim2.fromOffset(150, 20), Position = UDim2.new(0, 76, 0.5, 12), AnchorPoint = Vector2.new(0, 0.5),
+	UI.label(codes, "meta", Config.LikeGoal > 0 and ("New code at %s likes"):format(UI.short(Config.LikeGoal)) or "Free rewards", { Size = UDim2.fromOffset(150, 20), Position = UDim2.new(0, 76, 0.5, 12), AnchorPoint = Vector2.new(0, 0.5),
 		TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = T.mute })
 	local box = Instance.new("TextBox")
 	box.Size = UDim2.new(1, -404, 0, 48)

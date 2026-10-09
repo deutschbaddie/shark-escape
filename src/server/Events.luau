@@ -1,12 +1,17 @@
 -- Megalodon Hour (Config.Event): every week at the same time (and whenever
--- an admin types /event). While it's on: luckier catches, double coins, and
--- two sharks every night. Workspace "EventEnds" (server time) tells clients.
+-- an admin types /event). While it's on: x3 luck, double coins, two sharks
+-- every night, and the boss Megalodon (Sharks.spawnBoss) surfaces in each
+-- world with players, again every Config.Boss.every seconds. Everyone who
+-- harpooned it enough gets a Legendary. Workspace "EventEnds" (server time)
+-- tells clients.
 
 local Workspace = game:GetService("Workspace")
 
 local Shared = game.ReplicatedStorage.Shared
 local Config = require(Shared.Config)
 local Game = require(script.Parent.Game)
+local Sharks = require(script.Parent.Sharks)
+local Bubbles = require(script.Parent.Bubbles)
 
 local Events = {}
 
@@ -36,7 +41,32 @@ function Events.force(minutes: number)
 	forcedUntil = os.time() + minutes * 60
 end
 
+-- the boss in every world someone's in
+local lastBoss = 0
+function Events.spawnBosses()
+	lastBoss = os.clock()
+	local seen = {}
+	for _, s in Game.sessions do
+		local w = s.profile.world or 1
+		if not seen[w] then
+			seen[w] = true
+			Sharks.spawnBoss(w)
+		end
+	end
+end
+
+local function bossDown(_world: number, winners: { [Player]: number })
+	for p in winners do
+		local s = Game.sessions[p]
+		if s then
+			Bubbles.give(s, Config.Boss.reward)
+			Game.notify(p, "bossReward", { r = Config.Boss.reward })
+		end
+	end
+end
+
 function Events.start()
+	Sharks.onBossDown = bossDown
 	task.spawn(function()
 		local was = false
 		while true do
@@ -51,7 +81,11 @@ function Events.start()
 				was = on
 				if on then
 					Game.notifyAll("event", { name = Config.Event.name })
+					lastBoss = os.clock()
+					task.delay(20, Events.spawnBosses) -- a moment to get in the water
 				end
+			elseif on and os.clock() - lastBoss > Config.Boss.every then
+				Events.spawnBosses()
 			end
 			-- the next start, for the plaza board
 			local a = Events.window(os.time())

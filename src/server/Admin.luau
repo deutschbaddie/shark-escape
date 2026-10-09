@@ -2,6 +2,7 @@
 --   /reset   wipe your own progress back to a brand-new save
 --   /storm   start a Lucky Storm now (to test it)
 --   /event   start a 15 min Megalodon Hour now
+--   /boss    the boss Megalodon surfaces in your world now
 
 local Players = game:GetService("Players")
 local TextChatService = game:GetService("TextChatService")
@@ -9,6 +10,7 @@ local TextChatService = game:GetService("TextChatService")
 local Game = require(script.Parent.Game)
 local Storm = require(script.Parent.Storm)
 local Events = require(script.Parent.Events)
+local Sharks = require(script.Parent.Sharks)
 
 local Admin = {}
 
@@ -37,6 +39,12 @@ local COMMANDS: { [string]: (Player) -> () } = {
 	end,
 	event = function()
 		Events.force(15) -- a 15 min Megalodon Hour now ("admin abuse")
+	end,
+	boss = function(player)
+		local s = Game.sessions[player]
+		if s then
+			Sharks.spawnBoss(s.profile.world or 1)
+		end
 	end,
 }
 

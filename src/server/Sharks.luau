@@ -19,6 +19,7 @@
 
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
 
 local Shared = game.ReplicatedStorage.Shared
 local Config = require(Shared.Config)
@@ -70,6 +71,28 @@ type Hunter = {
 }
 
 local hunters: { Hunter } = {}
+
+-- the boss Megalodon (one per world at most; Megalodon Hour)
+type Boss = {
+	id: number,
+	world: number,
+	home: Vector3,
+	pos: Vector3,
+	yaw: number,
+	state: string, -- circle / charge / bite / leave
+	timer: number,
+	angle: number,
+	hp: number,
+	maxHp: number,
+	hits: { [Player]: number },
+	target: Game.Session?,
+	nextCharge: number,
+	ends: number,
+	holdFor: number,
+	down: boolean?,
+}
+local bosses: { Boss } = {}
+local thrownAt: { [Player]: number } = {}
 local nextId = 0
 local phase = "calm"
 local phaseEnds = 0
@@ -418,6 +441,12 @@ local function snapshot()
 			math.floor(h.yaw * 100) / 100, STATE[h.state], h.length, h.target and h.target.player.UserId or 0,
 		})
 	end
+	for _, b in bosses do
+		table.insert(list, {
+			b.id, VARIANT_INDEX.Megalodon, math.floor(b.pos.X * 10) / 10, math.floor(b.pos.Z * 10) / 10,
+			math.floor(b.yaw * 100) / 100, STATE[b.state], Config.Boss.length, b.target and b.target.player.UserId or 0,
+		})
+	end
 	SharkRemote:FireAllClients(list)
 end
 
@@ -571,11 +600,187 @@ function Sharks.phase(): (string, number)
 	return phase, phaseEnds
 end
 
+----------------------------------------------------------------- the boss
+Sharks.onBossDown = nil :: ((world: number, hitters: { [Player]: number }) -> ())?
+
+local function bossAttrs(b: Boss?, w: number)
+	Workspace:SetAttribute("BossId" .. w, b and not b.down and b.id or nil)
+	Workspace:SetAttribute("BossHp" .. w, b and math.max(0, math.ceil(b.hp)) or nil)
+	Workspace:SetAttribute("BossMax" .. w, b and b.maxHp or nil)
+end
+
+local function bossIn(w: number): Boss?
+	for _, b in bosses do
+		if b.world == w and not b.down then
+			return b
+		end
+	end
+	return nil
+end
+
+local function playersIn(w: number): number
+	local n = 0
+	for _, s in Game.sessions do
+		local hrp = Game.root(s.player)
+		if hrp and Config.worldAt(hrp.Position) == w then
+			n += 1
+		end
+	end
+	return n
+end
+
+-- it surfaces over Config.Boss.zone in world w (false: one's already up)
+function Sharks.spawnBoss(w: number): boolean
+	local cfg = Config.Boss
+	if bossIn(w) then
+		return false
+	end
+	local zones = Config.worldZones(w)
+	local zone = zones[math.min(cfg.zone, #zones)]
+	local home = Vector3.new(Config.originX(w), 0, (zone.zStart + zone.zEnd) / 2)
+	local hp = cfg.hpBase + cfg.hpPerPlayer * math.max(1, playersIn(w))
+	nextId += 1
+	local b: Boss = {
+		id = nextId, world = w, home = home, pos = home + Vector3.new(cfg.circle, 0, 0), yaw = 0, state = "circle",
+		timer = 0, angle = 0, hp = hp, maxHp = hp, hits = {}, target = nil, nextCharge = os.clock() + cfg.chargeEvery,
+		ends = os.clock() + cfg.lifetime, holdFor = 0,
+	}
+	table.insert(bosses, b)
+	bossAttrs(b, w)
+	EventRemote:FireAllClients("boss", { id = b.id, world = w, zone = zone.name, x = home.X, z = home.Z })
+	return true
+end
+
+-- the nearest rider it can see (at sea, huntable, in its world)
+local function bossPick(b: Boss): Game.Session?
+	local best, bestD = nil, Config.Boss.sight
+	for _, s in Game.sessions do
+		local hrp = Game.root(s.player)
+		if hrp and Config.worldAt(hrp.Position) == b.world and Game.huntable(s) then
+			local d = flat(hrp.Position - b.pos).Magnitude
+			if d < bestD then
+				best, bestD = s, d
+			end
+		end
+	end
+	return best
+end
+
+local function bossUpdate(b: Boss, dt: number): boolean -- false: remove it
+	local cfg = Config.Boss
+	b.timer += dt
+	if b.state == "leave" then
+		b.pos += forward(b.yaw) * cfg.speed * 0.6 * dt
+		return b.timer < 3
+	end
+	if os.clock() > b.ends and b.state ~= "bite" then
+		b.state, b.timer, b.target = "leave", 0, nil
+		bossAttrs(nil, b.world)
+		EventRemote:FireAllClients("bossGone", { id = b.id, world = b.world })
+		return true
+	end
+	if b.state == "bite" then
+		if b.timer > b.holdFor then
+			b.state, b.timer, b.target = "circle", 0, nil
+			b.nextCharge = os.clock() + cfg.chargeEvery
+		end
+	elseif b.state == "charge" then
+		local s = b.target
+		local hrp = s and Game.root(s.player)
+		if not (s and hrp and Game.sessions[s.player] and Game.huntable(s)) or b.timer > cfg.chargeTime then
+			b.state, b.timer, b.target = "circle", 0, nil
+			b.nextCharge = os.clock() + cfg.chargeEvery
+		else
+			local p = (hrp :: BasePart).Position
+			b.yaw = turnToward(b.yaw, yawOf(flat(p - b.pos)), cfg.turn * dt)
+			local spd = math.max(cfg.speed * 2, Game.walkSpeed(s :: Game.Session) * cfg.chargeMult)
+			b.pos = clampLane(b.pos + forward(b.yaw) * spd * dt)
+			if flat(p - b.pos).Magnitude < cfg.biteRadius then
+				local victim = s :: Game.Session
+				local carried = victim.carrying
+				local result = Game.bite(victim, b.pos)
+				EventRemote:FireAllClients("bite", {
+					id = b.id, victim = victim.player.UserId, result = result, px = p.X, pz = p.Z,
+					r = carried and carried.r, m = carried and carried.m, cz = carried and carried.z, cs = carried and carried.s,
+				})
+				b.state, b.timer = "bite", 0
+				b.holdFor = result == "eaten" and Config.Shark.eatenTime or 0.8
+			end
+		end
+	else
+		-- patrol its spot; every few seconds it goes for the nearest rider
+		b.angle += (cfg.speed / cfg.circle) * dt
+		local want = b.home + Vector3.new(math.cos(b.angle), 0, math.sin(b.angle)) * cfg.circle
+		local to = flat(want - b.pos)
+		if to.Magnitude > 0.1 then
+			b.yaw = turnToward(b.yaw, yawOf(to), 2.5 * dt)
+		end
+		b.pos += forward(b.yaw) * math.min(cfg.speed * 1.5 * dt, to.Magnitude)
+		if os.clock() >= b.nextCharge then
+			local s = bossPick(b)
+			if s then
+				b.state, b.timer, b.target = "charge", 0, s
+				EventRemote:FireAllClients("charge", { id = b.id, victim = s.player.UserId })
+			else
+				b.nextCharge = os.clock() + 1
+			end
+		end
+	end
+	return true
+end
+
+-- a harpoon throw from this player at their world's boss
+function Sharks.harpoon(s: Game.Session)
+	local cfg = Config.Boss
+	local hrp = Game.root(s.player)
+	if not hrp or os.clock() - (thrownAt[s.player] or 0) < cfg.cooldown then
+		return
+	end
+	local b = bossIn(Config.worldAt(hrp.Position))
+	if not b or b.state == "leave" or flat(hrp.Position - b.pos).Magnitude > cfg.range then
+		return
+	end
+	thrownAt[s.player] = os.clock()
+	b.hp -= 1
+	b.hits[s.player] = (b.hits[s.player] or 0) + 1
+	EventRemote:FireAllClients("harpoon", { id = b.id, by = s.player.UserId })
+	bossAttrs(b, b.world)
+	if b.hp <= 0 then
+		b.down = true
+		b.state, b.timer, b.target = "leave", 0, nil
+		bossAttrs(nil, b.world)
+		local winners = {}
+		for p, n in b.hits do
+			if n >= cfg.minHits and p.Parent then
+				winners[p] = n
+			end
+		end
+		EventRemote:FireAllClients("bossDown", { id = b.id, world = b.world })
+		if Sharks.onBossDown then
+			Sharks.onBossDown(b.world, winners)
+		end
+	end
+end
+
+function Sharks.bossUp(w: number): boolean
+	return bossIn(w) ~= nil
+end
+
 function Sharks.start()
 	Game.islandExposed = islandExposed
 	Game.sharkAggro = Sharks.aggro
 	Game.sharkOnGrab = Sharks.onGrab
 	RunService.Heartbeat:Connect(update)
+	RunService.Heartbeat:Connect(function(dt)
+		for i = #bosses, 1, -1 do
+			if not bossUpdate(bosses[i], dt) then
+				table.remove(bosses, i)
+			end
+		end
+	end)
+	Game.action("harpoon", function(s)
+		Sharks.harpoon(s)
+	end)
 	task.spawn(function()
 		while true do
 			task.wait(0.5)
@@ -585,6 +790,7 @@ function Sharks.start()
 	Players.PlayerRemoving:Connect(function(p)
 		deepWarned[p] = nil
 		closeCallAt[p] = nil
+		thrownAt[p] = nil
 		hunted[p] = nil
 		landedAt[p] = nil
 		shelter[p] = nil
@@ -594,10 +800,10 @@ function Sharks.start()
 		while true do
 			local dt = task.wait(0.1)
 			shelterTick(dt)
-			if #hunters > 0 or hadSharks then
+			if #hunters + #bosses > 0 or hadSharks then
 				snapshot()
 			end
-			hadSharks = #hunters > 0
+			hadSharks = #hunters + #bosses > 0
 		end
 	end)
 	task.spawn(function()

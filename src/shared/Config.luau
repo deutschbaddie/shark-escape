@@ -460,8 +460,35 @@ Config.Mutations = {
 	{ id = "Gold", chance = 0.03, mult = 2, color = Color3.fromRGB(255, 205, 60) },
 } :: { Mutation }
 
+-- Limited catches: one limited mutation a week (Monday 00:00 UTC to the
+-- next), taking turns in this order. It can only be caught during its week;
+-- the ones you caught keep it forever. `material` is its look.
+export type Limited = Mutation & { material: Enum.Material }
+Config.Limited = {
+	{ id = "Spooky", chance = 0.02, mult = 4, color = Color3.fromRGB(170, 110, 255), material = Enum.Material.ForceField },
+	{ id = "Toxic", chance = 0.02, mult = 4, color = Color3.fromRGB(120, 255, 90), material = Enum.Material.Neon },
+	{ id = "Molten", chance = 0.02, mult = 4, color = Color3.fromRGB(255, 110, 40), material = Enum.Material.CrackedLava },
+	{ id = "Frozen", chance = 0.02, mult = 4, color = Color3.fromRGB(200, 240, 255), material = Enum.Material.Ice },
+	{ id = "Galaxy", chance = 0.02, mult = 4, color = Color3.fromRGB(90, 70, 200), material = Enum.Material.Glass },
+} :: { Limited }
+
+local WEEK = 7 * 86400
+local MONDAY = 4 * 86400 -- (1 Jan 1970 was a Thursday)
+
+-- this week's limited mutation and when it ends (unix UTC)
+function Config.limitedNow(now: number?): (Limited, number)
+	local t = (now or os.time()) - MONDAY
+	local week = t // WEEK
+	return Config.Limited[week % #Config.Limited + 1], MONDAY + (week + 1) * WEEK
+end
+
 function Config.mutation(id: string?): Mutation?
 	for _, m in Config.Mutations do
+		if m.id == id then
+			return m
+		end
+	end
+	for _, m in Config.Limited do
 		if m.id == id then
 			return m
 		end
@@ -593,18 +620,47 @@ Config.Tank = {
 }
 
 -- Megalodon Hour: a weekly event at a fixed time (UTC) so players know when
--- to show up. Luckier catches, two sharks every night, double coins. The
+-- to show up. x3 luck, two sharks every night, double coins, the boss. The
 -- plaza board counts down to it. Admins can start one now with /event.
 Config.Event = {
 	name = "Megalodon Hour",
 	weekday = 7, -- os.date wday: 1 Sunday .. 7 Saturday
 	hour = 19, -- UTC (3 pm US Eastern, noon Pacific)
 	minutes = 60,
-	luck = 0.5,
+	luckMult = 3, -- x3 luck
 	coins = 2,
+}
+
+-- The boss Megalodon (Megalodon Hour): it surfaces mid-sea in each world
+-- with players and the whole server fights it with harpoons (the HARPOON
+-- button shows up in range). It circles and charges riders; everyone who
+-- landed `minHits` gets a Legendary when it goes down.
+Config.Boss = {
+	length = 80,
+	hpBase = 40,
+	hpPerPlayer = 90, -- per player in that world
+	range = 95, -- harpoon reach
+	cooldown = 0.8, -- between throws
+	minHits = 3,
+	lifetime = 300, -- seconds before it gives up and dives
+	every = 1200, -- one more surfaces this long after the last one (during the event)
+	zone = 2, -- it lives over this zone (reachable for everyone)
+	circle = 55, -- the radius it patrols around its spot
+	speed = 30,
+	sight = 160, -- it charges riders this close
+	chargeEvery = 6,
+	chargeTime = 2.4,
+	chargeMult = 1.05, -- vs the target's top speed: turn hard to dodge it
+	turn = 1.6, -- radians / second while charging
+	biteRadius = 12,
+	reward = "Legendary",
 }
 -- the next update's release (unix time, UTC). 0 hides the board line
 Config.NextUpdate = 0
+-- the next like goal: the plaza board and the codes card say "a new code
+-- at 1K likes". When it's reached, add the code to Config.Codes and raise
+-- this. 0 hides it.
+Config.LikeGoal = 1000
 
 -- Chum: throw a bucket at a nearby rider and their zone's shark comes for
 -- them (by day; at night the sharks are out anyway)

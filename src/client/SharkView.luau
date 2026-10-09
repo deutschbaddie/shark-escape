@@ -367,6 +367,11 @@ for i = 1, SEGMENTS do
 	ringParts[i] = seg
 end
 
+-- a shark by its server id (the boss Megalodon's health bar follows it)
+function SharkView.get(id: number): any
+	return sharks[id]
+end
+
 function SharkView.myHunter(): any
 	for id, sh in sharks do
 		if id > 0 and sh.victim == player.UserId and (sh.state == "stalk" or sh.state == "chase" or sh.state == "overshoot" or sh.state == "lunge") then
