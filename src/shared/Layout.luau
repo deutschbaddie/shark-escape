@@ -63,7 +63,13 @@ Layout.Huts = {
 	{ kind = "Index", title = "INDEX", color = Color3.fromRGB(255, 150, 30), pos = Vector3.new(66, Config.BEACH_TOP, -96) },
 	{ kind = "Sell", title = "SELL", color = Color3.fromRGB(70, 210, 90), pos = Vector3.new(106, Config.BEACH_TOP, -96) },
 }
-Layout.Board = Vector3.new(-112, Config.BEACH_TOP, -114)
+-- three leaderboards in a row along the back wall, left of the Shop
+Layout.Boards = {
+	{ key = "Speed", title = "FASTEST", color = Color3.fromRGB(40, 160, 255), pos = Vector3.new(-130, Config.BEACH_TOP, -116) },
+	{ key = "Rebirths", title = "REBIRTHS", color = Color3.fromRGB(70, 210, 90), pos = Vector3.new(-109, Config.BEACH_TOP, -116) },
+	{ key = "Caught", title = "MOST CAUGHT", color = Color3.fromRGB(255, 150, 30), pos = Vector3.new(-88, Config.BEACH_TOP, -116) },
+}
+Layout.Board = Layout.Boards[2].pos -- the middle one (palms keep clear of the row)
 Layout.GroupChest = Vector3.new(36, Config.BEACH_TOP, -66) -- "Join Group / Like to Claim!"
 
 -- standing at a hut's pad (the server checks before selling)

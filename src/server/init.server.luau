@@ -15,6 +15,7 @@ local IconSheets = require(script.IconSheets)
 local Rewards = require(script.Rewards)
 local Admin = require(script.Admin)
 local Analytics = require(script.Analytics)
+local Storm = require(script.Storm)
 
 World.build()
 Analytics.start()
@@ -26,6 +27,7 @@ Leaderboard.start()
 IconSheets.start()
 Rewards.start()
 Admin.start()
+Storm.start()
 
 Players.CharacterAutoLoads = true
 for _, p in Players:GetPlayers() do

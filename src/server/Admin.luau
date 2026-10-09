@@ -1,10 +1,12 @@
 -- Dev chat commands for the game's developers only.
 --   /reset   wipe your own progress back to a brand-new save
+--   /storm   start a Lucky Storm now (to test it)
 
 local Players = game:GetService("Players")
 local TextChatService = game:GetService("TextChatService")
 
 local Game = require(script.Parent.Game)
+local Storm = require(script.Parent.Storm)
 
 local Admin = {}
 
@@ -12,37 +14,53 @@ local ADMINS = { sickleedge = true, nottufferson = true } -- usernames, lower ca
 
 local last: { [Player]: number } = {}
 
-local function reset(player: Player)
-	if not ADMINS[player.Name:lower()] then
-		return
-	end
-	if os.clock() - (last[player] or 0) < 2 then
-		return -- the command and Chatted can both fire for one message
+-- admins only, once per message (the command and Chatted can both fire)
+local function allowed(player: Player): boolean
+	if not ADMINS[player.Name:lower()] or os.clock() - (last[player] or 0) < 2 then
+		return false
 	end
 	last[player] = os.clock()
-	local s = Game.sessions[player]
-	if s then
-		Game.resetProfile(s)
+	return true
+end
+
+local COMMANDS: { [string]: (Player) -> () } = {
+	reset = function(player)
+		local s = Game.sessions[player]
+		if s then
+			Game.resetProfile(s)
+		end
+	end,
+	storm = function()
+		Storm.begin()
+	end,
+}
+
+local function run(player: Player, name: string)
+	if COMMANDS[name] and allowed(player) then
+		COMMANDS[name](player)
 	end
 end
 
 function Admin.start()
-	-- TextChatService command (also hides "/reset" from chat)
-	local cmd = Instance.new("TextChatCommand")
-	cmd.Name = "ResetCommand"
-	cmd.PrimaryAlias = "/reset"
-	cmd.Parent = TextChatService
-	cmd.Triggered:Connect(function(source)
-		local player = Players:GetPlayerByUserId(source.UserId)
-		if player then
-			reset(player)
-		end
-	end)
+	-- TextChatService commands (also hide "/reset" etc. from chat)
+	for name in COMMANDS do
+		local cmd = Instance.new("TextChatCommand")
+		cmd.Name = name:sub(1, 1):upper() .. name:sub(2) .. "Command"
+		cmd.PrimaryAlias = "/" .. name
+		cmd.Parent = TextChatService
+		cmd.Triggered:Connect(function(source)
+			local player = Players:GetPlayerByUserId(source.UserId)
+			if player then
+				run(player, name)
+			end
+		end)
+	end
 	-- legacy chat fallback
 	local function watch(player: Player)
 		player.Chatted:Connect(function(msg)
-			if msg:lower():match("^%s*/reset%s*$") then
-				reset(player)
+			local name = msg:lower():match("^%s*/(%a+)%s*$")
+			if name then
+				run(player, name)
 			end
 		end)
 	end

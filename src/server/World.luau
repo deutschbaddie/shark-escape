@@ -35,7 +35,7 @@ export type Plot = {
 	owner: Player?,
 }
 World.Plots = {} :: { Plot }
-World.board = nil :: Folder?
+World.boards = {} :: { [string]: SurfaceGui }
 
 local map: Folder
 
@@ -273,7 +273,7 @@ local function buildPlaza()
 	-- a few palms against the back wall, clear of the buildings
 	for i = 0, 6 do
 		local x = -W / 2 + 14 + i * (W - 28) / 6
-		local clear = math.abs(x) > 22 and math.abs(x - Layout.Board.X) > 22
+		local clear = math.abs(x) > 22 and math.abs(x - Layout.Board.X) > 34
 		for _, h in Layout.Huts do
 			clear = clear and math.abs(x - h.pos.X) > 14
 		end
@@ -315,25 +315,75 @@ local function awning(parent: Instance, base: CFrame, width: number, color: Colo
 	end
 end
 
--- small studded stall; stepping on the glowing pad opens the menu (client)
+-- what each stall shows on its counter
+local function goods(m: Model, kind: string, top: CFrame)
+	if kind == "Shop" then
+		for i, c in { C(255, 70, 170), C(255, 205, 40), C(40, 170, 255) } do
+			local s = 1.4 - (i - 1) * 0.2
+			local box = top * CFrame.new(-3.6 + (i - 1) * 1.9, s / 2, 0) * CFrame.Angles(0, math.rad(i * 17), 0)
+			studAll(Build.part(m, Vector3.new(s, s, s), box, c))
+			Build.part(m, Vector3.new(s + 0.06, s + 0.06, 0.3), box, C(255, 255, 255))
+			Build.part(m, Vector3.new(0.3, s + 0.06, s + 0.06), box, C(255, 255, 255))
+		end
+	elseif kind == "Index" then
+		for _, side in { -1, 1 } do
+			Build.part(m, Vector3.new(1.4, 0.15, 2), top * CFrame.new(-2.2 + side * 0.68, 0.25, 0) * CFrame.Angles(0, 0, math.rad(side * -10)), C(255, 250, 235))
+		end
+		Build.part(m, Vector3.new(3, 0.2, 2.2), top * CFrame.new(-2.2, 0.1, 0), C(200, 90, 40))
+		Build.ball(m, 1.4, top * CFrame.new(2.6, 1.1, 0), C(60, 170, 255))
+		Build.part(m, Vector3.new(0.9, 0.4, 0.9), top * CFrame.new(2.6, 0.2, 0), C(110, 80, 50))
+	elseif kind == "Sell" then
+		Build.part(m, Vector3.new(7, 0.4, 2), top * CFrame.new(0, 0.2, 0), C(235, 245, 255), { Name = "Ice" })
+		for i, c in { C(255, 140, 40), C(70, 170, 255), C(255, 205, 40) } do
+			local fish = top * CFrame.new(-2.3 + (i - 1) * 2.3, 0.7, 0) * CFrame.Angles(0, math.rad(80 + i * 12), 0)
+			Build.ell(m, Vector3.new(0.7, 0.7, 1.6), fish, c)
+			Build.wedge(m, Vector3.new(0.2, 0.6, 0.5), fish * CFrame.new(0, 0, 0.95), c)
+		end
+	end
+end
+
+-- Studded market stall: floor, back + side walls, counter with goods, the
+-- keeper behind it, striped awning, a roof and a lit sign. Stepping on the
+-- glowing pad in front opens the menu (client).
 local function hut(kind: string, title: string, color: Color3, pos: Vector3)
 	local m = Build.model(kind .. "Hut", map)
 	local base = CFrame.new(pos)
+	local wood, dark = C(170, 118, 70), C(120, 80, 50)
+	local light = color:Lerp(C(255, 255, 255), 0.45)
 	stepPad(m, pos + Vector3.new(0, 0, 9), color, 13)
-	studAll(Build.part(m, Vector3.new(12, 3.5, 3), base * CFrame.new(0, 1.75, -1), C(150, 100, 60), { Name = "Counter" }))
-	studAll(Build.part(m, Vector3.new(12.6, 0.6, 3.6), base * CFrame.new(0, 3.8, -1), color))
-	for _, x in { -7, 7 } do
-		for _, z in { -3, 1.5 } do
-			studAll(Build.part(m, Vector3.new(1.2, 10, 1.2), base * CFrame.new(x, 5, z), C(120, 80, 50)))
+	-- floor
+	studAll(Build.part(m, Vector3.new(16, 1, 10.5), base * CFrame.new(0, 0.5, -2.75), wood, { Name = "Floor" }))
+	-- back wall: color / light checker; side walls half deep
+	for i = 0, 3 do
+		for r = 0, 1 do
+			studAll(Build.part(m, Vector3.new(4, 4.5, 1), base * CFrame.new(-6 + i * 4, 1 + 2.25 + r * 4.5, -7.5), ((i + r) % 2 == 0) and color or light))
 		end
 	end
-	awning(m, base, 15.4, color, 11.2)
-	local sign = Build.part(m, Vector3.new(12, 3, 0.6), base * CFrame.new(0, 13.4, -1.5), C(30, 32, 44), { Name = "Sign" })
-	Build.part(m, Vector3.new(12.6, 3.6, 0.3), base * CFrame.new(0, 13.4, -1.95), color)
-	surfaceText(sign, Enum.NormalId.Back, title, C(255, 255, 255))
+	for _, sx in { -1, 1 } do
+		studAll(Build.part(m, Vector3.new(1, 9, 4), base * CFrame.new(sx * 7.5, 5.5, -5), light))
+		-- front posts (stop under the awning)
+		studAll(Build.part(m, Vector3.new(1.2, 9.6, 1.2), base * CFrame.new(sx * 7.4, 5.8, 1.4), dark))
+		-- sign posts on the roof
+		Build.part(m, Vector3.new(0.6, 1.4, 0.6), base * CFrame.new(sx * 4.5, 13, -3.05), dark)
+	end
+	-- counter + colored top, goods on it
+	studAll(Build.part(m, Vector3.new(12, 3.5, 2.4), base * CFrame.new(0, 2.75, 1), wood, { Name = "Counter" }))
+	studAll(Build.part(m, Vector3.new(12.6, 0.6, 3), base * CFrame.new(0, 4.8, 1), color))
+	goods(m, kind, base * CFrame.new(0, 5.1, 1))
 	-- the keeper stands on a hidden step behind the counter, facing the pad
-	Build.part(m, Vector3.new(5, 1.6, 2.4), base * CFrame.new(0, 0.8, -4.2), C(120, 80, 50), { Name = "Step" })
-	Npc.build(m, kind, CFrame.lookAt(pos + Vector3.new(0, 1.6, -4.2), pos + Vector3.new(0, 1.6, 9)))
+	Build.part(m, Vector3.new(5, 1.6, 2.4), base * CFrame.new(0, 1.8, -2.8), wood, { Name = "Step" })
+	Npc.build(m, kind, CFrame.lookAt(pos + Vector3.new(0, 2.6, -2.8), pos + Vector3.new(0, 2.6, 9)))
+	-- roof + striped awning
+	studAll(Build.part(m, Vector3.new(17, 1, 7), base * CFrame.new(0, 11.9, -5), color, { Name = "Roof" }))
+	awning(m, base, 16.4, color, 11.2)
+	-- sign: dark board in a colored studded frame, with bulbs along the bottom
+	local sign = Build.part(m, Vector3.new(12, 3, 0.6), base * CFrame.new(0, 14.6, -2.5), C(30, 32, 44), { Name = "Sign" })
+	studAll(Build.part(m, Vector3.new(13, 4, 0.5), base * CFrame.new(0, 14.6, -3.05), color))
+	surfaceText(sign, Enum.NormalId.Back, title, C(255, 255, 255))
+	for i = 0, 5 do
+		Build.ball(m, 0.45, base * CFrame.new(-5 + i * 2, 12.75, -2.2), (i % 2 == 0) and C(255, 240, 150) or C(255, 255, 255),
+			{ Material = Enum.Material.Neon, CanCollide = false, CastShadow = false })
+	end
 	m:SetAttribute("Kind", kind)
 	m:SetAttribute("PadX", pos.X)
 	m:SetAttribute("PadZ", pos.Z + 9)
@@ -351,14 +401,12 @@ local function buildRideShop()
 	-- back wall + side walls (checker, studs facing in)
 	for i = 0, 5 do
 		for r = 0, 1 do
-			local p = Build.part(m, Vector3.new(34 / 6, 7, 2), CFrame.new(c.X - 17 + 34 / 12 * (2 * i + 1), c.Y + 0.6 + 3.5 + r * 7, c.Z - 13), ((i + r) % 2 == 0) and WALL_A or WALL_B)
-			Build.studs(p, { Enum.NormalId.Back, Enum.NormalId.Top })
+			studAll(Build.part(m, Vector3.new(34 / 6, 7, 2), CFrame.new(c.X - 17 + 34 / 12 * (2 * i + 1), c.Y + 0.6 + 3.5 + r * 7, c.Z - 13), ((i + r) % 2 == 0) and WALL_A or WALL_B))
 		end
 	end
 	for _, sx in { -1, 1 } do
 		for i = 0, 1 do
-			local p = Build.part(m, Vector3.new(2, 14, 10), CFrame.new(c.X + sx * 16, c.Y + 7.6, c.Z - 7 + i * 10), (i % 2 == 0) and WALL_B or WALL_A)
-			Build.studs(p, { sx < 0 and Enum.NormalId.Right or Enum.NormalId.Left })
+			studAll(Build.part(m, Vector3.new(2, 14, 10), CFrame.new(c.X + sx * 16, c.Y + 7.6, c.Z - 7 + i * 10), (i % 2 == 0) and WALL_B or WALL_A))
 		end
 	end
 	-- roof with a striped front awning
@@ -366,7 +414,7 @@ local function buildRideShop()
 	awning(m, CFrame.new(c.X, c.Y, c.Z + 14.5), 36, blue, 15.2)
 	-- big sign on the roof
 	local sign = Build.part(m, Vector3.new(28, 6, 1), CFrame.new(c.X, c.Y + 18.8, c.Z + 8), C(30, 32, 44), { Name = "Sign" })
-	Build.part(m, Vector3.new(29.4, 7.4, 0.6), CFrame.new(c.X, c.Y + 18.8, c.Z + 7.2), C(255, 196, 30))
+	studAll(Build.part(m, Vector3.new(29.4, 7.4, 0.6), CFrame.new(c.X, c.Y + 18.8, c.Z + 7.2), C(255, 196, 30)))
 	surfaceText(sign, Enum.NormalId.Back, "RIDE SHOP", white, Vector2.new(600, 130))
 	-- pedestal (the next ride spins on top, placed by the client)
 	studAll(Build.part(m, Vector3.new(8, 3, 8), CFrame.new(c.X, c.Y + 2.1, c.Z), C(255, 196, 30), { Name = "Pedestal" }))
@@ -382,20 +430,21 @@ local function buildRideShop()
 end
 
 ----------------------------------------------------------------- leaderboard board
-local function buildBoard()
-	local m = Build.model("Leaderboard", map)
-	local cf = CFrame.new(Layout.Board)
-	for _, x in { -11, 11 } do
-		studAll(Build.part(m, Vector3.new(2, 8, 2), cf * CFrame.new(x, 4, 0), C(40, 140, 230)))
+-- a studded top-10 board: posts, a colored frame, a dark screen of rows
+local function buildBoard(key: string, title: string, color: Color3, at: Vector3)
+	local m = Build.model("Leaderboard_" .. key, map)
+	local cf = CFrame.new(at)
+	for _, x in { -7, 7 } do
+		studAll(Build.part(m, Vector3.new(1.6, 7, 1.6), cf * CFrame.new(x, 3.5, 0), color:Lerp(C(0, 0, 0), 0.2)))
 	end
-	studAll(Build.part(m, Vector3.new(28, 26, 2.4), cf * CFrame.new(0, 21, 0), C(40, 160, 255)))
-	local screen = Build.part(m, Vector3.new(24, 20, 0.4), cf * CFrame.new(0, 20, 1.3), C(24, 26, 38), { Name = "Screen" })
-	local head = Build.part(m, Vector3.new(30, 5, 3), cf * CFrame.new(0, 36.5, 0), C(255, 196, 30))
+	studAll(Build.part(m, Vector3.new(19, 19, 2), cf * CFrame.new(0, 16.5, 0), color))
+	local screen = Build.part(m, Vector3.new(16.4, 14, 0.4), cf * CFrame.new(0, 15.6, 1.1), C(24, 26, 38), { Name = "Screen" })
+	local head = Build.part(m, Vector3.new(20, 4, 2.6), cf * CFrame.new(0, 27.6, 0), C(255, 196, 30))
 	studAll(head)
-	surfaceText(head, Enum.NormalId.Back, "FASTEST ", C(255, 255, 255), Vector2.new(600, 100))
+	surfaceText(head, Enum.NormalId.Back, title, C(255, 255, 255), Vector2.new(500, 100))
 	local sg = Instance.new("SurfaceGui")
 	sg.Face = Enum.NormalId.Back
-	sg.CanvasSize = Vector2.new(480, 400)
+	sg.CanvasSize = Vector2.new(480, 410)
 	sg.LightInfluence = 0
 	sg.Parent = screen
 	local list = Instance.new("UIListLayout")
@@ -407,17 +456,18 @@ local function buildBoard()
 	pad.PaddingLeft = UDim.new(0, 10)
 	pad.PaddingRight = UDim.new(0, 10)
 	pad.Parent = sg
+	local medal = { C(255, 196, 30), C(200, 210, 225), C(215, 140, 80) }
 	for i = 1, 10 do
 		local row = Instance.new("Frame")
 		row.Name = "Row" .. i
 		row.LayoutOrder = i
-		row.Size = UDim2.new(1, 0, 0, 34)
+		row.Size = UDim2.new(1, 0, 0, 35)
 		row.BackgroundColor3 = i % 2 == 0 and C(255, 255, 255) or C(232, 240, 255)
 		row.Parent = sg
 		local c = Instance.new("UICorner")
 		c.CornerRadius = UDim.new(0, 6)
 		c.Parent = row
-		local function cell(name: string, x: number, w: number, align: Enum.TextXAlignment, color: Color3)
+		local function cell(name: string, x: number, w: number, align: Enum.TextXAlignment, tc: Color3)
 			local t = Instance.new("TextLabel")
 			t.Name = name
 			t.BackgroundTransparency = 1
@@ -426,15 +476,27 @@ local function buildBoard()
 			t.Font = Enum.Font.FredokaOne
 			t.TextScaled = true
 			t.TextXAlignment = align
-			t.TextColor3 = color
+			t.TextColor3 = tc
 			t.Text = ""
 			t.Parent = row
+			if name == "Rank" then
+				local st = Instance.new("UIStroke")
+				st.Thickness = 2
+				st.Color = C(22, 22, 34)
+				st.Parent = t
+			end
 		end
-		cell("Rank", 0.02, 0.1, Enum.TextXAlignment.Center, C(255, 160, 0))
+		cell("Rank", 0.02, 0.1, Enum.TextXAlignment.Center, medal[i] or C(120, 130, 150))
 		cell("Name", 0.14, 0.52, Enum.TextXAlignment.Left, C(22, 22, 34))
-		cell("Value", 0.66, 0.32, Enum.TextXAlignment.Right, C(40, 130, 255))
+		cell("Value", 0.66, 0.32, Enum.TextXAlignment.Right, color:Lerp(C(0, 0, 0), 0.15))
 	end
-	World.board = sg :: any
+	World.boards[key] = sg
+end
+
+local function buildBoards()
+	for _, b in Layout.Boards do
+		buildBoard(b.key, b.title, b.color, b.pos)
+	end
 end
 
 ----------------------------------------------------------------- lane
@@ -815,7 +877,7 @@ function World.build()
 	for _, h in Layout.Huts do
 		hut(h.kind, h.title, h.color, h.pos)
 	end
-	buildBoard()
+	buildBoards()
 	buildGroupChest()
 	buildTerrain()
 	buildLane()

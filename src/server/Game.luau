@@ -45,6 +45,7 @@ export type Session = {
 
 Game.sessions = {} :: { [Player]: Session }
 Game.frenzy = false -- set by Sharks while a hunt is on
+Game.storm = false -- set by Storm while a Lucky Storm is on
 -- set by Sharks: has this player used up their shelter on this island?
 Game.islandExposed = nil :: ((Session, Layout.Island) -> boolean)?
 
@@ -198,6 +199,9 @@ function Game.luck(s: Session): number
 	end
 	if Game.frenzy then
 		l += Config.Shark.frenzyLuck -- the shark is out: rarer catches for the brave
+	end
+	if Game.storm then
+		l += Config.Storm.luck
 	end
 	return l
 end
