@@ -338,19 +338,13 @@ local function render(d: any)
 	-- goal: next zone gate, or rebirth
 	local gate = Config.nextGate(d.speed)
 	if gate then
-		local prevGate = 0
-		for _, z in Config.Zones do
-			if z.gate <= d.speed then
-				prevGate = z.gate
-			end
-		end
 		goalText.Text = ("%s   %s / %s"):format(gate.name, UI.short(d.speed), UI.short(gate.gate))
-		goalFill.Size = UDim2.fromScale(math.clamp((d.speed - prevGate) / (gate.gate - prevGate), 0.02, 1), 1)
+		goalFill.Size = UDim2.fromScale(math.clamp(d.speed / gate.gate, 0.06, 1) -- fill matches the numbers; never a sliver, 1)
 		goalFill.BackgroundColor3 = C.blue
 	else
 		local ready = d.speed >= Config.Rebirth.speed
 		goalText.Text = ready and "REBIRTH READY!" or ("Rebirth at %s speed"):format(UI.short(Config.Rebirth.speed))
-		goalFill.Size = UDim2.fromScale(math.clamp(d.speed / Config.Rebirth.speed, 0.02, 1), 1)
+		goalFill.Size = UDim2.fromScale(math.clamp(d.speed / Config.Rebirth.speed, 0.06, 1), 1)
 		goalFill.BackgroundColor3 = C.green
 	end
 	menuButtons.Rebirth.Visible = d.speed >= Config.Rebirth.speed

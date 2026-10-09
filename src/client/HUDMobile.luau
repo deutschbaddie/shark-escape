@@ -549,12 +549,6 @@ local function render(d: any)
 	local gate = Config.nextGate(d.speed)
 	local frac
 	if gate then
-		local prevGate = 0
-		for _, z in Config.Zones do
-			if z.gate <= d.speed then
-				prevGate = z.gate
-			end
-		end
 		zoneLabel.Text = gate.name
 		local zi = progress:FindFirstChild("ZoneIcon")
 		if zi and zi:GetAttribute("Zone") ~= gate.id then
@@ -563,13 +557,13 @@ local function render(d: any)
 			UI.icon(progress, gate.id, props):SetAttribute("Zone", gate.id)
 		end
 		goalText.Text = ("%s / %s"):format(UI.short(d.speed), UI.short(gate.gate))
-		frac = math.clamp((d.speed - prevGate) / (gate.gate - prevGate), 0.02, 1)
+		frac = math.clamp(d.speed / gate.gate, 0.06, 1) -- fill matches the numbers; never a sliver
 		paintFill(goalFill, T.blue)
 	else
 		local ready = d.speed >= Config.Rebirth.speed
 		zoneLabel.Text = "Rebirth"
 		goalText.Text = ready and "REBIRTH READY!" or ("%s / %s"):format(UI.short(d.speed), UI.short(Config.Rebirth.speed))
-		frac = math.clamp(d.speed / Config.Rebirth.speed, 0.02, 1)
+		frac = math.clamp(d.speed / Config.Rebirth.speed, 0.06, 1)
 		paintFill(goalFill, T.green)
 	end
 	UI.setBar(goalFill, frac)
