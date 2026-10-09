@@ -1363,11 +1363,13 @@ local function fastTick()
 						while #bag > 0 and not full() do
 							local c = table.remove(bag, 1) :: Data.Creature
 							Game.addCreature(s, { r = c.r, z = c.z, m = c.m, s = c.s })
+							Game.track(s.player, "dockDeposit", {})
 						end
 						if not full() then
 							local c = s.carrying :: Data.Creature
 							Game.setCarry(s, nil)
 							Game.addCreature(s, { r = c.r, z = c.z, m = c.m, s = c.s })
+							Game.track(s.player, "dockDeposit", {})
 						end
 						s.dirty = true
 					elseif os.clock() - (s.fullWarned or 0) > 4 then

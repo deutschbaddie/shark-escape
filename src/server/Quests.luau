@@ -1,7 +1,7 @@
 -- Daily quests (Config.Quests): 3 a day, new ones at midnight UTC, picked
 -- the same way all day for a player (seeded by user id + day). Progress
 -- comes from the events every system already sends (Game.trackers): grabs,
--- deposits, close calls, dodges, rings, chum. A done quest pays at once;
+-- dock deposits, close calls, dodges, rings, chum. A done quest pays at once;
 -- all 3 add a Luck Potion. The client shows them in the Daily window.
 
 local Shared = game.ReplicatedStorage.Shared
@@ -106,7 +106,7 @@ local ON: { [string]: (Game.Session, any) -> () } = {
 			progress(s, "night", 1)
 		end
 	end,
-	deposit = function(s)
+	dockDeposit = function(s) -- (only what you carried home, not gifts or loot)
 		progress(s, "home", 1)
 	end,
 	closeCall = function(s)

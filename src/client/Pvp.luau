@@ -275,7 +275,9 @@ end
 
 handlers.raidDefended = function(d)
 	clearRaid()
-	if d.gaveUp then
+	if d.locked then
+		Notify.toast("Tank Lock on: the raid is off", C.green)
+	elseif d.gaveUp then
 		Notify.toast(("%s gave up the raid"):format(tostring(d.by)), C.green)
 	else
 		Notify.takeover("Defended", ("You got home in time. %s got thrown off!"):format(tostring(d.by)), C.green, 1.6)
@@ -289,6 +291,8 @@ handlers.raidFail = function(d)
 		Notify.takeover("Caught", ("%s got home in time"):format(tostring(d.by)), RED, 1.4)
 	elseif d.why == "left" then
 		Notify.toast("You left the tank: raid failed", RED)
+	elseif d.why == "locked" then
+		Notify.toast("They locked their tank: raid failed", RED)
 	else
 		Notify.toast("Nothing worth taking in there", C.white)
 	end

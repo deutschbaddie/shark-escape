@@ -19,6 +19,7 @@ local Layout = require(Shared.Layout)
 local Data = require(script.Parent.Data)
 local Game = require(script.Parent.Game)
 local World = require(script.Parent.World)
+local Sharks = require(script.Parent.Sharks)
 
 local Raids = {}
 
@@ -99,7 +100,8 @@ local function chum(s: Game.Session, targetId: any)
 		Game.notify(s.player, "announce", { text = "They're out of reach" })
 		return
 	end
-	if t.profile.shields > 0 then
+	-- (at night, or while they're mid-bite, no shark would come: leave the shield be)
+	if t.profile.shields > 0 and Sharks.phase() ~= "hunt" and Game.huntable(t) then
 		-- a Shark Shield eats the chum (and is used up)
 		t.profile.shields -= 1
 		t.dirty = true
@@ -258,6 +260,13 @@ local function tick()
 		if not Game.sessions[victim] or not Game.sessions[s.player] or v.profile.world ~= s.profile.world then
 			abandon(victim)
 			endRaid(victim)
+			continue
+		end
+		if v.profile.lockUntil > os.time() then
+			-- they bought a Tank Lock mid-raid: it's off
+			endRaid(victim)
+			Game.notify(victim, "raidDefended", { by = s.player.DisplayName, locked = true })
+			Game.notify(s.player, "raidFail", { why = "locked" })
 			continue
 		end
 		local tank = tankPos(r.plot)

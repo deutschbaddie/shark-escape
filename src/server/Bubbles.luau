@@ -22,7 +22,7 @@ type Bubble = { model: Model, pos: Vector3, r: string, m: string?, s: number, zo
 local live: { Bubble } = {}
 local byId: { [number]: Bubble } = {}
 local nextBubbleId = 0
-local tryGrab: (Player, Bubble, boolean?, boolean?) -> ()
+local tryGrab: (Player, Bubble, boolean?, boolean?) -> boolean
 
 -- Legendary reel: grabbing a Legendary starts a timing minigame on the
 -- client (Reel.luau) while its zone's shark charges you. Land it and it's
@@ -186,22 +186,30 @@ end
 -- hold the prompt to grab (server checks you're really there)
 -- swept = the ride-over sweep already checked your path passed through it;
 -- reeled = you just won the Legendary reel for it
-tryGrab = function(player: Player, b: Bubble, swept: boolean?, reeled: boolean?)
+-- (true = it's in your hands now)
+tryGrab = function(player: Player, b: Bubble, swept: boolean?, reeled: boolean?): boolean
 	local s = Game.sessions[player]
 	if not s or b.taken or Game.handsFull(s) or os.clock() < s.eatenUntil then
-		return
+		return false
 	end
 	local hrp = Game.root(player)
 	local reach = reeled and 40 or 16 -- (you drift a little while reeling)
 	if not hrp or (not swept and Vector2.new(hrp.Position.X - b.pos.X, hrp.Position.Z - b.pos.Z).Magnitude > reach) then
-		return
+		return false
 	end
 	if b.reservedBy and b.reservedBy ~= player and os.clock() < (b.reservedUntil or 0) then
-		return -- someone's reeling this one in
+		return false -- someone's reeling this one in
 	end
 	if not reeled and Config.rarity(b.r).index >= 5 and s.profile.tut >= 5 then
-		if reels[player] then
-			return
+		local old = reels[player]
+		if old and os.clock() - old.started <= REEL_TIME + 2 then
+			return false
+		elseif old then
+			-- a reel the client never answered: let it go
+			reels[player] = nil
+			if old.b.reservedBy == player then
+				old.b.reservedBy, old.b.reservedUntil = nil, nil
+			end
 		end
 		b.reservedBy, b.reservedUntil = player, os.clock() + REEL_TIME + 2
 		reels[player] = { b = b, started = os.clock() }
@@ -209,11 +217,11 @@ tryGrab = function(player: Player, b: Bubble, swept: boolean?, reeled: boolean?)
 		if Game.sharkAggro then
 			Game.sharkAggro(s, REEL_TIME + 6, "reel")
 		end
-		return
+		return false
 	end
 	local i = table.find(live, b)
 	if not i then
-		return
+		return false
 	end
 	b.taken = true
 	table.remove(live, i)
@@ -225,6 +233,7 @@ tryGrab = function(player: Player, b: Bubble, swept: boolean?, reeled: boolean?)
 			spawnBubble(zone)
 		end
 	end)
+	return true
 end
 
 -- Golden Bubble / Starter Pack: straight into your hands (or your tank)
@@ -249,9 +258,10 @@ Game.action("reel", function(s, ok)
 	reels[s.player] = nil
 	local b = r.b
 	local took = os.clock() - r.started
-	b.reservedBy, b.reservedUntil = nil, nil
-	if ok == true and took >= REEL_MIN and took <= REEL_TIME + 2 and not b.taken then
-		tryGrab(s.player, b, false, true)
+	if b.reservedBy == s.player then
+		b.reservedBy, b.reservedUntil = nil, nil
+	end
+	if ok == true and took >= REEL_MIN and took <= REEL_TIME + 2 and not b.taken and tryGrab(s.player, b, false, true) then
 		Game.track(s.player, "reelWon", {})
 	else
 		Game.notify(s.player, "slipped", { name = Config.fullName(b.zone.id, b.r, b.m, b.s) })
@@ -298,7 +308,7 @@ function Bubbles.start()
 			local from = last[player] or pos
 			last[player] = pos
 			-- (a jump longer than your speed allows is a teleport, not a ride)
-			if not Layout.inWater(pos) or Game.handsFull(s) or (pos - from).Magnitude > Game.walkSpeed(s) * 0.1 * 2.5 + 8 then
+			if not Layout.inWater(pos) or reels[player] or Game.handsFull(s) or (pos - from).Magnitude > Game.walkSpeed(s) * 0.1 * 2.5 + 8 then
 				continue
 			end
 			for i = #live, 1, -1 do
@@ -317,7 +327,9 @@ function Bubbles.start()
 		last[p] = nil
 		local r = reels[p]
 		if r then
-			r.b.reservedBy, r.b.reservedUntil = nil, nil
+			if r.b.reservedBy == p then
+				r.b.reservedBy, r.b.reservedUntil = nil, nil
+			end
 			reels[p] = nil
 		end
 	end)
