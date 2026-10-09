@@ -6,7 +6,7 @@
 --                  (time left above the square)
 --   bottom-left:   speed (sneaker) and money, Friend Boost
 --   bottom-center: +speed/s and tank $/s, zone goal bar, next ride button
---   bottom-right:  next shark attack
+--   bottom-right:  time to nightfall / dawn
 -- Every message goes through Notify: one hierarchy, nothing piles up.
 
 local Players = game:GetService("Players")
@@ -202,7 +202,7 @@ local function build()
 
 	carryChip = UI.outlined(gui, "", { Size = UDim2.fromOffset(520, 24), Position = UDim2.new(0.5, 0, 1, -136), AnchorPoint = Vector2.new(0.5, 1), Visible = false })
 
-	-- bottom-right: next shark attack ("in 1m 40s" over a soft fade)
+	-- bottom-right: time to nightfall ("night 1m 40s") or dawn, over a soft fade
 	timerPill = UI.frame(gui, { Name = "Timer", Size = UDim2.fromOffset(250, 58), Position = UDim2.new(1, 0, 1, 0), AnchorPoint = Vector2.new(1, 1),
 		BackgroundColor3 = Color3.fromRGB(0, 0, 0), BackgroundTransparency = 0.45 })
 	local fade = Instance.new("UIGradient")
@@ -406,6 +406,7 @@ end
 ----------------------------------------------------------------- per-frame: status line, zone titles, shark state, timer
 local phase = "calm"
 local phaseEnds = os.clock() + Config.Shark.firstAttack
+local grudgeShown = false -- the shark banner is up for a daytime grudge
 local lastZone: string? = nil
 local quietTitlesUntil = 0 -- no "Shark Beach" title right after you wash up
 local menuOpen = false
@@ -452,9 +453,9 @@ local function sharkLine(pos: Vector3)
 	local text, sub, color
 	if phase == "warning" then
 		if safe then
-			text, sub, color = ("Shark attack in %d"):format(left), "You're safe here", C.green
+			text, sub, color = ("Night falls in %d"):format(left), "You're safe here", C.green
 		else
-			text, sub, color = ("SHARK ATTACK IN %d!"):format(left), "Get to sand or an island", C.red
+			text, sub, color = ("NIGHT FALLS IN %d!"):format(left), "Get to sand or an island", C.red
 		end
 	else
 		local mine = SharkView.myHunter()
@@ -467,9 +468,13 @@ local function sharkLine(pos: Vector3)
 		elseif mine and mine.state == "stalk" then
 			text, sub, color = "A SHARK IS CIRCLING YOU!", "Follow the arrow to safety", C.red
 		elseif safe then
-			text, sub, color = ("Safe here · sharks leave in %d"):format(left), Layout.inWater(pos) and "Islands only shelter you for a few seconds" or nil, C.green
+			text, sub, color = (phase == "calm" and "Safe here · it will give up soon" or ("Safe here · dawn in %d"):format(left)), Layout.inWater(pos) and "Islands only shelter you for a few seconds" or nil, C.green
 		else
-			text, sub, color = "SHARKS ARE HUNTING!", "Catches are luckier right now... if you dare", C.gold
+			if phase == "calm" then
+				text, sub, color = "A SHARK IS AFTER YOU!", "You took from its waters: get to sand or an island", C.red
+			else
+				text, sub, color = "NIGHT: SHARKS HUNT EVERYONE", "Night catches are luckier... if you dare", C.gold
+			end
 		end
 	end
 	Notify.banner(text, { key = "shark", sticky = true, priority = 5, sub = sub, color = color })
@@ -494,17 +499,23 @@ local function frame()
 			end
 			lastZone = id
 		end
-		if phase ~= "calm" then
+		-- night, or a daytime grudge (a shark you drew by grabbing / chum)
+		if phase ~= "calm" or SharkView.myHunter() then
 			sharkLine(pos)
+			grudgeShown = phase == "calm"
+		elseif grudgeShown then
+			grudgeShown = false
+			Notify.clear("shark")
+			vignette.Visible = false
 		end
 	end
 	local left = math.max(0, phaseEnds - os.clock())
 	if phase == "calm" then
-		timerLabel.Text = "in " .. UI.timeWords(left)
+		timerLabel.Text = "night " .. UI.timeWords(left)
 		timerLabel.TextColor3 = left < 10 and C.gold or C.white
 		timerPill.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 	else
-		timerLabel.Text = (phase == "warning" and "COMING " or "HUNTING ") .. math.ceil(left)
+		timerLabel.Text = (phase == "warning" and "DUSK " or "DAWN ") .. math.ceil(left)
 		timerLabel.TextColor3 = C.white
 		timerPill.BackgroundColor3 = C.red
 	end
@@ -637,6 +648,24 @@ handlers.rideShop = function()
 	HUD.goToRideShop()
 end
 
+handlers.aggro = function(d)
+	local name = tostring(d.shark or "Shark"):gsub("(%l)(%u)", "%1 %2")
+	if d.why == "chum" then
+		Notify.takeover("CHUMMED!", ("%s threw chum at you. The %s is coming!"):format(tostring(d.by or "Someone"), name), C.red, 1.4, "Shark")
+	else
+		Notify.banner(("THE %s NOTICED YOU!"):format(name:upper()), { key = "aggro", priority = 4, time = 2.2, color = C.red,
+			sub = "Get to sand or an island" })
+	end
+	Fx.sound("sharkAlarm", 0.7)
+	Fx.shake(0.5)
+end
+
+handlers.closeCall = function(d)
+	Notify.takeover("CLOSE CALL!", ("+%s speed"):format(UI.short(d.amount or 0)), C.gold, 1.1)
+	Fx.sound("dodge", 0.9)
+	Fx.flash(Color3.new(1, 1, 1), 0.25, 0.5)
+end
+
 handlers.net = function(d)
 	Notify.takeover(d.name:upper() .. "!", ("Carry %d creatures per trip. A bite loses them all!"):format(d.cap), C.blue, 1.8)
 	Fx.sound("buy", 0.8)
@@ -726,7 +755,7 @@ local function onPhase(kind: string, data: any)
 		phase, phaseEnds = "warning", os.clock() + (data.duration or 5)
 		local pos = myPos()
 		local exposed = pos ~= nil and not Layout.isSafe(pos)
-		Notify.takeover("SHARK INCOMING!", exposed and "Get to sand or an island!" or "Stay on the sand and you're safe", C.red, 1.4)
+		Notify.takeover("NIGHT FALLS!", exposed and "Sharks hunt everyone till dawn: get to sand or an island!" or "Stay on the sand and you're safe till dawn", C.red, 1.4)
 		Water.setSafeGlow(true)
 		Fx.sound("sharkAlarm", 0.8)
 		-- the horizon breach: a shark leaps where you can see it
@@ -759,7 +788,7 @@ local function onPhase(kind: string, data: any)
 		Water.setSafeGlow(false)
 		Notify.clear("shark")
 		if was then
-			Notify.toast("The sharks are gone. Back to the water!", C.green)
+			Notify.toast("Dawn! The sharks are gone. Back to the water!", C.green)
 		end
 	end
 end

@@ -1,4 +1,6 @@
--- Lucky Storm, as this client sees it (server/Storm.luau starts it): a big
+-- Day and night (the shark phases: dusk = "warning", night = "hunt", dawn =
+-- "clear") as a sky: the sun sets at dusk, a moonlit blue night, sunrise.
+-- Plus the Lucky Storm, as this client sees it (server/Storm.luau starts it): a big
 -- takeover, a dark blue tint with lightning flashes, rain streaks around
 -- the camera and a banner counting down while catches are luckier.
 
@@ -7,6 +9,7 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
+local Remotes = require(game.ReplicatedStorage.Shared.Remotes)
 local Notify = require(script.Parent.Notify)
 local UI = require(script.Parent.UI)
 
@@ -95,7 +98,26 @@ local function run()
 	running = false
 end
 
+-- the sky for each part of the day (World.luau sets the daytime values)
+local SKY = {
+	day = { ClockTime = 13.6, Brightness = 3.2, Ambient = Color3.fromRGB(120, 130, 150), OutdoorAmbient = Color3.fromRGB(170, 180, 200) },
+	dusk = { ClockTime = 18.2, Brightness = 2.4, Ambient = Color3.fromRGB(130, 100, 120), OutdoorAmbient = Color3.fromRGB(170, 130, 140) },
+	night = { ClockTime = 22.5, Brightness = 1.6, Ambient = Color3.fromRGB(70, 80, 130), OutdoorAmbient = Color3.fromRGB(90, 105, 160) },
+}
+local function sky(name: string, seconds: number)
+	TweenService:Create(Lighting, TweenInfo.new(seconds, Enum.EasingStyle.Sine), SKY[name]):Play()
+end
+
 function Weather.start()
+	Remotes.get("SharkEvent").OnClientEvent:Connect(function(kind)
+		if kind == "warning" then
+			sky("dusk", 4)
+		elseif kind == "hunt" then
+			sky("night", 3)
+		elseif kind == "clear" then
+			sky("day", 5)
+		end
+	end)
 	build()
 	-- keep the rain sheet over the camera
 	RunService.RenderStepped:Connect(function()

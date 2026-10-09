@@ -155,6 +155,9 @@ local function grab(s: Game.Session, b: Bubble)
 	local c = { r = r, z = b.zone.id, m = b.m, s = b.s }
 	Game.takeCatch(s, c) -- (your hands, or your net)
 	Game.discover(s, c)
+	if Game.sharkOnGrab then
+		Game.sharkOnGrab(s, r) -- the shark may notice
+	end
 	Game.notify(s.player, "grab", { r = r, m = b.m, z = b.zone.id, s = b.s, lucky = lucky, pity = pity,
 		v = Config.creatureValue(r, b.zone.id, b.m, b.s) * Game.coinMult(s) })
 end

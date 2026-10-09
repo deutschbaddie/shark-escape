@@ -623,14 +623,25 @@ Config.Codes = {
 }
 
 ----------------------------------------------------------------- sharks
+-- Day and night: by day the sea is calm, but grabbing a creature can draw
+-- its zone's shark onto you (a grudge, below). At dusk (warning) everyone
+-- in open water gets hunted until dawn; night catches are luckier (frenzy).
+-- Dawn sends every shark home: a clean slate.
 Config.Shark = {
-	cycle = 80, -- average seconds between attacks (HUD fallback; real gaps are random)
-	firstAttack = 70,
-	warning = 5, -- "SHARK INCOMING" countdown: time to get to sand
-	hunt = 22, -- average hunt (HUD fallback)
-	-- randomized so hunts can't be timed to the second
-	calmMin = 50, calmMax = 92, -- calm between the end of a hunt and the next warning
-	huntMin = 18, huntMax = 28,
+	cycle = 130, -- average day (HUD fallback; real days are random)
+	firstAttack = 150, -- the first night falls this long after the server starts
+	warning = 6, -- dusk: time to get to sand
+	hunt = 50, -- average night (HUD fallback)
+	calmMin = 110, calmMax = 150, -- day length
+	huntMin = 40, huntMax = 58, -- night length
+	-- grudges: by day, a grab draws the zone's shark with this chance (x the
+	-- zone's aggro, + per extra creature in your net); it hunts you this long
+	grudge = 22,
+	grudgeChance = { Common = 0.25, Uncommon = 0.4, Rare = 0.6, Epic = 0.85, Legendary = 1 },
+	grudgePerCarried = 0.12,
+	-- close call: a lunge that lands this close without biting pays you
+	closeCall = 4,
+	closeCallSeconds = 8, -- seconds of your speed gain
 	doubleChance = 0.25, -- two sharks at once (zones from doubleFromZone out)
 	doubleFromZone = 3,
 	spawnDistance = 46,

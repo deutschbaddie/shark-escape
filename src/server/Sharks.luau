@@ -1,6 +1,7 @@
--- Server-side shark AI. Every minute or so (randomized: 50-92 s of calm,
--- then a 5 s warning and an 18-28 s hunt) each player in open water gets
--- their own shark (the variant of their zone; in deeper zones sometimes two),
+-- Server-side shark AI. Day and night: by day, grabbing a creature can draw
+-- its zone's shark onto you for a while (a grudge: Sharks.onGrab / chum:
+-- Sharks.aggro); at dusk (5 s warning) every player in open water gets their
+-- own shark until dawn (the variant of their zone; deeper, sometimes two),
 -- which hunts like a real one:
 --   stalk     - circles you once in a tightening spiral (get to sand!)
 --   charge    - closes in, always faster than you, but turns slowly
@@ -65,6 +66,7 @@ type Hunter = {
 	lastSpd: number,
 	lastSpdAt: number,
 	accel: number,
+	aggroUntil: number?, -- a daytime shark you drew by grabbing / chum: hunts until then
 }
 
 local hunters: { Hunter } = {}
@@ -179,9 +181,14 @@ local function pushOutOfIslands(h: Hunter)
 end
 
 -- target got to safety: circle their island while the hunt lasts, else leave
+-- is this shark still out for blood? (night, or a daytime grudge)
+local function hunting(h: Hunter): boolean
+	return phase == "hunt" or (h.aggroUntil ~= nil and os.clock() < h.aggroUntil)
+end
+
 local function lostTarget(h: Hunter, hrp: BasePart?)
 	local island = hrp and Layout.islandAt(hrp.Position, 1)
-	if island and phase == "hunt" then
+	if island and hunting(h) then
 		h.state, h.island, h.timer = "circle", island, 0
 		local d = h.pos - island.pos
 		h.angle = math.atan2(d.Z, d.X)
@@ -246,6 +253,10 @@ local function update(dt: number)
 	for i = #hunters, 1, -1 do
 		local h = hunters[i]
 		h.timer += dt
+		-- a daytime grudge that ran out gives up (night hunters leave at dawn)
+		if (h.state == "stalk" or h.state == "chase") and not hunting(h) then
+			h.state, h.timer = "leave", 0
+		end
 		local s = h.target
 		local hrp = s and Game.root(s.player)
 		local alive = s ~= nil and hrp ~= nil and Game.sessions[s.player] ~= nil
@@ -327,12 +338,20 @@ local function update(dt: number)
 					if d <= h.biteRadius and not hopped then
 						hit = true
 						doBite(h, s :: Game.Session, p)
+					elseif d <= h.biteRadius + cfg.closeCall then
+						-- a hair's breadth: pay the dodge (the clip-worthy moment)
+						local v = s :: Game.Session
+						local amount = math.max(5, math.floor(Game.gain(v) * cfg.closeCallSeconds))
+						v.profile.speed += amount
+						v.dirty = true
+						Game.notify(v.player, "closeCall", { amount = amount })
+						Game.track(v.player, "closeCall", {})
 					end
 				end
 				if not hit then
 					-- splashes down empty: it shoots on and has to come round again
 					-- (or, if the hunt ended mid-air, swims off)
-					h.state, h.timer = phase == "hunt" and "overshoot" or "leave", 0
+					h.state, h.timer = hunting(h) and "overshoot" or "leave", 0
 					if alive then
 						EventRemote:FireAllClients("miss", { id = h.id, victim = (s :: Game.Session).player.UserId, x = h.to.X, z = h.to.Z })
 					end
@@ -355,10 +374,10 @@ local function update(dt: number)
 			end
 		elseif h.state == "circle" then
 			local island = h.island :: Layout.Island
-			if alive and Game.huntable(s :: Game.Session) and phase == "hunt" then
+			if alive and Game.huntable(s :: Game.Session) and hunting(h) then
 				-- they stepped off the island (or its shelter ran out): it was waiting
 				restalk(h, (hrp :: BasePart).Position, 0.8)
-			elseif phase ~= "hunt" or not alive then
+			elseif not hunting(h) or not alive then
 				h.state, h.timer = "leave", 0
 			else
 				local r = island.radius + h.length * 0.35 + 5
@@ -465,12 +484,56 @@ local function islandExposed(s: Game.Session, island: Layout.Island): boolean
 	return left ~= nil and left <= 0
 end
 
+-- you took something from its waters (or got chummed): that zone's shark
+-- comes for you in the day too, for Config.Shark.grudge seconds
+function Sharks.aggro(s: Game.Session, seconds: number?, why: string?)
+	if phase == "hunt" or not Game.huntable(s) then
+		return -- (at night it's coming anyway)
+	end
+	local untilT = os.clock() + (seconds or Config.Shark.grudge)
+	local mine = 0
+	for _, h in hunters do
+		if h.target == s and h.state ~= "leave" and h.state ~= "bite" then
+			h.aggroUntil = math.max(h.aggroUntil or 0, untilT)
+			mine += 1
+		end
+	end
+	if mine == 0 then
+		spawnHunter(s, false)
+		local h = hunters[#hunters]
+		if h and h.target == s then
+			h.aggroUntil = untilT
+		end
+	end
+	local hrp = Game.root(s.player)
+	local zone = hrp and Config.zoneAtPos(hrp.Position)
+	Game.notify(s.player, "aggro", { shark = zone and zone.shark or "Shark", why = why })
+end
+
+-- after a grab: does the shark notice? (rarer catch, fuller net, deeper zone)
+function Sharks.onGrab(s: Game.Session, rarityId: string)
+	if s.profile.tut < 5 then
+		return -- (the tutorial teaches sharks with its own practice one)
+	end
+	local cfg = Config.Shark
+	local chance = cfg.grudgeChance[rarityId] or 0.4
+	chance += cfg.grudgePerCarried * math.max(0, Game.carryCount(s) - 1)
+	local hrp = Game.root(s.player)
+	local zone = hrp and Config.zoneAtPos(hrp.Position)
+	chance *= zone and zone.aggro or 1
+	if rng:NextNumber() < chance then
+		Sharks.aggro(s, nil, "grab")
+	end
+end
+
 function Sharks.phase(): (string, number)
 	return phase, phaseEnds
 end
 
 function Sharks.start()
 	Game.islandExposed = islandExposed
+	Game.sharkAggro = Sharks.aggro
+	Game.sharkOnGrab = Sharks.onGrab
 	RunService.Heartbeat:Connect(update)
 	Players.PlayerRemoving:Connect(function(p)
 		hunted[p] = nil

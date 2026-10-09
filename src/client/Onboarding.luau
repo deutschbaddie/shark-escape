@@ -198,7 +198,7 @@ local function drillTick(pos: Vector3): (Vector3?, string?, string?, string?)
 		local sh = drill.shark
 		if safe then
 			drillEnd("safe")
-			Notify.toast("Sharks attack every minute or so. Sand is always safe!", C.green)
+			Notify.toast("Grabs can draw a shark, and at night they hunt everyone. Sand is always safe!", C.green)
 			advance(4)
 			return nil, nil, nil, nil
 		end
