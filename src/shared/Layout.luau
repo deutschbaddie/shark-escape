@@ -116,6 +116,7 @@ Layout.Board = Layout.Boards[2].pos -- the middle one (palms keep clear of the r
 Layout.GroupChest = Vector3.new(36, Config.BEACH_TOP, -66) -- "Join Group / Like to Claim!"
 Layout.Portal = Vector3.new(-40, Config.BEACH_TOP, -72) -- to the other world (mirrors the chest)
 Layout.Warp = Vector3.new(-22, Config.BEACH_TOP, -7) -- zone warp signpost on the sand
+Layout.EventBoard = Vector3.new(38, Config.BEACH_TOP, -112) -- Megalodon Hour / next update countdowns
 
 -- standing at a hut's pad (the server checks before selling)
 function Layout.atHut(kind: string, pos: Vector3): boolean

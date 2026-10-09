@@ -1,12 +1,14 @@
 -- Dev chat commands for the game's developers only.
 --   /reset   wipe your own progress back to a brand-new save
 --   /storm   start a Lucky Storm now (to test it)
+--   /event   start a 15 min Megalodon Hour now
 
 local Players = game:GetService("Players")
 local TextChatService = game:GetService("TextChatService")
 
 local Game = require(script.Parent.Game)
 local Storm = require(script.Parent.Storm)
+local Events = require(script.Parent.Events)
 
 local Admin = {}
 
@@ -32,6 +34,9 @@ local COMMANDS: { [string]: (Player) -> () } = {
 	end,
 	storm = function()
 		Storm.begin()
+	end,
+	event = function()
+		Events.force(15) -- a 15 min Megalodon Hour now ("admin abuse")
 	end,
 }
 

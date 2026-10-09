@@ -463,7 +463,8 @@ function Shop.promo(parent: Instance, props: { [string]: any }): (TextButton, (a
 		TextColor3 = T.gold, ZIndex = b.ZIndex + 2 })
 	local function update(d: any)
 		local key, kind = Shop.offer(d)
-		b.Visible = key ~= nil
+		-- (new players get 10 minutes to fall for the game before any offer)
+		b.Visible = key ~= nil and (d.playtime or 0) >= 600
 		if not key then
 			b:SetAttribute("Key", nil)
 			return

@@ -968,6 +968,46 @@ local function buildRings()
 	Build.ghost(folder)
 end
 
+----------------------------------------------------------------- event board
+-- The plaza board for Megalodon Hour and the next update: the client fills
+-- the countdowns (client Countdown.luau)
+local function buildEventBoard()
+	local m = Build.model("EventBoard", map)
+	local base = CFrame.new(Layout.EventBoard)
+	local red, dark = C(220, 50, 70), C(26, 28, 44)
+	for _, x in { -8, 8 } do
+		studAll(Build.part(m, Vector3.new(1.6, 9, 1.6), base * CFrame.new(x, 4.5, 0), C(60, 64, 90)))
+	end
+	studAll(Build.part(m, Vector3.new(19, 11, 1.6), base * CFrame.new(0, 14, 0), red))
+	local screen = Build.part(m, Vector3.new(17, 9, 0.4), base * CFrame.new(0, 14, 0.9), dark, { Name = "Screen" })
+	local sg = Instance.new("SurfaceGui")
+	sg.Name = "Countdown"
+	sg.Face = Enum.NormalId.Back
+	sg.CanvasSize = Vector2.new(560, 300)
+	sg.LightInfluence = 0
+	sg.Parent = screen
+	local function line(name: string, y: number, h: number, text: string, color: Color3)
+		local t = Instance.new("TextLabel")
+		t.Name = name
+		t.BackgroundTransparency = 1
+		t.Size = UDim2.new(0.94, 0, 0, h)
+		t.Position = UDim2.new(0.03, 0, 0, y)
+		t.Font = Enum.Font.FredokaOne
+		t.TextScaled = true
+		t.TextColor3 = color
+		t.Text = text
+		t.Parent = sg
+		local s = Instance.new("UIStroke")
+		s.Thickness = 3
+		s.Color = C(10, 10, 20)
+		s.Parent = t
+	end
+	line("Title", 10, 70, Config.Event.name, C(255, 90, 100))
+	line("When", 82, 34, "Every Saturday · 3 PM ET", C(200, 210, 230))
+	line("Time", 124, 80, "", C(255, 255, 255))
+	line("Update", 220, 60, "", C(255, 210, 60))
+end
+
 ----------------------------------------------------------------- zone warp
 -- A signpost on the sand: its prompt opens the warp menu (client Warp.luau)
 -- to jump to the start of any zone you've unlocked.
@@ -1087,6 +1127,7 @@ function World.build()
 		buildGroupChest()
 		buildPortal()
 		buildWarp()
+		buildEventBoard()
 		buildLane()
 		buildGates()
 		buildDecor()

@@ -592,6 +592,20 @@ Config.Tank = {
 	maxDead = 10, -- unequipped catches lie "dead" on the tank floor (no income); past this you must sell some
 }
 
+-- Megalodon Hour: a weekly event at a fixed time (UTC) so players know when
+-- to show up. Luckier catches, two sharks every night, double coins. The
+-- plaza board counts down to it. Admins can start one now with /event.
+Config.Event = {
+	name = "MEGALODON HOUR",
+	weekday = 7, -- os.date wday: 1 Sunday .. 7 Saturday
+	hour = 19, -- UTC (3 pm US Eastern, noon Pacific)
+	minutes = 60,
+	luck = 0.5,
+	coins = 2,
+}
+-- the next update's release (unix time, UTC). 0 hides the board line
+Config.NextUpdate = 0
+
 -- Chum: throw a bucket at a nearby rider and their zone's shark comes for
 -- them (by day; at night the sharks are out anyway)
 Config.Chum = { range = 90, cooldown = 45, grudge = 18, minPlaytime = 300 }

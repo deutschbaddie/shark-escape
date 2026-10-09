@@ -562,7 +562,7 @@ function Sharks.start()
 			task.wait(cfg.warning)
 			-- random length (and sometimes two sharks) so a hunt can't be timed
 			local huntLen = rng:NextInteger(cfg.huntMin, cfg.huntMax)
-			double = rng:NextNumber() < cfg.doubleChance
+			double = Game.event or rng:NextNumber() < cfg.doubleChance -- (Megalodon Hour: always two)
 			table.clear(shelter)
 			phase, phaseEnds = "hunt", os.clock() + huntLen
 			Game.frenzy = true

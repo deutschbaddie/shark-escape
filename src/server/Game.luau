@@ -52,6 +52,7 @@ export type Session = {
 Game.sessions = {} :: { [Player]: Session }
 Game.frenzy = false -- set by Sharks while a hunt is on
 Game.storm = false -- set by Storm while a Lucky Storm is on
+Game.event = false -- set by Events during Megalodon Hour
 -- set by Sharks: has this player used up their shelter on this island?
 Game.islandExposed = nil :: ((Session, Layout.Island) -> boolean)?
 
@@ -123,6 +124,9 @@ end
 
 function Game.coinMult(s: Session): number
 	local m = 1 + s.friendBoost
+	if Game.event then
+		m *= Config.Event.coins
+	end
 	if s.passes.TwoXCoins then
 		m *= 2
 	end
@@ -208,6 +212,9 @@ function Game.luck(s: Session): number
 	end
 	if Game.storm then
 		l += Config.Storm.luck
+	end
+	if Game.event then
+		l += Config.Event.luck
 	end
 	return l
 end
