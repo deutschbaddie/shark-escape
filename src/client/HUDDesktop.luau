@@ -687,10 +687,12 @@ handlers.unlock = function(d)
 	end
 end
 
-handlers.gate = function(d)
-	Notify.word(("NEED %s SPEED"):format(UI.short(d.need)), C.red, 1)
-	Fx.sound("uiError", 0.6)
-	Fx.shake(1)
+handlers.tooDeep = function(d)
+	local zone = Config.zoneById(d.zone)
+	local shark = zone and zone.shark:gsub("(%l)(%u)", "%1 %2") or "shark"
+	Notify.banner("Too deep for your speed", { key = "deep", priority = 4, time = 3.5, color = C.red,
+		sub = ("The %s hunts you nonstop here. Recommended: %s speed"):format(shark, UI.short(d.need or 0)) })
+	Fx.sound("sharkAlarm", 0.6)
 end
 
 handlers.lost = function()

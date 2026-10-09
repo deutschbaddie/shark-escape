@@ -527,6 +527,41 @@ function Sharks.onGrab(s: Game.Session, rarityId: string)
 	end
 end
 
+-- No walls on the sea: past your recommended speed, that zone's shark
+-- hunts you the whole time you're there (day or night). You can go; you
+-- just won't make it back. Renewed every sweep while you stay too deep.
+local deepWarned: { [Player]: string } = {}
+local function deepSweep()
+	local now = os.clock()
+	for player, s in Game.sessions do
+		local hrp = Game.root(player)
+		local zone = hrp and Layout.inWater(hrp.Position) and Config.zoneAtPos(hrp.Position)
+		if not (zone and zone.gate > s.profile.speed and Game.huntable(s)) then
+			deepWarned[player] = nil
+			continue
+		end
+		local mine = false
+		for _, h in hunters do
+			if h.target == s and h.state ~= "leave" and h.state ~= "bite" then
+				h.aggroUntil = math.max(h.aggroUntil or 0, now + 4)
+				mine = true
+			end
+		end
+		if not mine then
+			local before = #hunters
+			spawnHunter(s, false)
+			if #hunters > before then
+				hunters[#hunters].aggroUntil = now + 4
+			end
+		end
+		if deepWarned[player] ~= zone.id then
+			deepWarned[player] = zone.id
+			Game.notify(player, "tooDeep", { zone = zone.id, need = zone.gate })
+			Game.track(player, "gate", { zone = zone.id }) -- (analytics: GateBlocked = went in too slow)
+		end
+	end
+end
+
 function Sharks.phase(): (string, number)
 	return phase, phaseEnds
 end
@@ -536,7 +571,14 @@ function Sharks.start()
 	Game.sharkAggro = Sharks.aggro
 	Game.sharkOnGrab = Sharks.onGrab
 	RunService.Heartbeat:Connect(update)
+	task.spawn(function()
+		while true do
+			task.wait(0.5)
+			deepSweep()
+		end
+	end)
 	Players.PlayerRemoving:Connect(function(p)
+		deepWarned[p] = nil
 		hunted[p] = nil
 		landedAt[p] = nil
 		shelter[p] = nil

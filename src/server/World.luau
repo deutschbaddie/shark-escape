@@ -611,14 +611,10 @@ local function buildGates()
 	folder.Parent = map
 	for _, zone in ZONES do
 		if zone.gate > 0 then
+			-- no walls: just the zone's sign. Ride as far as you dare; under the
+			-- recommended speed, the zone's shark hunts you nonstop (Sharks)
 			local g = Build.model("Gate_" .. zone.id, folder)
 			local z = zone.zStart
-			-- see-through shimmering barrier across the water (visual only: the
-			-- server enforces gates; the client fades the ones you've unlocked)
-			local wall = Build.part(g, Vector3.new(W - 2, WALL_TOP + 6, 0.6), CFrame.new(0, (WALL_TOP - 6) / 2, z), C(205, 236, 255), {
-				Name = "Wall", Material = Enum.Material.ForceField, Transparency = 0.15, CastShadow = false, CanCollide = false, CanQuery = false,
-			})
-			g.PrimaryPart = wall
 			g:SetAttribute("Gate", zone.gate)
 			g:SetAttribute("ZoneName", zone.name)
 			-- the sign: zone name + what it takes to get in, on two posts
@@ -636,14 +632,14 @@ local function buildGates()
 				name.Position = UDim2.fromScale(0.03, 0.06)
 				local need = name:Clone()
 				need.Name = "Sub"
-				need.Text = ("Need %s speed"):format(tostring(zone.gate))
+				need.Text = ("Recommended: %s speed"):format(tostring(zone.gate))
 				need.TextColor3 = C(255, 214, 60)
 				need.Size = UDim2.fromScale(0.9, 0.3)
 				need.Position = UDim2.fromScale(0.05, 0.64)
 				need.Parent = name.Parent
 			end
-			-- rope of buoys across the water
-			for x = -W / 2 + 12, W / 2 - 12, 12 do
+			-- a buoy under each sign post marks the line
+			for _, x in { -14, 14 } do
 				Props.buoy(g, Vector3.new(x, 0, z), C(255, 196, 40))
 			end
 			CollectionService:AddTag(g, "Gate")

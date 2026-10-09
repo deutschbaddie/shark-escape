@@ -1309,15 +1309,6 @@ local function fastTick()
 				Game.setCarry(s, nextUp)
 			end
 		end
-		-- hard gates: past a wall you haven't unlocked? back to the shore
-		local zone = Config.zoneAtPos(pos)
-		if zone and zone.gate > s.profile.speed and pos.Z > zone.zStart + 2 and not hrp.Anchored then
-			-- bounce back to just before the gate, facing home (not all the way to the beach)
-			local back = Vector3.new(pos.X, pos.Y, zone.zStart - 14)
-			hrp.Parent:PivotTo(CFrame.lookAt(back, back - Vector3.new(0, 0, 1)))
-			hrp.AssemblyLinearVelocity = Vector3.new(0, 30, -40)
-			Game.notify(s.player, "gate", { need = zone.gate, zone = zone.id })
-		end
 		if s.dirty then
 			Game.push(s)
 		end

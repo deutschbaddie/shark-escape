@@ -291,10 +291,9 @@ local function gateTick()
 	for _, g in CollectionService:GetTagged("Gate") do
 		local need = g:GetAttribute("Gate")
 		local wall = g:FindFirstChild("Wall") :: BasePart?
-		if typeof(need) == "number" and wall then
+		if typeof(need) == "number" then
 			local open = d.speed >= need
-			wall.LocalTransparencyModifier = open and 1 or 0
-			for _, tex in wall:GetChildren() do
+			for _, tex in (wall and wall:GetChildren() or {}) do -- (no walls since the sea opened up)
 				if tex:IsA("Texture") then
 					tex.Transparency = open and 1 or 0
 				end
@@ -309,7 +308,7 @@ local function gateTick()
 						t.TextColor3 = open and C.money or C.white
 					end
 					if sub then
-						sub.Text = open and "Unlocked!" or ("Need %s speed · you have %s"):format(UI.short(need), UI.short(d.speed))
+						sub.Text = open and "You're fast enough" or ("Recommended %s speed · you have %s"):format(UI.short(need), UI.short(d.speed))
 						sub.TextColor3 = open and C.money or C.gold
 					end
 				end
