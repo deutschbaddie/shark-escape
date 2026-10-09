@@ -1354,7 +1354,7 @@ end
 
 Game.onJoin = nil :: ((Session) -> ())?
 Game.onWorld = nil :: ((Session) -> ())? -- after a portal trip
-Game.sharkAggro = nil :: ((Session, number?, string?) -> ())? -- Sharks.aggro
+Game.sharkAggro = nil :: ((Session, number?, string?, string?) -> ())? -- Sharks.aggro
 Game.sharkOnGrab = nil :: ((Session, string) -> ())? -- Sharks.onGrab
 
 return Game

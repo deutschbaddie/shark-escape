@@ -867,6 +867,22 @@ local function buildPlot(i: number, cf: CFrame): Plot
 	view.KeyboardKeyCode = Enum.KeyCode.E -- E for everything
 	view:SetAttribute("Plot", i)
 	view.Parent = viewSpot
+	-- RAID: other players hold F here while the owner is out at sea (Raids.luau;
+	-- the client only shows it on docks that aren't yours)
+	local raid = Instance.new("ProximityPrompt")
+	raid.Name = "RaidTank"
+	raid.ActionText = "Raid"
+	raid.ObjectText = "Tank"
+	raid.HoldDuration = 1
+	raid.MaxActivationDistance = 12
+	raid.RequiresLineOfSight = false
+	raid.Style = Enum.ProximityPromptStyle.Custom
+	raid.KeyboardKeyCode = Enum.KeyCode.F
+	raid.Enabled = false
+	raid:SetAttribute("Plot", i)
+	-- its own spot at the tank's side, so the two prompts never overlap
+	raid.Parent = Build.part(tk, Vector3.new(2, 2, 2), tcf * CFrame.new(6.5, 2.4, 2.5), C(255, 255, 255),
+		{ Name = "RaidSpot", Transparency = 1, CanCollide = false, CanQuery = false, CanTouch = false, CastShadow = false })
 	-- sign over the tank: owner, what it earns, what it earns per day offline
 	local signAnchor = Build.part(m, Vector3.new(0.2, 0.2, 0.2), tcf * CFrame.new(0, 13.2, 0), C(255, 255, 255),
 		{ Name = "TankSign", Transparency = 1, CanCollide = false, CanQuery = false, CanTouch = false, CastShadow = false })

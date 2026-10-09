@@ -486,9 +486,9 @@ end
 
 -- you took something from its waters (or got chummed): that zone's shark
 -- comes for you in the day too, for Config.Shark.grudge seconds
-function Sharks.aggro(s: Game.Session, seconds: number?, why: string?)
+function Sharks.aggro(s: Game.Session, seconds: number?, why: string?, by: string?): boolean
 	if phase == "hunt" or not Game.huntable(s) then
-		return -- (at night it's coming anyway)
+		return false -- (at night it's coming anyway)
 	end
 	local untilT = os.clock() + (seconds or Config.Shark.grudge)
 	local mine = 0
@@ -507,7 +507,8 @@ function Sharks.aggro(s: Game.Session, seconds: number?, why: string?)
 	end
 	local hrp = Game.root(s.player)
 	local zone = hrp and Config.zoneAtPos(hrp.Position)
-	Game.notify(s.player, "aggro", { shark = zone and zone.shark or "Shark", why = why })
+	Game.notify(s.player, "aggro", { shark = zone and zone.shark or "Shark", why = why, by = by })
+	return true
 end
 
 -- after a grab: does the shark notice? (rarer catch, fuller net, deeper zone)

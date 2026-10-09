@@ -592,6 +592,22 @@ Config.Tank = {
 	maxDead = 10, -- unequipped catches lie "dead" on the tank floor (no income); past this you must sell some
 }
 
+-- Chum: throw a bucket at a nearby rider and their zone's shark comes for
+-- them (by day; at night the sharks are out anyway)
+Config.Chum = { range = 90, cooldown = 45, grudge = 18, minPlaytime = 300 }
+
+-- Raids: hold the RAID prompt at another player's tank while they're out at
+-- sea; after `time` seconds you take one of their creatures (never their
+-- best). They're alerted at once and stop it by getting back to their dock.
+Config.Raid = {
+	time = 35, -- long: the owner has time to rush home from deep water
+	defendRadius = 28, -- the owner this close to their own tank stops it
+	stayRadius = 16, -- the raider has to stay this close to the tank
+	victimCooldown = 240, -- a raided player is safe from raids this long
+	raiderCooldown = 60, -- after a raid (won or lost)
+	minPlaytime = 600, -- both players need 10 min played (no new players)
+}
+
 -- Nets: how many creatures you can carry home in one trip (bought with
 -- coins in the Tank window; kept through rebirths and across worlds). A
 -- shark bite loses the whole haul, so a big net is a big risk too.
