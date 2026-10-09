@@ -44,11 +44,6 @@ end
 
 -- a check mark from two rounded bars (no glyph or image needed)
 local function check(parent: Instance, size: number, z: number)
-	local art = UI.kitImage(parent, "BadgeCheck", { Name = "Check", Size = UDim2.fromOffset(size, size), Position = UDim2.fromScale(0.5, 0.5),
-		AnchorPoint = Vector2.new(0.5, 0.5), ZIndex = z })
-	if art then
-		return art
-	end
 	local box = UI.frame(parent, { Name = "Check", Size = UDim2.fromOffset(size, size), Position = UDim2.fromScale(0.5, 0.5), AnchorPoint = Vector2.new(0.5, 0.5),
 		BackgroundTransparency = 1, ZIndex = z })
 	for _, leg in { { 0.34, 0.62, 0.18, 0.42, -45 }, { 0.6, 0.47, 0.18, 0.8, 40 } } do
@@ -68,16 +63,6 @@ local function reveal(day: number)
 		return
 	end
 	UI.pop(tile, 1.25)
-	-- kit glow: rays behind, sparkles over, gone after a moment
-	for _, fx in { { "EffectRewardRays", 260, tile.ZIndex - 1 }, { "EffectSparkles", 180, tile.ZIndex + 9 } } do
-		local img = UI.effect(tile, fx[1], fx[2], { ZIndex = math.max(fx[3], 1) })
-		if img then
-			TweenService:Create(img, TweenInfo.new(1.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { ImageTransparency = 1 }):Play()
-			task.delay(1.45, function()
-				img:Destroy()
-			end)
-		end
-	end
 	-- sparkles burst from the tile's middle (children of the tile: it never clips)
 	local parent = tile
 	local center = UDim2.fromScale(0.5, 0.5)

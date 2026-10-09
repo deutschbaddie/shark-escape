@@ -1,7 +1,7 @@
--- Custom look for every ProximityPrompt (Style = Custom), in the game's
--- design system: a navy pill with a dark circle holding a white key chip
+-- Custom look for every ProximityPrompt (Style = Custom), Steal an Egg
+-- style: a see-through grey circle holding a white outlined key square
 -- ("E", a gamepad button, or TAP on touch), a white ring that fills while
--- you hold, the object name in soft blue-grey and the action in bold white,
+-- you hold, the object name small in grey above the action in bold white,
 -- and a clean white outline around the thing you're about to use.
 --
 -- Grab prompts also teach (Onboarding sets Prompts.setTeach):
@@ -32,7 +32,8 @@ Prompts.Triggered = triggeredEvent.Event
 local GOLD = UI.T.gold
 local RED = UI.light(UI.T.red, 0.2)
 
-local INK = UI.T.navyDark
+local INK = Color3.fromRGB(40, 40, 46)
+local FONT = Enum.Font.BuilderSansBold
 local GAMEPAD = {
 	ButtonX = "X", ButtonY = "Y", ButtonA = "A", ButtonB = "B",
 	ButtonL1 = "LB", ButtonR1 = "RB", ButtonL2 = "LT", ButtonR2 = "RT",
@@ -77,7 +78,7 @@ local function radial(parent: GuiObject): (number) -> ()
 		corner(ring, 0.5)
 		local s = Instance.new("UIStroke")
 		s.Thickness = RING
-		s.Color = Color3.fromRGB(20, 20, 28) -- dark fill ring on the white key
+		s.Color = Color3.new(1, 1, 1) -- white fill ring around the grey circle
 		s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		s.Parent = ring
 		local g = Instance.new("UIGradient")
@@ -145,7 +146,7 @@ local function build(prompt: ProximityPrompt, inputType: Enum.ProximityPromptInp
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "Prompt"
 	gui.AlwaysOnTop = true
-	gui.Size = UDim2.fromOffset(250, 72 + top)
+	gui.Size = UDim2.fromOffset(230, 64 + top)
 	gui.SizeOffset = Vector2.new(0.36, 0)
 	gui.StudsOffsetWorldSpace = Vector3.new(0, 1, 0)
 	gui.LightInfluence = 0
@@ -176,10 +177,10 @@ local function build(prompt: ProximityPrompt, inputType: Enum.ProximityPromptInp
 
 	local circle = Instance.new(touch and "TextButton" or "Frame") :: GuiObject
 	circle.Name = "Circle"
-	circle.Size = UDim2.fromOffset(64, 64)
-	circle.Position = UDim2.fromOffset(4, 4 + top)
-	circle.BackgroundColor3 = UI.T.white -- the white key button
-	circle.BackgroundTransparency = 0
+	circle.Size = UDim2.fromOffset(60, 60)
+	circle.Position = UDim2.fromOffset(2, 2 + top)
+	circle.BackgroundColor3 = Color3.fromRGB(150, 150, 150) -- see-through grey disc
+	circle.BackgroundTransparency = 0.45
 	circle.ZIndex = 2
 	circle.BorderSizePixel = 0
 	if circle:IsA("TextButton") then
@@ -189,21 +190,22 @@ local function build(prompt: ProximityPrompt, inputType: Enum.ProximityPromptInp
 	circle.Parent = gui
 	corner(circle, 0.5)
 	local cs = Instance.new("UIStroke")
-	cs.Thickness = 2.5
-	cs.Color = Color3.fromRGB(20, 20, 28)
+	cs.Thickness = 0
+	cs.Enabled = false
+	cs.Color = INK
 	cs.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	cs.Parent = circle
 	local setRing = radial(circle)
 
 	local key = Instance.new("TextLabel")
-	key.Size = UDim2.fromOffset(34, 34)
+	key.Size = UDim2.fromOffset(32, 32)
 	key.AnchorPoint = Vector2.new(0.5, 0.5)
 	key.Position = UDim2.fromScale(0.5, 0.5)
-	-- the key chip: white with navy text
+	-- the key: a white outlined rounded square with a white letter
 	key.BackgroundColor3 = UI.T.white
 	key.BackgroundTransparency = 1
-	key.Font = UI.FONT
-	key.TextColor3 = Color3.fromRGB(20, 20, 28)
+	key.Font = FONT
+	key.TextColor3 = Color3.new(1, 1, 1)
 	key.TextScaled = true
 	key.ZIndex = circle.ZIndex + 2
 	if touch then
@@ -214,45 +216,48 @@ local function build(prompt: ProximityPrompt, inputType: Enum.ProximityPromptInp
 		key.Text = prompt.KeyboardKeyCode.Name
 	end
 	key.Parent = circle
-	corner(key, nil, 8)
+	corner(key, nil, 7)
 	local ks = Instance.new("UIStroke")
-	ks.Thickness = 0
-	ks.Enabled = false
-	ks.Color = UI.dark(UI.T.mute, 0.2)
+	ks.Thickness = 3
+	ks.Color = Color3.new(1, 1, 1)
 	ks.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	ks.Parent = key
 	local pad = Instance.new("UIPadding")
-	pad.PaddingTop = UDim.new(0, 5)
-	pad.PaddingBottom = UDim.new(0, 5)
-	pad.PaddingLeft = UDim.new(0, 5)
-	pad.PaddingRight = UDim.new(0, 5)
+	local inset = touch and 8 or 7
+	pad.PaddingTop = UDim.new(0, inset)
+	pad.PaddingBottom = UDim.new(0, inset)
+	pad.PaddingLeft = UDim.new(0, touch and 3 or inset)
+	pad.PaddingRight = UDim.new(0, touch and 3 or inset)
 	pad.Parent = key
 
 	local object = Instance.new("TextLabel")
 	object.BackgroundTransparency = 1
-	object.Size = UDim2.new(1, -82, 0, 22)
-	object.Position = UDim2.fromOffset(80, 8 + top)
-	object.Font = UI.FONT
-	object.TextColor3 = Color3.fromRGB(235, 235, 240)
+	object.Size = UDim2.new(1, -74, 0, 20)
+	object.Position = UDim2.fromOffset(70, 9 + top)
+	object.Font = FONT
+	object.TextColor3 = Color3.fromRGB(200, 200, 200)
 	object.ZIndex = 2
 	object.TextScaled = true
 	object.TextXAlignment = Enum.TextXAlignment.Left
 	object.Text = prompt.ObjectText
 	object.Parent = gui
-	stroke(object, UI.S.subtle)
+	stroke(object, 1.5, Color3.fromRGB(70, 70, 76))
 
 	local action = Instance.new("TextLabel")
 	action.BackgroundTransparency = 1
-	action.Size = UDim2.new(1, -82, 0, 32)
-	action.Position = UDim2.fromOffset(80, 30 + top)
-	action.Font = UI.FONT
+	action.Size = UDim2.new(1, -74, 0, 28)
+	action.Position = UDim2.fromOffset(70, 28 + top)
+	action.Font = FONT
 	action.TextColor3 = UI.T.white
 	action.ZIndex = 2
 	action.TextScaled = true
 	action.TextXAlignment = Enum.TextXAlignment.Left
 	action.Text = prompt.ActionText
 	action.Parent = gui
-	stroke(action, UI.S.text)
+	if prompt.ObjectText == "" then
+		action.Position = UDim2.fromOffset(70, 18 + top) -- no object name: center the action
+	end
+	stroke(action, 2, INK)
 
 	-- tutorial hint over the button, and a ghost ring showing where to hold
 	local hint: TextLabel? = nil
@@ -284,7 +289,7 @@ local function build(prompt: ProximityPrompt, inputType: Enum.ProximityPromptInp
 			g.ZIndex = circle.ZIndex
 			g.Parent = circle
 			corner(g, 0.5)
-			ghost = stroke(g, RING, Color3.fromRGB(20, 20, 28))
+			ghost = stroke(g, RING, Color3.new(1, 1, 1))
 			ghost.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		end
 	end
