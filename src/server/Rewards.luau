@@ -89,7 +89,24 @@ local function claimGroup(s: Game.Session)
 	Game.push(s)
 end
 
+-- playtime gifts (Config.PlayGifts): the next one, once you've played long
+-- enough this session
+local function claimGift(s: Game.Session)
+	local i = (s.gifts or 0) + 1
+	local g = Config.PlayGifts[i]
+	if not g or (os.clock() - s.joinedAt) / 60 < g.at then
+		return
+	end
+	s.gifts = i
+	local what = grant(s, g)
+	s.dirty = true
+	Game.notify(s.player, "gift", { i = i, text = what, last = i == #Config.PlayGifts })
+	Game.track(s.player, "gift", { i = i })
+	Game.push(s)
+end
+
 function Rewards.start()
+	Game.action("claimGift", claimGift)
 	Game.action("claimDaily", claimDaily)
 	Game.action("claimGroup", claimGroup)
 end

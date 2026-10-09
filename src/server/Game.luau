@@ -43,6 +43,7 @@ export type Session = {
 	carryWarned: boolean?,
 	rings: { [number]: number }?, -- boost ring cooldowns
 	portalAt: number?, -- last portal use
+	gifts: number?, -- playtime gifts claimed this session
 	bag: { Data.Creature }?, -- extra catches in your net (s.carrying is the one in your hands)
 	chains: { [number]: number }?, -- slalom cooldowns
 	ringSeen: { [number]: number }?, -- when you last passed each ring
@@ -283,6 +284,8 @@ function Game.push(s: Session)
 		shields = p.shields,
 		carrying = s.carrying,
 		bag = s.bag and #s.bag or 0,
+		gifts = s.gifts or 0, -- playtime gifts claimed this session...
+		session = os.clock() - s.joinedAt, -- ...and seconds played (client counts on from here)
 		net = s.profile.net,
 		netCap = Config.netCap(s.profile.net),
 		freshLeft = s.carryUntil and math.max(0, s.carryUntil - os.clock()) or nil, -- seconds before it escapes

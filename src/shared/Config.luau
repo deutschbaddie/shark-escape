@@ -990,6 +990,17 @@ Config.Daily = {
 } :: { { [string]: any } }
 Config.DAILY_GAP_HOURS, Config.DAILY_RESET_HOURS = 20, 48
 
+-- Playtime gifts: free, every session, the longer you stay the better
+-- (at = minutes played this session). The HUD gift square counts down.
+Config.PlayGifts = {
+	{ at = 3, kind = "coins", seconds = 45, min = 60, label = "Bag of Cash", icon = "Cash" },
+	{ at = 8, kind = "boost", minutes = 5, label = "2x Speed 5 min", icon = "Boost" },
+	{ at = 15, kind = "shield", amount = 1, label = "Shark Shield", icon = "Shield" },
+	{ at = 25, kind = "luck", minutes = 10, label = "Luck Potion", icon = "Potion" },
+	{ at = 40, kind = "creature", rarity = "Epic", label = "Epic Creature", icon = "GoldBubble" },
+	{ at = 60, kind = "creature", rarity = "Legendary", label = "Legendary Creature", icon = "Crown" },
+} :: { { [string]: any } }
+
 Config.Sounds = {
 	-- music (Audio.luau). One track for the whole game; give a place its own
 	-- track by filling its slot (the hunt slot, if empty, ducks the main track)
