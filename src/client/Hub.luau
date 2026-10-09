@@ -111,7 +111,7 @@ end
 
 function Hub.confirmRebirth()
 	local d = State.data
-	if not d or d.speed < Config.rebirthSpeed(d.wr or d.rebirths) then
+	if not d or d.speed < Config.rebirthSpeed(d.wr or d.rebirths, d.world) then
 		return
 	end
 	local now = Config.Rebirth.mult ^ d.rebirths
@@ -231,8 +231,8 @@ end
 
 local function updateShowcase()
 	local d = State.data
-	local map = Workspace:FindFirstChild("Map")
-	local shop = map and map:FindFirstChild("RideShop")
+	local shop = Layout.worldFolder(d and d.world)
+	shop = shop and shop:FindFirstChild("RideShop")
 	local pedestal = shop and shop:FindFirstChild("Pedestal") :: BasePart?
 	if not (d and pedestal) then
 		return
@@ -322,7 +322,7 @@ function Hub.start()
 	RunService.RenderStepped:Connect(function()
 		local m = showcase
 		if m and m.Parent then
-			local base = Layout.RideShop + Vector3.new(0, 5.4, 0)
+			local base = Layout.inWorld(Layout.RideShop, State.data and State.data.world) + Vector3.new(0, 5.4, 0)
 			m:PivotTo(CFrame.new(base + Vector3.new(0, math.sin(os.clock() * 2) * 0.3, 0)) * CFrame.Angles(0, os.clock() * 0.9, 0))
 		end
 	end)

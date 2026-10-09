@@ -336,8 +336,8 @@ local function render(d: any)
 	boost("Luck", d.luckLeft > 0, UI.timeWords(d.luckLeft))
 
 	-- goal: the next zone gate up to this run's rebirth target, then rebirth
-	local target = Config.rebirthSpeed(d.wr or d.rebirths)
-	local gate = Config.nextGate(d.speed)
+	local target = Config.rebirthSpeed(d.wr or d.rebirths, d.world)
+	local gate = Config.nextGate(d.speed, d.world)
 	if gate and gate.gate > target then
 		gate = nil
 	end
@@ -421,7 +421,7 @@ local function atMyDock(pos: Vector3?): boolean
 	if not (d and pos and d.plot > 0) then
 		return false
 	end
-	local tank = Layout.tankPos(Layout.Plots[d.plot])
+	local tank = Layout.tankPos(Layout.plot(d.plot, d.world))
 	return Vector2.new(pos.X - tank.X, pos.Z - tank.Z).Magnitude < 26 and not Layout.inWater(pos)
 end
 
@@ -436,7 +436,7 @@ local function statusLine(pos: Vector3?)
 		Notify.status(d.income > 0 and ("Your tank earns $%s / day while you're offline"):format(UI.short(Config.offlinePerDay(d.income)))
 			or "Put creatures in your tank to earn while you're offline", Color3.fromRGB(190, 225, 255))
 	elseif Layout.inWater(pos) then
-		local zone = Config.zoneAt(pos.Z)
+		local zone = Config.zoneAtPos(pos)
 		Notify.status(("%s · %d m"):format(zone and zone.name or "Lagoon", math.floor((pos.Z - Config.SHORE_Z) / 3.5)), C.white)
 	else
 		Notify.status(nil)
@@ -477,7 +477,7 @@ local function frame()
 	local pos = myPos()
 	statusLine(pos)
 	if pos then
-		local zone = Config.zoneAt(pos.Z)
+		local zone = Config.zoneAtPos(pos)
 		local id = zone and zone.id or "Beach"
 		if id ~= lastZone then
 			if lastZone ~= nil and os.clock() > quietTitlesUntil then
@@ -559,7 +559,7 @@ handlers.deposit = function(d)
 		return
 	end
 	-- everything is shown right at the tank, where it happens
-	local tank = Layout.tankPos(Layout.Plots[data.plot])
+	local tank = Layout.tankPos(Layout.plot(data.plot, State.data and State.data.world))
 	Fx.sparkle(tank + Vector3.new(0, 6, 0), r.color, 40)
 	Fx.sound("deposit", 0.7, 1, tank)
 	if d.active then
@@ -710,7 +710,7 @@ end
 ----------------------------------------------------------------- shark phases
 local function myZone(): Config.Zone?
 	local pos = myPos()
-	return pos and Config.zoneAt(pos.Z)
+	return pos and Config.zoneAtPos(pos)
 end
 
 local function onPhase(kind: string, data: any)

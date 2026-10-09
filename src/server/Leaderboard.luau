@@ -49,11 +49,15 @@ local function nameOf(userId: number): string
 	return names[userId]
 end
 
+local fill: (SurfaceGui, { { id: number, value: number } }) -> ()
+
 local function render(key: string, rows: { { id: number, value: number } })
-	local board = World.boards[key]
-	if not board then
-		return
+	for _, board in World.boards[key] or {} do
+		fill(board, rows)
 	end
+end
+
+function fill(board: SurfaceGui, rows: { { id: number, value: number } })
 	for i = 1, 10 do
 		local row = board:FindFirstChild("Row" .. i)
 		local r = rows[i]

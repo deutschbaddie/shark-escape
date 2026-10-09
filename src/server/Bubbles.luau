@@ -55,12 +55,13 @@ local function spot(zone: Config.Zone): Vector3
 		if zone.index == 1 and rng:NextNumber() < 0.5 then
 			zTo = zone.zStart + 80
 		end
-		local p = Vector3.new(rng:NextNumber(-Config.LANE_WIDTH / 2 + 12, Config.LANE_WIDTH / 2 - 12), 3, rng:NextNumber(zFrom, zTo))
+		local ox = Config.originX(zone.world)
+		local p = Vector3.new(ox + rng:NextNumber(-Config.LANE_WIDTH / 2 + 12, Config.LANE_WIDTH / 2 - 12), 3, rng:NextNumber(zFrom, zTo))
 		if not Layout.islandAt(p, 5) then
 			return p
 		end
 	end
-	return Vector3.new(0, 3, zone.zStart + zone.length / 2)
+	return Vector3.new(Config.originX(zone.world), 3, zone.zStart + zone.length / 2)
 end
 
 local function spawnBubble(zone: Config.Zone)
@@ -186,7 +187,7 @@ end
 
 -- Golden Bubble / Starter Pack: straight into your hands (or your tank)
 function Bubbles.give(s: Game.Session, r: string, zoneId: string?, size: number?)
-	local zone = Config.zoneForSpeed(s.profile.speed)
+	local zone = Config.zoneForSpeed(s.profile.speed, s.profile.world)
 	local c = { r = r, z = zoneId or zone.id, m = Bubbles.rollMutation(), s = size or Config.rollSize(rng) }
 	Game.discover(s, c)
 	if s.carrying then

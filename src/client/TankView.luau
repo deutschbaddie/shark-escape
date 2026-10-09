@@ -14,6 +14,7 @@ local Workspace = game:GetService("Workspace")
 
 local Shared = game.ReplicatedStorage.Shared
 local Config = require(Shared.Config)
+local Layout = require(Shared.Layout)
 local UI = require(script.Parent.UI)
 
 local TankView = {}
@@ -30,8 +31,7 @@ end
 ----------------------------------------------------------------- picking
 local function slotsFolders(): { Instance }
 	local out = {}
-	local map = Workspace:FindFirstChild("Map")
-	if map then
+	for _, map in Layout.worldFolders() do
 		for _, plot in map:GetChildren() do
 			local slots = plot:FindFirstChild("Slots")
 			if slots then
@@ -195,7 +195,10 @@ local function closeView()
 end
 
 local function openView(plotIndex: number, title: string)
-	local map = Workspace:FindFirstChild("Map")
+	-- (the tank in the world you're standing in)
+	local char = player.Character
+	local hrp = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local map = Layout.worldFolder(hrp and Config.worldAt(hrp.Position) or 1)
 	local plot = map and map:FindFirstChild("Plot" .. plotIndex)
 	local box = plot and plot:FindFirstChild("TankInterior") :: BasePart?
 	if not box or viewing or player:GetAttribute("Cinematic") then

@@ -38,6 +38,7 @@ export type Zone = {
 	floor: Enum.Material,
 	floorColor: Color3,
 	tint: Color3,
+	world: number?, -- which world (set below)
 	aggro: number?, -- shark aggression (1 = normal): >1 circles less, lunges from further
 	zStart: number,
 	zEnd: number,
@@ -109,66 +110,80 @@ local CANDY_ZONES = {
 		floorColor = rgb(255, 235, 235), tint = rgb(255, 245, 245) },
 	{ id = "Choco", name = "Chocolate Deep", gate = 20000, length = 1000, depth = 48, shark = "Fudge", sharkLength = 22,
 		sharkSpeed = 230, value = 2400, islandEvery = 210, islandRadius = 8,
-		water = rgb(120, 70, 40), clarity = 0.4, floor = Enum.Material.Mud,
+		water = rgb(120, 70, 40), clarity = 0.4, floor = Enum.Material.Asphalt,
 		floorColor = rgb(90, 55, 35), tint = rgb(255, 240, 228) },
 	{ id = "Sugar", name = "Sugar Abyss", gate = 100000, length = 1400, depth = 80, shark = "SugarKing", sharkLength = 40,
 		sharkSpeed = 320, value = 12000, islandEvery = 300, islandRadius = 8, aggro = 1.1,
-		water = rgb(70, 30, 100), clarity = 0.3, floor = Enum.Material.Basalt,
+		water = rgb(70, 30, 100), clarity = 0.3, floor = Enum.Material.Rock,
 		floorColor = rgb(60, 30, 80), tint = rgb(250, 235, 255) },
 } :: { Zone }
 
 ----------------------------------------------------------------- worlds
--- Each world is its own place in the experience (publish this same build to
--- every place). The place id picks the world; in Studio, set a "World"
--- number attribute on ReplicatedStorage to test another world.
+-- Both worlds live in this one place: World 2 is a full copy of the beach +
+-- ocean, WORLD_GAP studs off to the side (+X), far enough that neither can
+-- see the other. Everything along the lane (zones, the shore ramp) works in
+-- Z as before; X picks the world. The plaza portal swaps you between them.
 export type World = {
-	id: number, name: string, placeId: number, zones: { Zone },
-	gainMult: number, rebirthSteps: { number }, unlockRebirths: number, color: Color3,
+	id: number, name: string, zones: { Zone }, gainMult: number, rebirthSteps: { number },
+	unlockRebirths: number, color: Color3, ox: number, oceanEnd: number,
 }
+Config.WORLD_GAP = 12000
 Config.Worlds = {
-	{ id = 1, name = "Shark Beach", placeId = 0, zones = OCEAN_ZONES, gainMult = 1,
+	{ id = 1, name = "Shark Beach", zones = OCEAN_ZONES, gainMult = 1,
 		rebirthSteps = { 25000, 60000, 150000, 350000 }, unlockRebirths = 0, color = rgb(40, 170, 255) },
-	{ id = 2, name = "Candy Bay", placeId = 0, zones = CANDY_ZONES, gainMult = 2.5,
+	{ id = 2, name = "Candy Bay", zones = CANDY_ZONES, gainMult = 2.5,
 		rebirthSteps = { 100000, 240000, 600000, 1400000 }, unlockRebirths = 3, color = rgb(255, 110, 200) },
 } :: { World }
 
-Config.WORLD = 1
-pcall(function()
-	local forced = game:GetService("ReplicatedStorage"):GetAttribute("World")
-	if typeof(forced) == "number" and Config.Worlds[forced] then
-		Config.WORLD = forced
-	else
-		for _, w in Config.Worlds do
-			if w.placeId ~= 0 and w.placeId == game.PlaceId then
-				Config.WORLD = w.id
-			end
-		end
-	end
-end)
-Config.World = Config.Worlds[Config.WORLD]
-Config.Zones = Config.World.zones
-
-do
+-- every zone of every world (ids are unique across worlds)
+Config.Zones = {} :: { Zone }
+for w, world in Config.Worlds do
+	world.ox = (w - 1) * Config.WORLD_GAP
 	local z = Config.SHORE_Z
-	for i, zone in Config.Zones do
+	for i, zone in world.zones do
+		zone.world = w
 		zone.index = i
 		zone.zStart = z
 		zone.zEnd = z + zone.length
 		z = zone.zEnd
+		table.insert(Config.Zones, zone)
 	end
+	world.oceanEnd = z
 end
-Config.OCEAN_END = Config.Zones[#Config.Zones].zEnd
+Config.OCEAN_END = Config.Worlds[1].oceanEnd
 
-function Config.zoneAt(z: number): Zone?
+-- which world a position is in (by X)
+function Config.worldAt(pos: Vector3): number
+	return math.clamp(math.floor((pos.X + Config.WORLD_GAP / 2) / Config.WORLD_GAP) + 1, 1, #Config.Worlds)
+end
+
+function Config.originX(w: number?): number
+	return (Config.Worlds[w or 1] or Config.Worlds[1]).ox
+end
+
+function Config.worldZones(w: number?): { Zone }
+	return (Config.Worlds[w or 1] or Config.Worlds[1]).zones
+end
+
+function Config.oceanEnd(w: number?): number
+	return (Config.Worlds[w or 1] or Config.Worlds[1]).oceanEnd
+end
+
+function Config.zoneAt(z: number, w: number?): Zone?
 	if z < Config.SHORE_Z then
 		return nil
 	end
-	for _, zone in Config.Zones do
+	local zones = Config.worldZones(w)
+	for _, zone in zones do
 		if z < zone.zEnd then
 			return zone
 		end
 	end
-	return Config.Zones[#Config.Zones]
+	return zones[#zones]
+end
+
+function Config.zoneAtPos(pos: Vector3): Zone?
+	return Config.zoneAt(pos.Z, Config.worldAt(pos))
 end
 
 function Config.zoneById(id: string): Zone?
@@ -181,9 +196,10 @@ function Config.zoneById(id: string): Zone?
 end
 
 -- the furthest zone this speed is allowed into
-function Config.zoneForSpeed(speed: number): Zone
-	local best = Config.Zones[1]
-	for _, zone in Config.Zones do
+function Config.zoneForSpeed(speed: number, w: number?): Zone
+	local zones = Config.worldZones(w)
+	local best = zones[1]
+	for _, zone in zones do
 		if speed >= zone.gate then
 			best = zone
 		end
@@ -191,8 +207,8 @@ function Config.zoneForSpeed(speed: number): Zone
 	return best
 end
 
-function Config.nextGate(speed: number): Zone?
-	for _, zone in Config.Zones do
+function Config.nextGate(speed: number, w: number?): Zone?
+	for _, zone in Config.worldZones(w) do
 		if speed < zone.gate then
 			return zone
 		end
@@ -667,10 +683,10 @@ end
 ----------------------------------------------------------------- rebirth
 -- Each rebirth asks for more speed: the first at The Abyss, then one zone
 -- further each time (Frozen Sea, Volcano Vents, Lost City), then x2 each.
-Config.Rebirth = { speed = 25000, mult = 1.5, steps = Config.World.rebirthSteps }
-function Config.rebirthSpeed(rebirths: number?): number
+Config.Rebirth = { speed = 25000, mult = 1.5 }
+function Config.rebirthSpeed(rebirths: number?, w: number?): number
 	local n = (rebirths or 0) + 1
-	local steps = Config.Rebirth.steps
+	local steps = (Config.Worlds[w or 1] or Config.Worlds[1]).rebirthSteps
 	if n <= #steps then
 		return steps[n]
 	end

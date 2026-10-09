@@ -86,7 +86,12 @@ function Index.open()
 		return
 	end
 	local win, body = Shop.window("Index", T.blue, Vector2.new(780, 470), "Index")
-	local allCount = #Config.Zones * #Config.Rarities
+	-- the world you're in (each world has its own Index)
+	local zones = Config.worldZones(d.world)
+	if not table.find(zones, Config.zoneById(zoneId)) then
+		zoneId = zones[1].id
+	end
+	local allCount = #zones * #Config.Rarities
 
 	local function render()
 		d = State.data
@@ -135,7 +140,7 @@ function Index.open()
 		tl.Padding = UDim.new(0, 8)
 		tl.SortOrder = Enum.SortOrder.LayoutOrder
 		tl.Parent = tabs
-		for i, zone in Config.Zones do
+		for i, zone in zones do
 			local active = zone.id == zoneId
 			local reached = d.speed >= zone.gate
 			local color = active and T.blue or (reached and T.navyLight or UI.dark(T.navyLight, 0.3))

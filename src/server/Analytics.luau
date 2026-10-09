@@ -57,7 +57,8 @@ local function runId(player: Player): string
 end
 
 local function zonesStep(player: Player, index: number)
-	local zone = Config.Zones[index]
+	local s = Game.sessions[player]
+	local zone = Config.worldZones(s and s.profile.world or 1)[index]
 	call("LogFunnelStepEvent", player, "Zones", runId(player), index, zone and zone.name or ("Zone " .. index))
 end
 
@@ -165,7 +166,7 @@ handlers.code = function(player, d)
 end
 handlers.spat = function(player)
 	local s = Game.sessions[player]
-	local zone = s and s.lastPos and Config.zoneAt(s.lastPos.Z)
+	local zone = s and s.lastPos and Config.zoneAtPos(s.lastPos)
 	call("LogCustomEvent", player, "SharkEaten", 1, { [F1] = zone and zone.name or "?" })
 end
 handlers.gate = function(player, d)

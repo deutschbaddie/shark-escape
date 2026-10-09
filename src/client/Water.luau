@@ -24,8 +24,8 @@ local player = Players.LocalPlayer
 local Terrain = Workspace.Terrain
 
 ----------------------------------------------------------------- zone tint
-local function zoneBlend(z: number): (Color3, number, Color3)
-	local zones = Config.Zones
+local function zoneBlend(z: number, w: number): (Color3, number, Color3)
+	local zones = Config.worldZones(w)
 	if z <= Config.SHORE_Z then
 		return zones[1].water, zones[1].clarity, zones[1].tint
 	end
@@ -48,7 +48,8 @@ local baseDecay = Color3.fromRGB(106, 180, 220)
 
 local function updateTint(dt: number)
 	local cam = Workspace.CurrentCamera
-	local col, clarity, tint = zoneBlend(cam.Focus.Position.Z)
+	local focus = cam.Focus.Position
+	local col, clarity, tint = zoneBlend(focus.Z, Config.worldAt(focus))
 	local a = 1 - math.exp(-dt * 3)
 	Terrain.WaterColor = Terrain.WaterColor:Lerp(col, a)
 	Terrain.WaterTransparency += (clarity - Terrain.WaterTransparency) * a

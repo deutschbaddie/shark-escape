@@ -60,7 +60,7 @@ end
 
 local function myPlot(): CFrame?
 	local d = State.data
-	return d and d.plot > 0 and Layout.Plots[d.plot] or nil
+	return d and d.plot > 0 and Layout.plot(d.plot, d.world) or nil
 end
 
 local function nearestBubble(pos: Vector3): Vector3?
@@ -123,11 +123,11 @@ local function drillEnd(result: string)
 end
 
 local function drillStart(pos: Vector3)
-	local zone = Config.zoneAt(pos.Z) or Config.Zones[1]
+	local zone = Config.zoneAtPos(pos) or Config.Zones[1]
 	local from = Vector3.new(
 		math.clamp(pos.X + math.random(-20, 20), -Config.LANE_WIDTH / 2 + 6, Config.LANE_WIDTH / 2 - 6),
 		0,
-		math.min(pos.Z + 45, Config.OCEAN_END - 8)
+		math.min(pos.Z + 45, Config.oceanEnd(Config.worldAt(pos)) - 8)
 	)
 	local yaw = math.atan2(-(pos.X - from.X), -(pos.Z - from.Z))
 	drill.angle = math.atan2(from.Z - pos.Z, from.X - pos.X)
@@ -296,7 +296,7 @@ local function update()
 		if not nxt or nxt.order > 2 then
 			advance(5)
 		elseif d.coins >= nxt.price then
-			at, label = Layout.RideShopPad + Vector3.new(0, 1, 0), "Ride Shop"
+			at, label = Layout.inWorld(Layout.RideShopPad, d.world) + Vector3.new(0, 1, 0), "Ride Shop"
 			title, sub = ("Get the %s"):format(nxt.name), ("Walk onto the Ride Shop pad · +%d speed/s"):format(nxt.gain or 0)
 			HUD.pulseRide(true)
 		else

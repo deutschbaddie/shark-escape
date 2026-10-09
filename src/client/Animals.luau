@@ -7,6 +7,7 @@
 local RunService = game:GetService("RunService")
 local CollectionService = game:GetService("CollectionService")
 local Workspace = game:GetService("Workspace")
+local Layout = require(game.ReplicatedStorage.Shared.Layout)
 
 local Animals = {}
 
@@ -73,11 +74,15 @@ end
 -- each tank has an invisible "TankInterior" part; its Slots folder holds the
 -- active creatures, which wander inside the interior box facing where they go
 local function swimTanks(t: number)
-	local map = Workspace:FindFirstChild("Map")
-	if not map then
-		return
-	end
-	for _, plot in map:GetChildren() do
+	for _, plot in (function()
+		local all = {}
+		for _, map in Layout.worldFolders() do
+			for _, p in map:GetChildren() do
+				table.insert(all, p)
+			end
+		end
+		return all
+	end)() do
 		local slots = plot:FindFirstChild("Slots")
 		local box = plot:FindFirstChild("TankInterior") :: BasePart?
 		if slots and box then

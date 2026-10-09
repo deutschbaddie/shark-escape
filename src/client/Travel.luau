@@ -18,13 +18,17 @@ local player = Players.LocalPlayer
 local LABELS = { Rides = "Ride Shop", Shop = "Shop", Index = "Index", Sell = "Sell" }
 
 -- the pad's centre and radius (World.luau builds them: huts 13 wide, Ride Shop 15)
+-- (in the world you're in: every world has the same plaza)
 function Travel.padPos(kind: string): (Vector3?, number)
+	local char = player.Character
+	local hrp = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local w = hrp and Config.worldAt(hrp.Position) or 1
 	if kind == "Rides" then
-		return Layout.RideShopPad, 7.5
+		return Layout.inWorld(Layout.RideShopPad, w), 7.5
 	end
 	for _, h in Layout.Huts do
 		if h.kind == kind then
-			return h.pos + Vector3.new(0, 0, 9), 6.5
+			return Layout.inWorld(h.pos + Vector3.new(0, 0, 9), w), 6.5
 		end
 	end
 	return nil, 0

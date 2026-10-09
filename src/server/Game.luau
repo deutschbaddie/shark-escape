@@ -2,7 +2,6 @@
 -- rebirth, gates, the shark's bite consequences, and state sync.
 
 local Players = game:GetService("Players")
-local TeleportService = game:GetService("TeleportService")
 
 local Shared = game.ReplicatedStorage.Shared
 local Config = require(Shared.Config)
@@ -42,8 +41,8 @@ export type Session = {
 	offline: number, -- welcome-back coins waiting to be claimed
 	carryUntil: number?, -- os.clock() when the carried creature wriggles free
 	carryWarned: boolean?,
-	teleporting: boolean?,
-	rings: { [number]: number }?, -- boost ring cooldowns -- saved and on the way to another world: never save again here
+	rings: { [number]: number }?, -- boost ring cooldowns
+	portalAt: number?, -- last portal use
 }
 
 Game.sessions = {} :: { [Player]: Session }
@@ -103,7 +102,7 @@ function Game.gain(s: Session): number
 			best = math.max(best, ride.gain)
 		end
 	end
-	local mult = Config.Rebirth.mult ^ s.profile.rebirths * Config.World.gainMult
+	local mult = Config.Rebirth.mult ^ s.profile.rebirths * (Config.Worlds[s.profile.world] or Config.Worlds[1]).gainMult
 	if s.passes.TwoXSpeed then
 		mult *= 2
 	end
@@ -275,7 +274,7 @@ function Game.push(s: Session)
 		slotPrice = Game.slotPrice(s),
 		rebirths = p.rebirths,
 		wr = p.wr,
-		world = Config.WORLD,
+		world = p.world,
 		unlocked = Game.unlockedWorlds(s),
 		tut = p.tut,
 		shields = p.shields,
@@ -771,12 +770,16 @@ actions.ring = function(s, i)
 	Game.notify(s.player, "ring", { amount = amount, i = i })
 end
 
--- the plaza portal: save, then teleport to the other world's place
+-- the plaza portal: across to the other world, right here in this server
 actions.portal = function(s)
-	local target = Config.WORLD == 1 and 2 or 1
+	local here = Config.Worlds[s.profile.world] or Config.Worlds[1]
+	local target = here.id == 1 and 2 or 1
 	local w = Config.Worlds[target]
-	local here = Config.Worlds[Config.WORLD]
-	if not w or s.teleporting then
+	if not w or (s.portalAt and os.clock() - s.portalAt < 3) then
+		return
+	end
+	local hrp = root(s.player)
+	if not (hrp and (Layout.toLocal(hrp.Position) - Layout.Portal).Magnitude < 24) then
 		return
 	end
 	if not Game.unlockedWorlds(s)[tostring(target)] then
@@ -784,29 +787,18 @@ actions.portal = function(s)
 		Game.notify(s.player, "announce", { text = ("Rebirth %d more time%s in %s to open %s"):format(need, need == 1 and "" or "s", here.name, w.name) })
 		return
 	end
-	if w.placeId == 0 then
-		Game.notify(s.player, "announce", { text = w.name .. " opens soon!" })
-		return
-	end
-	s.teleporting = true
-	s.profile.coins += s.pending + s.offline
-	s.pending, s.offline = 0, 0
-	if s.canSave and not Data.save(s.player.UserId, s.profile) then
-		s.teleporting = false
-		Game.notify(s.player, "announce", { text = "Couldn't save, try the portal again" })
-		return
-	end
-	Game.notify(s.player, "portal", { name = w.name })
-	local ok = pcall(TeleportService.TeleportAsync, TeleportService, w.placeId, { s.player })
-	if not ok then
-		s.teleporting = false
-		Game.notify(s.player, "announce", { text = "The portal fizzled (teleports only work in the live game)" })
-	end
+	s.portalAt = os.clock()
+	Game.notify(s.player, "portal", { name = w.name, world = target })
+	task.delay(0.9, function() -- the client's flash covers the jump
+		if Game.sessions[s.player] == s then
+			Game.switchWorld(s, target)
+		end
+	end)
 end
 
 actions.rebirth = function(s)
 	local p = s.profile
-	if p.speed < Config.rebirthSpeed(p.wr) then
+	if p.speed < Config.rebirthSpeed(p.wr, p.world) then
 		return
 	end
 	p.rebirths += 1
@@ -879,17 +871,70 @@ Remotes.get("Action").OnServerEvent:Connect(function(player, kind, arg)
 end)
 
 ----------------------------------------------------------------- join / leave
+-- your dock number is the same in every world (reserved in all of them);
+-- the sign + tank show only in the world you're in
+local function dressPlot(s: Session)
+	local plot = s.plot
+	if plot then
+		plot.signLabel.Text = s.player.DisplayName .. "'s Dock"
+		plot.viewPrompt.ObjectText = s.player.DisplayName .. "'s Tank"
+		plot.model:SetAttribute("Owner", s.player.UserId)
+	end
+end
+
+local function emptyPlot(plot: World.Plot)
+	plot.signLabel.Text = "Empty Dock"
+	plot.viewPrompt.ObjectText = "Empty Dock"
+	plot.padLabel.Text = "$0"
+	plot.tankIncome.Text = ""
+	plot.tankOffline.Text = ""
+	plot.slots:ClearAllChildren()
+	plot.model:SetAttribute("Owner", nil)
+end
+
 local function claimPlot(s: Session)
-	for _, plot in World.Plots do
+	for i, plot in World.Plots do
 		if not plot.owner then
-			plot.owner = s.player
-			s.plot = plot
-			plot.signLabel.Text = s.player.DisplayName .. "'s Dock"
-			plot.viewPrompt.ObjectText = s.player.DisplayName .. "'s Tank"
-			plot.model:SetAttribute("Owner", s.player.UserId)
+			for _, list in World.WorldPlots do
+				list[i].owner = s.player
+			end
+			s.plot = World.WorldPlots[s.profile.world][i]
+			dressPlot(s)
 			return
 		end
 	end
+end
+
+-- move a player to world w right here (the plaza portal): bank the pad,
+-- drop what you carry, swap the world's progress in, dock + respawn there
+function Game.switchWorld(s: Session, w: number)
+	local p = s.profile
+	if p.world == w or not Config.Worlds[w] then
+		return
+	end
+	p.coins += s.pending
+	s.pending = 0
+	Game.setCarry(s, nil)
+	local index = s.plot and s.plot.index
+	if s.plot then
+		emptyPlot(s.plot)
+	end
+	Data.enterWorld(p, w)
+	s.plot = index and World.WorldPlots[w][index] or nil
+	dressPlot(s)
+	Game.attachRide(s)
+	Game.refreshTank(s)
+	local hrp = root(s.player)
+	if hrp and s.plot then
+		local to = Layout.spawnCFrame(s.plot.cf)
+		-- (with streaming on, load the far side before landing there)
+		pcall(s.player.RequestStreamAroundAsync, s.player, to.Position, 6)
+		hrp.Parent:PivotTo(to)
+		hrp.AssemblyLinearVelocity = Vector3.zero
+	end
+	s.dirty = true
+	Game.push(s)
+	Game.track(s.player, "world", { world = w })
 end
 
 local function onCharacter(s: Session, char: Model)
@@ -918,7 +963,9 @@ function Game.join(player: Player)
 	if not player.Parent then
 		return
 	end
-	Data.enterWorld(profile, Config.WORLD) -- this place's world (Config.Worlds)
+	if not Config.Worlds[profile.world] then
+		Data.enterWorld(profile, 1)
+	end
 	local s: Session = {
 		player = player,
 		profile = profile,
@@ -991,20 +1038,14 @@ function Game.leave(player: Player)
 	end
 	Game.sessions[player] = nil
 	Game.track(player, "_leave", { minutes = (os.clock() - s.joinedAt) / 60, rebirths = s.profile.rebirths })
-	if not s.teleporting then
-		s.profile.coins += s.pending + s.offline
-	end
+	s.profile.coins += s.pending + s.offline
 	if s.plot then
-		s.plot.owner = nil
-		s.plot.signLabel.Text = "Empty Dock"
-		s.plot.viewPrompt.ObjectText = "Empty Dock"
-		s.plot.padLabel.Text = "$0"
-		s.plot.tankIncome.Text = ""
-		s.plot.tankOffline.Text = ""
-		s.plot.slots:ClearAllChildren()
-		s.plot.model:SetAttribute("Owner", nil)
+		emptyPlot(s.plot)
+		for _, list in World.WorldPlots do
+			list[s.plot.index].owner = nil
+		end
 	end
-	if s.canSave and not s.teleporting then -- (a teleport already saved; the next world owns the save now)
+	if s.canSave then
 		Data.save(player.UserId, s.profile)
 	end
 	for _, other in Game.sessions do
@@ -1022,7 +1063,12 @@ function Game.resetProfile(s: Session)
 		(s.profile :: any)[k] = v
 	end
 	s.profile.receipts = receipts
-	s.profile.world = Config.WORLD -- the fresh save belongs to the world you're in
+	-- the fresh save starts in Shark Beach: move the dock there
+	if s.plot then
+		emptyPlot(s.plot)
+		s.plot = World.WorldPlots[1][s.plot.index]
+		dressPlot(s)
+	end
 	s.pending, s.offline = 0, 0
 	Game.setCarry(s, nil)
 	if s.canSave then
@@ -1037,7 +1083,7 @@ end
 
 function Game.saveAll()
 	for player, s in Game.sessions do
-		if s.canSave and not s.teleporting then
+		if s.canSave then
 			task.spawn(Data.save, player.UserId, s.profile)
 		end
 	end
@@ -1058,7 +1104,7 @@ local function secondTick()
 			hum.WalkSpeed = Game.walkSpeed(s)
 		end
 		-- zone unlock moments
-		for _, zone in Config.Zones do
+		for _, zone in Config.worldZones(p.world) do
 			if zone.gate > 0 and before < zone.gate and p.speed >= zone.gate then
 				Game.notify(s.player, "unlock", { zone = zone.id })
 			end
@@ -1145,7 +1191,7 @@ local function fastTick()
 			end
 		end
 		-- hard gates: past a wall you haven't unlocked? back to the shore
-		local zone = Config.zoneAt(pos.Z)
+		local zone = Config.zoneAtPos(pos)
 		if zone and zone.gate > s.profile.speed and pos.Z > zone.zStart + 2 and not hrp.Anchored then
 			-- bounce back to just before the gate, facing home (not all the way to the beach)
 			local back = Vector3.new(pos.X, pos.Y, zone.zStart - 14)
@@ -1160,14 +1206,6 @@ local function fastTick()
 end
 
 function Game.start()
-	-- a teleport that fails after it started: you're still here, saves resume
-	TeleportService.TeleportInitFailed:Connect(function(player)
-		local s = Game.sessions[player]
-		if s then
-			s.teleporting = false
-			Game.notify(player, "announce", { text = "The portal fizzled, try again" })
-		end
-	end)
 	Players.PlayerAdded:Connect(Game.join)
 	Players.PlayerRemoving:Connect(Game.leave)
 	for _, p in Players:GetPlayers() do
@@ -1193,9 +1231,6 @@ function Game.start()
 	end)
 	game:BindToClose(function()
 		for player, s in Game.sessions do
-			if s.teleporting then
-				continue
-			end
 			s.profile.coins += s.pending + s.offline
 			s.pending, s.offline = 0, 0
 			if s.canSave then

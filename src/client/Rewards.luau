@@ -9,7 +9,7 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
-local Workspace = game:GetService("Workspace")
+local Layout = require(game.ReplicatedStorage.Shared.Layout)
 
 local Shared = game.ReplicatedStorage.Shared
 local Config = require(Shared.Config)
@@ -223,14 +223,20 @@ local function promptGroup()
 	end)
 end
 
+local paintChest: (Instance, number) -> ()
+
 local function chestSign()
-	local map = Workspace:FindFirstChild("Map")
-	local chest = map and map:FindFirstChild("GroupChest")
-	local anchor = chest and chest:FindFirstChild("Sign")
-	if not anchor then
-		return
-	end
 	local left = groupReadyAt - os.clock()
+	for _, map in Layout.worldFolders() do -- (one chest in each world)
+		local chest = map:FindFirstChild("GroupChest")
+		local anchor = chest and chest:FindFirstChild("Sign")
+		if anchor then
+			paintChest(anchor, left)
+		end
+	end
+end
+
+function paintChest(anchor: Instance, left: number)
 	for _, bb in anchor:GetChildren() do
 		local title = bb:FindFirstChild("Title") :: TextLabel?
 		local sub = bb:FindFirstChild("Sub") :: TextLabel?

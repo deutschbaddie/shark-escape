@@ -20,7 +20,7 @@ do
 			local count = (row % 2 == 0) and 3 or 2
 			for i = 1, count do
 				local t = (i - 0.5) / count
-				local x = -W / 2 + W * t + rng:NextNumber(-16, 16)
+				local x = Config.originX(zone.world) - W / 2 + W * t + rng:NextNumber(-16, 16)
 				local jitterZ = rng:NextNumber(-12, 12)
 				table.insert(Layout.Islands, {
 					pos = Vector3.new(x, Config.WATER_Y, z + jitterZ),
@@ -36,11 +36,54 @@ do
 end
 
 ----------------------------------------------------------------- plots
-Layout.Plots = {} :: { CFrame }
-for i = 1, Config.PLOT_COUNT do
-	local x = (i - (Config.PLOT_COUNT + 1) / 2) * Config.PLOT_SPACING
-	-- face the ocean (+Z): LookVector points toward the water
-	table.insert(Layout.Plots, CFrame.lookAt(Vector3.new(x, Config.BEACH_TOP, Config.PLOT_Z), Vector3.new(x, Config.BEACH_TOP, 100)))
+-- every world has the same row of docks (your dock number is the same in
+-- each); Layout.Plots = Shark Beach's, Layout.plot(i, w) any world's
+Layout.WorldPlots = {} :: { { CFrame } }
+for w in Config.Worlds do
+	local list = {}
+	local ox = Config.originX(w)
+	for i = 1, Config.PLOT_COUNT do
+		local x = ox + (i - (Config.PLOT_COUNT + 1) / 2) * Config.PLOT_SPACING
+		-- face the ocean (+Z): LookVector points toward the water
+		table.insert(list, CFrame.lookAt(Vector3.new(x, Config.BEACH_TOP, Config.PLOT_Z), Vector3.new(x, Config.BEACH_TOP, 100)))
+	end
+	Layout.WorldPlots[w] = list
+end
+Layout.Plots = Layout.WorldPlots[1]
+
+function Layout.plot(i: number, w: number?): CFrame
+	return Layout.WorldPlots[w or 1][i]
+end
+
+-- a world position -> the same spot in Shark Beach's layout (plaza checks)
+function Layout.toLocal(pos: Vector3): Vector3
+	return pos - Vector3.new(Config.originX(Config.worldAt(pos)), 0, 0)
+end
+
+-- where a world's built things live: Shark Beach straight in Workspace.Map,
+-- other worlds in Map/World<n> (World.luau)
+function Layout.worldFolder(w: number?): Instance?
+	local map = workspace:FindFirstChild("Map")
+	if not map or (w or 1) == 1 then
+		return map
+	end
+	return map:FindFirstChild("World" .. w)
+end
+
+function Layout.worldFolders(): { Instance }
+	local out = {}
+	for w in Config.Worlds do
+		local f = Layout.worldFolder(w)
+		if f then
+			table.insert(out, f)
+		end
+	end
+	return out
+end
+
+-- a Shark Beach layout position -> the same spot in world w
+function Layout.inWorld(pos: Vector3, w: number?): Vector3
+	return pos + Vector3.new(Config.originX(w), 0, 0)
 end
 
 function Layout.tankPos(plot: CFrame): Vector3
@@ -75,6 +118,7 @@ Layout.Portal = Vector3.new(-40, Config.BEACH_TOP, -72) -- to the other world (m
 
 -- standing at a hut's pad (the server checks before selling)
 function Layout.atHut(kind: string, pos: Vector3): boolean
+	pos = Layout.toLocal(pos)
 	for _, h in Layout.Huts do
 		if h.kind == kind then
 			local pad = h.pos + Vector3.new(0, 0, 9)
@@ -85,6 +129,7 @@ function Layout.atHut(kind: string, pos: Vector3): boolean
 end
 
 function Layout.atRideShop(pos: Vector3): boolean
+	pos = Layout.toLocal(pos)
 	local d = Vector2.new(pos.X - Layout.RideShopPad.X, pos.Z - (Layout.RideShopPad.Z - 8)).Magnitude
 	return d < Layout.RIDE_SHOP_RADIUS and math.abs(pos.Y - Config.BEACH_TOP) < 12
 end
@@ -156,7 +201,7 @@ do
 			if placed >= count then
 				break
 			end
-			local p = Vector3.new(rng:NextNumber(-W / 2 + 22, W / 2 - 22), Layout.RING_Y,
+			local p = Vector3.new(Config.originX(zone.world) + rng:NextNumber(-W / 2 + 22, W / 2 - 22), Layout.RING_Y,
 				rng:NextNumber(zone.zStart + 30, zone.zEnd - 30))
 			if not Layout.islandAt(p, 10) then
 				table.insert(Layout.Rings, p)

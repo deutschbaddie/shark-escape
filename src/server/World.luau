@@ -35,9 +35,13 @@ export type Plot = {
 	owner: Player?,
 }
 World.Plots = {} :: { Plot }
-World.boards = {} :: { [string]: SurfaceGui }
+World.boards = {} :: { [string]: { SurfaceGui } } -- a copy of each board in every world
 
-local map: Folder
+local map: Instance
+-- the world being built (World.build runs every builder once per world)
+local WORLD, OX = 1, 0
+local ZONES = Config.worldZones(1)
+local OCEAN = Config.oceanEnd(1)
 
 local GRASS = C(110, 214, 64)
 local GRASS2 = C(98, 198, 56)
@@ -138,6 +142,8 @@ local WALL_BOTTOM, WALL_TOP = -6, 16 -- tall checker walls, terraced grass banks
 
 ----------------------------------------------------------------- terrain
 local function fill(minV: Vector3, maxV: Vector3, mat: Enum.Material)
+	minV += Vector3.new(OX, 0, 0) -- terrain can't be moved after: offset here
+	maxV += Vector3.new(OX, 0, 0)
 	local step = 512
 	local x = minV.X
 	while x < maxV.X do
@@ -158,14 +164,16 @@ local function fill(minV: Vector3, maxV: Vector3, mat: Enum.Material)
 end
 
 local function buildTerrain()
-	Terrain:Clear()
+	if WORLD == 1 then
+		Terrain:Clear()
+	end
 	local X = 900
-	local zFar = Config.OCEAN_END + 600
+	local zFar = OCEAN + 600
 	-- open ocean all around (seen over the walls)
 	fill(Vector3.new(-X, -16, PLAZA_BACK - 300), Vector3.new(X, 0, zFar), Enum.Material.Water)
 	fill(Vector3.new(-X, -24, PLAZA_BACK - 300), Vector3.new(X, -16, zFar), Enum.Material.Sand)
 	-- the lane: each zone gets deeper and darker
-	for _, zone in Config.Zones do
+	for _, zone in ZONES do
 		local half = W / 2 + 2
 		fill(Vector3.new(-half, -zone.depth, zone.zStart), Vector3.new(half, 0, zone.zEnd), Enum.Material.Water)
 		fill(Vector3.new(-half, -zone.depth - 8, zone.zStart), Vector3.new(half, -zone.depth, zone.zEnd), zone.floor)
@@ -178,7 +186,7 @@ local function buildTerrain()
 	end
 	Terrain:SetMaterialColor(Enum.Material.Sand, C(255, 232, 170))
 
-	Terrain.WaterColor = Config.Zones[1].water
+	Terrain.WaterColor = Config.Worlds[1].zones[1].water
 	Terrain.WaterTransparency = 0.9
 	Terrain.WaterReflectance = 0.55
 	Terrain.WaterWaveSize = 0.14
@@ -282,6 +290,9 @@ local function buildPlaza()
 		end
 	end
 	-- invisible spawn fallback
+	if WORLD ~= 1 then
+		return -- one spawn fallback, in Shark Beach
+	end
 	local spawn = Instance.new("SpawnLocation")
 	spawn.Anchored = true
 	spawn.Size = Vector3.new(12, 1, 12)
@@ -491,7 +502,8 @@ local function buildBoard(key: string, title: string, color: Color3, at: Vector3
 		cell("Name", 0.14, 0.52, Enum.TextXAlignment.Left, C(22, 22, 34))
 		cell("Value", 0.66, 0.32, Enum.TextXAlignment.Right, color:Lerp(C(0, 0, 0), 0.15))
 	end
-	World.boards[key] = sg
+	World.boards[key] = World.boards[key] or {}
+	table.insert(World.boards[key], sg)
 end
 
 local function buildBoards()
@@ -512,8 +524,8 @@ local STEP_H = 12 -- the second terrace is this much higher
 
 local function grassRun(parent: Instance, side: number, inner: number, outer: number, top: number)
 	local z = PLAZA_BACK - WALL_T
-	while z < Config.OCEAN_END + WALL_T do
-		local len = math.min(400, Config.OCEAN_END + WALL_T - z)
+	while z < OCEAN + WALL_T do
+		local len = math.min(400, OCEAN + WALL_T - z)
 		local grass = Build.part(parent, Vector3.new(outer - inner, 6, len), CFrame.new(side * (inner + outer) / 2, top - 3, z + len / 2), GRASS, { Name = "Bank" })
 		Build.studs(grass, { Enum.NormalId.Top })
 		z += len
@@ -522,8 +534,8 @@ end
 
 local function treeRow(parent: Instance, rng: Random, side: number, x: number, y: number, step: number, big: number)
 	local z = PLAZA_BACK + rng:NextNumber(0, step)
-	while z < Config.OCEAN_END do
-		local zone = Config.zoneAt(z)
+	while z < OCEAN do
+		local zone = Config.zoneAt(z, WORLD)
 		local idx = zone and zone.index or 1
 		local pos = Vector3.new(side * (x + rng:NextNumber(-4, 4)), y, z)
 		local scale = rng:NextNumber(0.85, 1.25) * big
@@ -550,7 +562,7 @@ local function buildBanks()
 	for _, side in { -1, 1 } do
 		-- terrace 1, the checker step up, terrace 2
 		grassRun(banks, side, WALL_X + (WALL_T + 1.6) / 2, W / 2 + TERRACE1, top1)
-		checkerWall(banks, Vector3.new(side * stepX, 0, PLAZA_BACK - WALL_T), Vector3.new(side * stepX, 0, Config.OCEAN_END + WALL_T),
+		checkerWall(banks, Vector3.new(side * stepX, 0, PLAZA_BACK - WALL_T), Vector3.new(side * stepX, 0, OCEAN + WALL_T),
 			top1 - 4, top2 - 2, { side < 0 and Enum.NormalId.Right or Enum.NormalId.Left })
 		grassRun(banks, side, stepX + (WALL_T + 1.6) / 2, W / 2 + TERRACE2, top2)
 		treeRow(trees, rng, side, W / 2 + 20, top1, 26, 0.9)
@@ -563,20 +575,20 @@ end
 local function buildLane()
 	local lane = Build.model("Lane", map)
 	-- hidden floor players ride on, one slab per zone (parts max out at 2048)
-	for _, zone in Config.Zones do
+	for _, zone in ZONES do
 		Build.part(lane, Vector3.new(W + 2, 2, zone.length + 0.5),
 			CFrame.new(0, Config.FLOOR_TOP - 1, zone.zStart + zone.length / 2), C(255, 255, 255),
 			{ Name = "WaterFloor", Transparency = 1, CastShadow = false })
 	end
 	-- the corridor walls run from the back of the plaza to the end of the ocean
 	local walls = Build.model("LaneWalls", map)
-	local endZ = Config.OCEAN_END + WALL_T / 2
+	local endZ = OCEAN + WALL_T / 2
 	for _, side in { -1, 1 } do
-		checkerWall(walls, Vector3.new(side * WALL_X, 0, PLAZA_BACK), Vector3.new(side * WALL_X, 0, Config.OCEAN_END), WALL_BOTTOM, WALL_TOP,
+		checkerWall(walls, Vector3.new(side * WALL_X, 0, PLAZA_BACK), Vector3.new(side * WALL_X, 0, OCEAN), WALL_BOTTOM, WALL_TOP,
 			{ side < 0 and Enum.NormalId.Right or Enum.NormalId.Left }, 0.8, 0.8)
 		local z = PLAZA_BACK
-		while z < Config.OCEAN_END do
-			local len = math.min(2000, Config.OCEAN_END - z)
+		while z < OCEAN do
+			local len = math.min(2000, OCEAN - z)
 			Build.part(lane, Vector3.new(WALL_T, 200, len), CFrame.new(side * WALL_X, WALL_TOP + 100, z + len / 2), C(255, 255, 255),
 				{ Name = "Guard", Transparency = 1, CastShadow = false })
 			z += len
@@ -597,7 +609,7 @@ local function buildGates()
 	local folder = Instance.new("Folder")
 	folder.Name = "Gates"
 	folder.Parent = map
-	for _, zone in Config.Zones do
+	for _, zone in ZONES do
 		if zone.gate > 0 then
 			local g = Build.model("Gate_" .. zone.id, folder)
 			local z = zone.zStart
@@ -658,7 +670,7 @@ local function buildDecor()
 	local function laneXZ(zone: Config.Zone): (number, number)
 		return rng:NextNumber(-W / 2 + 10, W / 2 - 10), rng:NextNumber(zone.zStart + 10, zone.zEnd - 10)
 	end
-	for _, zone in Config.Zones do
+	for _, zone in ZONES do
 		local floorY = -zone.depth
 		if zone.id == "Lagoon" then
 			for _ = 1, 5 do
@@ -944,7 +956,7 @@ end
 -- its prompt asks the server to teleport (Game actions.portal). The client
 -- shows locked / open on the sign (Portal.luau).
 local function buildPortal()
-	local other = Config.Worlds[Config.WORLD == 1 and 2 or 1]
+	local other = Config.Worlds[WORLD == 1 and 2 or 1]
 	local m = Build.model("Portal", map)
 	local base = CFrame.new(Layout.Portal)
 	local col, trim = other.color, other.color:Lerp(C(255, 255, 255), 0.5)
@@ -987,15 +999,23 @@ end
 
 -- Builds everything. Safe to run again (and from the Studio command bar to
 -- preview the map in edit mode): the old map is removed first.
+-- every world's plots, by world then dock number (World.Plots = Shark Beach's)
+World.WorldPlots = {} :: { { Plot } }
+
+-- Runs every builder once per world. A world's plaza / lane / decor are
+-- built at Shark Beach's coordinates, then the whole model slides WORLD_GAP
+-- studs over; terrain, docks, islands and rings are placed directly.
 function World.build()
 	local old = Workspace:FindFirstChild("Map")
 	if old then
 		old:Destroy()
 	end
 	table.clear(World.Plots)
-	map = Instance.new("Folder")
-	map.Name = "Map"
-	map.Parent = Workspace
+	table.clear(World.WorldPlots)
+	table.clear(World.boards)
+	local root = Instance.new("Folder")
+	root.Name = "Map"
+	root.Parent = Workspace
 	-- clear the template baseplate so it doesn't fight the plaza
 	for _, name in { "Baseplate", "SpawnLocation" } do
 		local part = Workspace:FindFirstChild(name)
@@ -1004,23 +1024,55 @@ function World.build()
 		end
 	end
 	buildLighting()
-	buildPlaza()
-	for i, cf in Layout.Plots do
-		World.Plots[i] = buildPlot(i, cf)
+	for w in Config.Worlds do
+		WORLD, OX = w, Config.originX(w)
+		ZONES, OCEAN = Config.worldZones(w), Config.oceanEnd(w)
+		-- Shark Beach builds straight into Map (the client looks things up
+		-- there); other worlds into Map/World<n>
+		local holder: Instance = root
+		if w > 1 then
+			local m = Instance.new("Model")
+			m.Name = "World" .. w
+			m.Parent = root
+			holder = m
+		end
+		map = holder
+		buildPlaza()
+		buildRideShop()
+		for _, h in Layout.Huts do
+			hut(h.kind, h.title, h.color, h.pos)
+		end
+		buildBoards()
+		buildGroupChest()
+		buildPortal()
+		buildLane()
+		buildGates()
+		buildDecor()
+		if holder:IsA("Model") then
+			holder:TranslateBy(Vector3.new(OX, 0, 0))
+			-- step-on pads remember where they are: move those numbers too
+			for _, d in holder:GetDescendants() do
+				local px = d:GetAttribute("PadX")
+				if typeof(px) == "number" then
+					d:SetAttribute("PadX", px + OX)
+				end
+			end
+		end
+		buildTerrain()
+		-- placed directly (already in world coordinates)
+		local plots = {}
+		for i, cf in Layout.WorldPlots[w] do
+			plots[i] = buildPlot(i, cf)
+		end
+		World.WorldPlots[w] = plots
 	end
-	buildRideShop()
-	for _, h in Layout.Huts do
-		hut(h.kind, h.title, h.color, h.pos)
+	for i, p in World.WorldPlots[1] do
+		World.Plots[i] = p
 	end
-	buildBoards()
-	buildGroupChest()
-	buildPortal()
+	map = root
 	buildRings()
-	buildTerrain()
-	buildLane()
-	buildGates()
 	buildIslands()
-	buildDecor()
+	WORLD, OX, ZONES, OCEAN = 1, 0, Config.worldZones(1), Config.oceanEnd(1)
 	Workspace:SetAttribute("WorldReady", true)
 end
 

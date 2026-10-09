@@ -138,13 +138,16 @@ local tanks: { Sound } = {}
 local function buildWorld()
 	-- small waves all along the waterline
 	local w = Config.LANE_WIDTH
-	local x = -w / 2 + 24
-	while x <= w / 2 - 24 do
-		local s = emitter("ambShore", Vector3.new(x, SHORE_Y, SHORE_Z), 14, 120, 0.95 + math.random() * 0.1)
-		if s then
-			table.insert(shore, { s = s })
+	for wi in Config.Worlds do -- every world's shore
+		local ox = Config.originX(wi)
+		local x = -w / 2 + 24
+		while x <= w / 2 - 24 do
+			local s = emitter("ambShore", Vector3.new(ox + x, SHORE_Y, SHORE_Z), 14, 120, 0.95 + math.random() * 0.1)
+			if s then
+				table.insert(shore, { s = s })
+			end
+			x += 48
 		end
-		x += 48
 	end
 	-- waves around the nearest islands (a small pool that follows you)
 	for _ = 1, ISLAND_EMITTERS do
@@ -161,10 +164,12 @@ local function buildWorld()
 	local gs, ga = emitter("ambGulls", Vector3.new(0, -500, 0), 16, 160, 1.08)
 	islandGull = { s = gs, a = ga }
 	-- every dock's tank bubbles quietly
-	for _, plot in Layout.Plots do
-		local s = emitter("ambTank", Layout.tankPos(plot) + Vector3.new(0, 3, 0), 6, 45, 0.9 + math.random() * 0.2)
-		if s then
-			table.insert(tanks, s)
+	for _, plots in Layout.WorldPlots do
+		for _, plot in plots do
+			local s = emitter("ambTank", Layout.tankPos(plot) + Vector3.new(0, 3, 0), 6, 45, 0.9 + math.random() * 0.2)
+			if s then
+				table.insert(tanks, s)
+			end
 		end
 	end
 end
@@ -347,7 +352,7 @@ function Audio.start()
 		end
 		local pos = hrp.Position
 		local wet = Layout.inWater(pos)
-		local zone = Config.zoneAt(pos.Z)
+		local zone = Config.zoneAtPos(pos)
 
 		-- music by place; a hunt without its own track ducks the music
 		if phase ~= "calm" then

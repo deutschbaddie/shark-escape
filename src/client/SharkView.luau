@@ -418,7 +418,7 @@ RunService.RenderStepped:Connect(function(dt)
 			local ahead = math.min(now - sh.lastSnap, 0.2)
 			local spd = ({ chase = Config.Shark.chargeMult, circle = 0.3, leave = 0.7 } :: any)[sh.state] or 0
 			local fwd = Vector3.new(-math.sin(sh.targetYaw), 0, -math.cos(sh.targetYaw))
-			local goal = sh.targetPos + fwd * ahead * spd * (Config.zoneAt(sh.targetPos.Z) or Config.Zones[1]).sharkSpeed
+			local goal = sh.targetPos + fwd * ahead * spd * (Config.zoneAtPos(sh.targetPos) or Config.Zones[1]).sharkSpeed
 			local a = 1 - math.exp(-dt * 12)
 			sh.pos = sh.pos:Lerp(goal, a)
 			local newYaw = angleLerp(sh.yaw, sh.targetYaw, 1 - math.exp(-dt * 10))
@@ -994,7 +994,7 @@ Remotes.get("SharkEvent").OnClientEvent:Connect(function(kind, data)
 	if kind == "hunt" then
 		shelterReset()
 		local hrp = myRoot()
-		local zone = hrp and Config.zoneAt(hrp.Position.Z)
+		local zone = hrp and Config.zoneAtPos(hrp.Position)
 		if data.double and zone and zone.index >= (data.doubleFrom or 3) then
 			Notify.toast("Two sharks are hunting out here!", UI.C.red)
 		end

@@ -98,8 +98,10 @@ local function flat(v: Vector3): Vector3
 end
 
 local function clampLane(p: Vector3): Vector3
-	return Vector3.new(math.clamp(p.X, -Config.LANE_WIDTH / 2 + 6, Config.LANE_WIDTH / 2 - 6), 0,
-		math.clamp(p.Z, Config.SHORE_Z + 6, Config.OCEAN_END - 8))
+	local w = Config.worldAt(p) -- (each world's lane sits at its own X)
+	local ox = Config.originX(w)
+	return Vector3.new(math.clamp(p.X, ox - Config.LANE_WIDTH / 2 + 6, ox + Config.LANE_WIDTH / 2 - 6), 0,
+		math.clamp(p.Z, Config.SHORE_Z + 6, Config.oceanEnd(w) - 8))
 end
 
 -- the charge never loses a straight race: faster than the zone's shark
@@ -126,7 +128,7 @@ local function spawnHunter(s: Game.Session, second: boolean)
 		return
 	end
 	local p = hrp.Position
-	local zone = Config.zoneAt(p.Z) or Config.Zones[1]
+	local zone = Config.zoneAtPos(p) or Config.Zones[1]
 	-- the second shark comes from the other flank and strikes later
 	local a = second and math.rad(math.random(60, 100) * (math.random() < 0.5 and -1 or 1)) or math.rad(math.random(-55, 55))
 	local away = Vector3.new(math.sin(a), 0, math.cos(a)) -- from deeper water
@@ -403,7 +405,7 @@ local function huntSweep()
 		if Game.huntable(s) then
 			local n = hunted[s.player] or 0
 			local hrp = Game.root(s.player)
-			local want = (double and hrp and (Config.zoneAt(hrp.Position.Z) or Config.Zones[1]).index >= cfg.doubleFromZone) and 2 or 1
+			local want = (double and hrp and (Config.zoneAtPos(hrp.Position) or Config.Zones[1]).index >= cfg.doubleFromZone) and 2 or 1
 			if n < want then
 				spawnHunter(s, n > 0)
 			end
