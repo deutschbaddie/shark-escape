@@ -80,8 +80,9 @@ end
 
 -- a square with a little timer over it (active boosts, like the reference potion)
 local function timedSquare(parent: Instance, key: string, icon: string, color: Color3, order: number)
-	local holder = UI.frame(parent, { Name = key, Size = UDim2.fromOffset(66, 84), BackgroundTransparency = 1, LayoutOrder = order, Visible = false })
-	local timer = UI.outlined(holder, "", { Size = UDim2.new(1, 16, 0, 18), Position = UDim2.new(0.5, 0, 0, 0), AnchorPoint = Vector2.new(0.5, 0), TextColor3 = C.orange })
+	local holder = UI.frame(parent, { Name = key, Size = UDim2.fromOffset(66, 62), BackgroundTransparency = 1, LayoutOrder = order, Visible = false })
+	-- the time left sits on the button's bottom edge, so it reads as part of it
+	local timer = UI.outlined(holder, "", { Size = UDim2.new(1, 8, 0, 18), Position = UDim2.new(0.5, 0, 1, 4), AnchorPoint = Vector2.new(0.5, 1), TextColor3 = C.white, ZIndex = 20 })
 	local b = UI.iconButton(holder, icon, "", color, function()
 		Shop.openStore("Boosts")
 	end, { Size = UDim2.fromOffset(62, 62), Position = UDim2.new(0.5, 0, 1, 0), AnchorPoint = Vector2.new(0.5, 1) })
@@ -113,7 +114,6 @@ local function build()
 	local promo, update = Shop.promo(menu, { Size = UDim2.fromOffset(170, 62), LayoutOrder = 2 })
 	menuButtons.Promo = promo
 	updatePromo = update
-	UI.frame(menu, { Name = "Gap", Size = UDim2.fromOffset(170, 4), BackgroundTransparency = 1, LayoutOrder = 3 }) -- room for its "ONLY ... R$"
 	menuButtons.Index = UI.wideButton(menu, "Index", "Index", C.index, function()
 		call(HUD.onIndex)
 	end, { Size = size, LayoutOrder = 4 })
@@ -122,7 +122,7 @@ local function build()
 	end, { Size = size, LayoutOrder = 5 })
 	local _, set = UI.toggle(menu, "Slow Mode", false, function(on)
 		State.action("slowMode", on)
-	end, { LayoutOrder = 6 })
+	end, { LayoutOrder = 6, Size = UDim2.fromOffset(196, 40) })
 	setSlow = set
 
 	-- right: small squares
@@ -163,6 +163,12 @@ local function build()
 		end)
 	end, { Size = UDim2.fromOffset(28, 28), Position = UDim2.fromOffset(178, 95) })
 	invite.Name = "Invite"
+	-- the + sits right after the text, whatever its length
+	local function placeInvite()
+		invite.Position = UDim2.fromOffset(3 + friendLabel.TextBounds.X + 8, 95)
+	end
+	friendLabel:GetPropertyChangedSignal("TextBounds"):Connect(placeInvite)
+	placeInvite()
 	local il = invite:FindFirstChild("Label") :: TextLabel
 	il.Size = UDim2.new(1, -4, 1, -4)
 
@@ -320,7 +326,7 @@ local function render(d: any)
 		local sq = boostSquares[key]
 		sq.holder.Visible = on
 		sq.timer.Text = timerText or ""
-		sq.holder.Size = UDim2.fromOffset(66, timerText and 84 or 62) -- no empty gap when there's no timer
+		sq.holder.Size = UDim2.fromOffset(66, 62)
 		if badge then
 			UI.badge(sq.button, badge)
 		end

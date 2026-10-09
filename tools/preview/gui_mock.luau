@@ -113,7 +113,7 @@ function G:FindFirstAncestorOfClass() return nil end
 local DEFAULTS = {
 	BackgroundTransparency = 0, Visible = true, Position = UDim2.new(0, 0, 0, 0), Size = UDim2.new(0, 100, 0, 100),
 	AnchorPoint = Vector2.new(0, 0), ZIndex = 1, LayoutOrder = 0, TextTransparency = 0, ImageTransparency = 0, Transparency = 0,
-	Text = "", TextScaled = false, TextSize = 14, Rotation = 0, Enabled = true, Thickness = 1,
+	Text = "", TextBounds = Vector2.new(140, 20), TextScaled = false, TextSize = 14, Rotation = 0, Enabled = true, Thickness = 1,
 }
 local function newGui(class)
 	local p = { ClassName = class, Name = class, _kids = {}, _attr = {} }

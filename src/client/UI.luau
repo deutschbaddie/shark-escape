@@ -448,8 +448,12 @@ function UI.iconButton(parent: Instance, icon: string, caption: string, color: C
 	local b = UI.button(parent, "", color, onClick, props)
 	local face = b:FindFirstChild("Face") :: Frame
 	if caption == "" then
-		-- icon-only square (Gift, Tank...)
-		UI.icon(face, icon, { Size = UDim2.fromScale(0.78, 0.78), Position = UDim2.fromScale(0.5, 0.5), AnchorPoint = Vector2.new(0.5, 0.5), ZIndex = b.ZIndex + 1 })
+		-- icon-only square (Gift, Tank...): the icon fills it, no shine bar over it
+		local shine = face:FindFirstChild("Shine")
+		if shine and shine:IsA("GuiObject") then
+			shine.Visible = false
+		end
+		UI.icon(face, icon, { Size = UDim2.fromScale(0.9, 0.9), Position = UDim2.fromScale(0.5, 0.5), AnchorPoint = Vector2.new(0.5, 0.5), ZIndex = b.ZIndex + 1 })
 		return b
 	end
 	UI.icon(face, icon, { Size = UDim2.fromScale(0.72, 0.6), Position = UDim2.fromScale(0.5, 0.04), AnchorPoint = Vector2.new(0.5, 0), ZIndex = b.ZIndex + 1 })
@@ -502,7 +506,7 @@ function UI.toggle(parent: Instance, caption: string, on: boolean, onChange: (bo
 		state = v
 		track.BackgroundColor3 = v and UI.T.green or UI.T.navyLight
 		TweenService:Create(knob, TweenInfo.new(0.12), { Position = v and UDim2.new(1, -36, 0.5, 0) or UDim2.new(0, 4, 0.5, 0) }):Play()
-		label.TextColor3 = v and UI.T.white or UI.T.mute
+		label.TextColor3 = UI.T.white -- the switch shows the state; the caption stays readable on any background
 	end
 	set(on)
 	squish(track)

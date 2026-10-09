@@ -450,12 +450,15 @@ function Shop.promo(parent: Instance, props: { [string]: any }): (TextButton, (a
 	b.Visible = false
 	local face = b:FindFirstChild("Face") :: Frame
 	local h = b.Size.Y.Offset
-	glow(face, T.white, h * 1.25, { Position = UDim2.fromScale(0.5, 0.3), AnchorPoint = Vector2.new(0.5, 0.5), ZIndex = b.ZIndex })
+	-- icon on the left inside the button (like Index / Rides), title and
+	-- price stacked to its right: nothing hangs over the buttons around it
+	local textX = math.floor(h * 0.95)
 	local label = b:FindFirstChild("Label") :: TextLabel
-	label.Size = UDim2.new(1, -12, 0.5, 0)
-	label.Position = UDim2.new(0.5, 0, 0.44, 0)
-	local sub = UI.outlined(b, "", { Name = "Sub", Size = UDim2.new(0.8, 0, 0, math.floor(h * 0.42)), Position = UDim2.new(0.5, 0, 1, -2),
-		AnchorPoint = Vector2.new(0.5, 0.5), ZIndex = b.ZIndex + 2 })
+	label.AnchorPoint = Vector2.new(0, 0)
+	label.Size = UDim2.new(1, -textX - 8, 0.52, 0)
+	label.Position = UDim2.new(0, textX, 0.06, 0)
+	local sub = UI.outlined(b, "", { Name = "Sub", Size = UDim2.new(1, -textX - 8, 0.34, 0), Position = UDim2.new(0, textX, 0.58, 0),
+		TextColor3 = T.gold, ZIndex = b.ZIndex + 2 })
 	local function update(d: any)
 		local key, kind = Shop.offer(d)
 		b.Visible = key ~= nil
@@ -473,8 +476,8 @@ function Shop.promo(parent: Instance, props: { [string]: any }): (TextButton, (a
 		if old then
 			old:Destroy()
 		end
-		UI.icon(face, art(key, def), { Size = UDim2.fromOffset(h * 0.95, h * 0.95), Position = UDim2.fromScale(0.5, 0.12), AnchorPoint = Vector2.new(0.5, 0.5),
-			ZIndex = b.ZIndex })
+		UI.icon(face, art(key, def), { Size = UDim2.fromOffset(h * 0.8, h * 0.8), Position = UDim2.new(0, math.floor(h * 0.08), 0.5, 0), AnchorPoint = Vector2.new(0, 0.5),
+			ZIndex = b.ZIndex + 1 })
 		UI.setText(b, OFFER_TITLE[key] or def.name)
 		sub.Text = ("ONLY %d R$"):format(def.price)
 		UI.pop(b, 1.12)
