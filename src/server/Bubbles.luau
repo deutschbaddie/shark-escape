@@ -2,6 +2,8 @@
 -- Rarity and mutation are rolled on the server; luck can bump a grab up a tier.
 
 local Workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local CollectionService = game:GetService("CollectionService")
 
 local Shared = game.ReplicatedStorage.Shared
@@ -19,7 +21,7 @@ type Bubble = { model: Model, pos: Vector3, r: string, m: string?, s: number, zo
 local live: { Bubble } = {}
 local byId: { [number]: Bubble } = {}
 local nextBubbleId = 0
-local tryGrab: (Player, Bubble) -> ()
+local tryGrab: (Player, Bubble, boolean?) -> ()
 local folder: Folder
 local rng = Random.new()
 
@@ -158,18 +160,24 @@ local function grab(s: Game.Session, b: Bubble)
 	if Game.sharkOnGrab then
 		Game.sharkOnGrab(s, r) -- the shark may notice
 	end
+	-- the whole server hears about the big ones
+	local idx = Config.rarity(r).index
+	if idx >= 5 or (b.s or 1) >= 2 or (b.m and idx >= 4) then
+		Game.notifyAll("bigCatch", { by = s.player.DisplayName, userId = s.player.UserId, name = Config.fullName(b.zone.id, r, b.m, b.s), r = r })
+	end
 	Game.notify(s.player, "grab", { r = r, m = b.m, z = b.zone.id, s = b.s, lucky = lucky, pity = pity,
 		v = Config.creatureValue(r, b.zone.id, b.m, b.s) * Game.coinMult(s) })
 end
 
 -- hold the prompt to grab (server checks you're really there)
-tryGrab = function(player: Player, b: Bubble)
+-- swept = the ride-over sweep already checked your path passed through it
+tryGrab = function(player: Player, b: Bubble, swept: boolean?)
 	local s = Game.sessions[player]
 	if not s or b.taken or Game.handsFull(s) or os.clock() < s.eatenUntil then
 		return
 	end
 	local hrp = Game.root(player)
-	if not hrp or Vector2.new(hrp.Position.X - b.pos.X, hrp.Position.Z - b.pos.Z).Magnitude > 16 then
+	if not hrp or (not swept and Vector2.new(hrp.Position.X - b.pos.X, hrp.Position.Z - b.pos.Z).Magnitude > 16) then
 		return
 	end
 	local i = table.find(live, b)
@@ -219,6 +227,45 @@ function Bubbles.start()
 			spawnBubble(zone)
 		end
 	end
+	-- ride-over grabs: Common..Rare are scooped up just by riding through
+	-- them (swept from your last spot, so speed can't skip them); Epic and
+	-- Legendary still want a hold (the tense moment). Not in the tutorial,
+	-- which teaches the prompt.
+	local last: { [Player]: Vector3 } = {}
+	local acc = 0
+	RunService.Heartbeat:Connect(function(dt)
+		acc += dt
+		if acc < 0.1 then
+			return
+		end
+		acc = 0
+		for player, s in Game.sessions do
+			local hrp = Game.root(player)
+			if not hrp or s.profile.tut < 5 or hrp.Anchored then
+				last[player] = nil
+				continue
+			end
+			local pos = hrp.Position
+			local from = last[player] or pos
+			last[player] = pos
+			if not Layout.inWater(pos) or Game.handsFull(s) or (pos - from).Magnitude > 120 then
+				continue
+			end
+			for i = #live, 1, -1 do
+				local b = live[i]
+				if b and Config.rarity(b.r).index <= Config.RIDE_GRAB_MAX
+					and Layout.segmentDist(b.pos, from, pos) < Config.GRAB_RADIUS and math.abs(pos.Y - b.pos.Y) < 10 then
+					tryGrab(player, b, true)
+					if Game.handsFull(s) then
+						break
+					end
+				end
+			end
+		end
+	end)
+	Players.PlayerRemoving:Connect(function(p)
+		last[p] = nil
+	end)
 end
 
 return Bubbles

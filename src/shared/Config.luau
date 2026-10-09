@@ -575,6 +575,7 @@ Config.Storm = {
 
 Config.BUBBLES_PER_ZONE = 9
 Config.GRAB_RADIUS = 6.5
+Config.RIDE_GRAB_MAX = 3 -- rarity index up to which riding through a bubble grabs it (Rare)
 Config.DEPOSIT_RADIUS = 15
 Config.COLLECT_RADIUS = 6
 Config.SELL_SECONDS = 20 -- a creature that doesn't fit sells for this many seconds of its income
