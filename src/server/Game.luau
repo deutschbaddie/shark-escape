@@ -935,6 +935,9 @@ function Game.switchWorld(s: Session, w: number)
 	s.dirty = true
 	Game.push(s)
 	Game.track(s.player, "world", { world = w })
+	if Game.onWorld then
+		Game.onWorld(s)
+	end
 end
 
 local function onCharacter(s: Session, char: Model)
@@ -1241,5 +1244,6 @@ function Game.start()
 end
 
 Game.onJoin = nil :: ((Session) -> ())?
+Game.onWorld = nil :: ((Session) -> ())? -- after a portal trip
 
 return Game
