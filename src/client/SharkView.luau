@@ -490,7 +490,9 @@ local CHOMP_AT = 0.42 -- seconds from the start of the leap to the jaws closing
 
 -- Everyone sees the bite: the shark bursts up out of the water, jaws wide,
 -- snaps shut on the spot and arcs back down into a dive.
-local function leap(sh: Shark, at: Vector3)
+-- back = the snap at the shoreline: it rears up, bites air and falls back
+-- into the water instead of carrying on
+local function leap(sh: Shark, at: Vector3, back: boolean?)
 	local L = sh.L
 	local p0 = sh.pos
 	local d = flat(at - p0)
@@ -499,7 +501,7 @@ local function leap(sh: Shark, at: Vector3)
 		-- it just lunged down onto you: rear back up out of its own splash
 		p0 = flat(at) - dir * L * 0.6
 	end
-	local p1 = flat(at) - dir * L * 0.3
+	local p1 = flat(at) - dir * L * (back and 0.5 or 0.3)
 	local yaw = math.atan2(-dir.X, -dir.Z)
 	local t0 = os.clock()
 	local dur = 1.7
@@ -526,7 +528,7 @@ local function leap(sh: Shark, at: Vector3)
 				end
 				local k = math.clamp((t - CHOMP_AT) / (dur - CHOMP_AT), 0, 1)
 				local tc = t - CHOMP_AT
-				s.pos = p1 + dir * L * 0.7 * k
+				s.pos = p1 + dir * L * (back and -0.4 or 0.7) * k
 				e.y = L * 0.32 * (1 - k * 1.9)
 				e.pitch = 0.25 - 1.1 * k
 				e.jaw = tc < 0.07 and 0.95 * (1 - tc / 0.07) or 0.04 + 0.1 * math.abs(math.sin(tc * 16))
@@ -1023,6 +1025,25 @@ Remotes.get("SharkEvent").OnClientEvent:Connect(function(kind, data)
 				cam.FieldOfView = 62
 				TweenService:Create(cam, TweenInfo.new(0.4, Enum.EasingStyle.Back), { FieldOfView = 70 }):Play()
 			end
+		end
+		return
+	end
+	if kind == "snap" then
+		-- you made it: it rears up at the waterline and bites air
+		local at = Vector3.new(data.x, 0.5, data.z)
+		local sh = sharks[data.id]
+		if sh then
+			leap(sh, at, true)
+		end
+		for i = -2, 2 do
+			task.delay(math.abs(i) * 0.05, Fx.splash, at + Vector3.new(i * 5, 0, 0), 2.2)
+		end
+		local hrp = myRoot()
+		if data.victim == player.UserId then
+			Fx.nearMiss()
+			Fx.shake(1.2)
+		elseif hrp and (hrp.Position - at).Magnitude < 90 then
+			Fx.shake(0.6)
 		end
 		return
 	end

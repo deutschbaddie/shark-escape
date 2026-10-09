@@ -64,6 +64,15 @@ HUD.onSettings = nil :: (() -> ())? -- desktop keeps Slow Mode on the left; sett
 HUD.onDaily = nil :: (() -> ())?
 HUD.takeover = false
 
+-- the carry line: one creature, or a haul with its multiplier (Config.Haul)
+local function carryText(d: any): string
+	local n = 1 + (d.bag or 0)
+	if n == 1 then
+		return ("%s: bring it home to your tank!"):format(Config.fullName(d.carrying.z, d.carrying.r, d.carrying.m, d.carrying.s))
+	end
+	return ("Haul of %d · x%s cash at your dock: bring it home!"):format(n, ("%g"):format(Config.haulMult(n)))
+end
+
 function HUD.goToRideShop()
 	Travel.go("Rides")
 end
@@ -392,8 +401,7 @@ local function render(d: any)
 		local r = Config.rarity(d.carrying.r)
 		carryChip.Visible = true
 		carryChip.TextColor3 = r.color
-		local extra = (d.bag or 0) > 0 and (" +%d in net"):format(d.bag) or ""
-		carryChip.Text = ("%s%s → bring it home to your tank!"):format(Config.fullName(d.carrying.z, d.carrying.r, d.carrying.m, d.carrying.s), extra)
+		carryChip.Text = carryText(d)
 	else
 		carryChip.Visible = false
 	end
@@ -653,9 +661,10 @@ handlers.aggro = function(d)
 	if d.why == "chum" then
 		Notify.takeover("Chummed", ("%s threw chum at you. The %s is coming!"):format(tostring(d.by or "Someone"), name), C.red, 1.4, "Shark")
 	else
-		-- (the one line that teaches grudges: grabbing makes noise)
-		local sub = ({ grab = "Grabbing makes noise. Get to sand or an island", reel = "Reel it in before it reaches you" } :: any)[d.why]
-		Notify.banner(("The %s noticed you"):format(name), { key = "aggro", priority = 4, time = 2.6, color = C.red,
+		-- (the one line that teaches it: the hungry shark wants the biggest haul)
+		local sub = ({ hunger = "It's starving and you've got the biggest haul. Get to the sand!",
+			reel = "Reel it in before it reaches you" } :: any)[d.why]
+		Notify.banner(d.why == "hunger" and ("The %s is coming for you"):format(name) or ("The %s noticed you"):format(name), { key = "aggro", priority = 4, time = 2.6, color = C.red,
 			sub = sub or "Get to sand or an island" })
 	end
 	Fx.sound("sharkAlarm", 0.7)
@@ -663,9 +672,17 @@ handlers.aggro = function(d)
 end
 
 handlers.closeCall = function(d)
-	Notify.takeover("Close call", ("+%s speed"):format(UI.short(d.amount or 0)), C.gold, 1.1)
+	Notify.toast(("Close call: +%s speed"):format(UI.short(d.amount or 0)), C.gold)
 	Fx.sound("dodge", 0.9)
 	Fx.nearMiss()
+end
+
+-- THE ESCAPE: you hit the sand with your shark right behind you
+handlers.madeIt = function(d)
+	local n = d.carried or 0
+	Notify.banner("You made it", { key = "madeIt", priority = 4, time = 2.4, color = C.gold,
+		sub = ("+%s speed%s"):format(UI.short(d.amount or 0), n > 0 and (" · now get %s to your tank"):format(n == 1 and "it" or "them") or "") })
+	Fx.sound("dodge", 1)
 end
 
 handlers.net = function(d)

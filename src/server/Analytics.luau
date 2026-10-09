@@ -10,7 +10,7 @@
 --   Economy  coins in (tank cash, Index, chest, codes) and out (rides, tank slots)
 --   Custom   SharkEaten, GateBlocked, Rebirth, DailyClaim, GroupChest, SessionMinutes,
 --            Chum, RaidStart / RaidStolen / RaidDefended, CloseCall,
---            ReelStart / ReelWon / ReelSlipped, BossReward, Quest
+--            ReelStart / ReelWon / ReelSlipped, BossReward, Quest, Escaped, Haul
 
 local AnalyticsService = game:GetService("AnalyticsService")
 local HttpService = game:GetService("HttpService")
@@ -183,6 +183,11 @@ handlers.reel = count("ReelStart")
 handlers.reelWon = count("ReelWon")
 handlers.slipped = count("ReelSlipped")
 handlers.bossReward = count("BossReward")
+handlers.madeIt = count("Escaped")
+handlers.haul = function(player, d)
+	call("LogCustomEvent", player, "Haul", d.n or 1)
+	coins(player, true, d.coins or 0, T.Gameplay.Name, "Haul")
+end
 handlers.raid = function(player, d)
 	local name = ({ start = "RaidStart", won = "RaidStolen", defended = "RaidDefended" } :: any)[d.stage]
 	if name then

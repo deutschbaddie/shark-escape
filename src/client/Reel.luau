@@ -31,7 +31,7 @@ local function play(seconds: number, name: string)
 	gui.ResetOnSpawn = false
 	gui.Parent = player:WaitForChild("PlayerGui")
 	UI.autoScale(gui)
-	local panel = UI.frame(gui, { Size = UDim2.fromOffset(420, 112), Position = UDim2.new(0.5, 0, 1, -215), AnchorPoint = Vector2.new(0.5, 1),
+	local panel = UI.frame(gui, { Size = UDim2.fromOffset(420, 112), Position = UDim2.new(0.5, 0, 1, -236), AnchorPoint = Vector2.new(0.5, 1),
 		BackgroundTransparency = 1 })
 	UI.outlined(panel, ("Reel in the %s"):format(name), { Size = UDim2.new(0.75, 0, 0, 26), TextColor3 = T.gold,
 		TextXAlignment = Enum.TextXAlignment.Left })

@@ -682,16 +682,39 @@ Config.Raid = {
 -- coins in the Tank window; kept through rebirths and across worlds). A
 -- shark bite loses the whole haul, so a big net is a big risk too.
 Config.Nets = {
-	{ name = "Bare Hands", cap = 1, price = 0 },
-	{ name = "Small Net", cap = 2, price = 2000 },
-	{ name = "Big Net", cap = 3, price = 50000 },
-	{ name = "Trawl Net", cap = 5, price = 2500000 },
-	{ name = "Mega Net", cap = 8, price = 150000000 },
+	{ name = "Bare Hands", cap = 2, price = 0 },
+	{ name = "Small Net", cap = 3, price = 2000 },
+	{ name = "Big Net", cap = 5, price = 50000 },
+	{ name = "Trawl Net", cap = 8, price = 2500000 },
+	{ name = "Mega Net", cap = 12, price = 150000000 },
 }
 function Config.netCap(tier: number?): number
 	local n = Config.Nets[math.clamp(tier or 1, 1, #Config.Nets)]
 	return n.cap
 end
+
+-- THE HOOK: carry more, earn more, but the shark wants you more.
+-- Haul: what you bring home in one trip pays cash at the dock right away
+-- (`seconds` of its $/s), x1.25 for every creature after the first, up
+-- to x3. The tank still earns from them after that.
+Config.Haul = { seconds = 20, step = 0.25, max = 3 }
+-- bitten: your haul spills into the water as bubbles anyone can grab for
+-- this long (seconds)
+Config.SPILL_TIME = 40
+function Config.haulMult(n: number): number
+	return math.min(1 + Config.Haul.step * math.max(0, n - 1), Config.Haul.max)
+end
+
+-- Shark hunger: every zone has a bar everyone in it can see. Each grab
+-- fills it (rarer = more, night = double); when it's full the shark goes
+-- for whoever in that zone is carrying the most. It calms down slowly.
+Config.Hunger = {
+	fill = { Common = 14, Uncommon = 20, Rare = 30, Epic = 45, Legendary = 70 },
+	night = 2,
+	decay = 1.2, -- per second
+	after = 15, -- where the bar drops to once the shark has gone for someone
+	grudge = 22, -- seconds that shark hunts its pick
+}
 
 -- hold time (seconds) on the grab prompt: rarer = longer = riskier
 Config.GrabHold = { Common = 0.35, Uncommon = 0.55, Rare = 0.8, Epic = 1.1, Legendary = 1.5 }
@@ -724,12 +747,11 @@ Config.Shark = {
 	-- grudges: by day, a grab draws the zone's shark with this chance (x the
 	-- zone's aggro, + per extra creature in your net); it hunts you this long
 	grudge = 22,
-	grudgeChance = { Common = 0.25, Uncommon = 0.4, Rare = 0.6, Epic = 0.85, Legendary = 1 },
-	grudgePerCarried = 0.12,
 	-- close call: a lunge that lands this close without biting pays you
 	closeCall = 4,
 	closeCallSeconds = 8, -- seconds of your speed gain
 	closeCallCooldown = 15,
+	escapeRadius = 40, -- reach the sand with your shark this close: you made it
 	doubleChance = 0.25, -- two sharks at once (zones from doubleFromZone out)
 	doubleFromZone = 3,
 	spawnDistance = 46,
@@ -1103,7 +1125,7 @@ Config.Quests = {
 	pool = {
 		{ id = "rares", text = "Catch %d Rares or better", goal = 3 },
 		{ id = "home", text = "Bring %d creatures home", goal = 15 },
-		{ id = "close", text = "Survive %d close calls", goal = 2 },
+		{ id = "close", text = "Escape a shark %d times", goal = 2 },
 		{ id = "dodge", text = "Dodge %d shark lunges", goal = 3 },
 		{ id = "rings", text = "Ride through %d boost rings", goal = 5 },
 		{ id = "night", text = "Catch %d creatures at night", goal = 5 },

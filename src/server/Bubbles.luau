@@ -17,7 +17,7 @@ local Game = require(script.Parent.Game)
 local Bubbles = {}
 
 type Bubble = { model: Model, pos: Vector3, r: string, m: string?, s: number, zone: Config.Zone, taken: boolean?,
-	reservedBy: Player?, reservedUntil: number? }
+	reservedBy: Player?, reservedUntil: number?, spilled: boolean? }
 
 local live: { Bubble } = {}
 local byId: { [number]: Bubble } = {}
@@ -79,12 +79,15 @@ local function spot(zone: Config.Zone): Vector3
 	return Vector3.new(Config.originX(zone.world), 3, zone.zStart + zone.length / 2)
 end
 
-local function spawnBubble(zone: Config.Zone)
-	local r = Bubbles.rollRarity()
-	local m = Bubbles.rollMutation()
-	local size = Config.rollSize(rng)
+type Fixed = { r: string, m: string?, s: number?, pos: Vector3 }
+
+-- a bubble in this zone: rolled, or a fixed one (a bitten player's spilled haul)
+local function spawnBubble(zone: Config.Zone, fixed: Fixed?)
+	local r = fixed and fixed.r or Bubbles.rollRarity()
+	local m = if fixed then fixed.m else Bubbles.rollMutation()
+	local size = fixed and fixed.s or Config.rollSize(rng)
 	local rarity = Config.rarity(r)
-	local pos = spot(zone)
+	local pos = fixed and fixed.pos or spot(zone)
 
 	local model = Build.model("Bubble", folder)
 	local shell = Build.ball(model, 5.6, CFrame.new(pos), rarity.color:Lerp(Color3.new(1, 1, 1), 0.45), {
@@ -105,7 +108,7 @@ local function spawnBubble(zone: Config.Zone)
 	model:SetAttribute("Zone", zone.id)
 	model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
 	CollectionService:AddTag(model, "Bubble")
-	local entry: Bubble = { model = model, pos = pos, r = r, m = m, s = size, zone = zone }
+	local entry: Bubble = { model = model, pos = pos, r = r, m = m, s = size, zone = zone, spilled = fixed ~= nil }
 	table.insert(live, entry)
 	nextBubbleId += 1
 	model:SetAttribute("BubbleId", nextBubbleId)
@@ -127,9 +130,36 @@ local function spawnBubble(zone: Config.Zone)
 	prompt.Triggered:Connect(function(player)
 		tryGrab(player, entry)
 	end)
-	if r == "Legendary" then
-		Game.notifyAll("announce", { text = ("A LEGENDARY %s appeared in %s!"):format(Config.fullName(zone.id, r, m, size), zone.name), color = rarity.color })
+	if r == "Legendary" and not fixed then
+		Game.notifyAll("announce", { text = ("A Legendary %s appeared in %s"):format(Config.fullName(zone.id, r, m, size), zone.name), color = rarity.color })
 	end
+	if fixed then
+		-- spilled: up for grabs a while, then it sinks
+		task.delay(Config.SPILL_TIME, function()
+			local i = table.find(live, entry)
+			if i and not entry.taken then
+				entry.taken = true
+				table.remove(live, i)
+				model:Destroy()
+			end
+		end)
+	end
+end
+
+-- a bitten player's haul floats free around where it happened
+function Bubbles.spill(pos: Vector3, list: { any }, by: Player?)
+	local zone = Config.zoneAtPos(pos)
+	if not zone then
+		return
+	end
+	for i, c in list do
+		local a = (i / #list) * math.pi * 2 + rng:NextNumber(0, 0.6)
+		local r = rng:NextNumber(7, 11)
+		local at = Vector3.new(pos.X + math.cos(a) * r, 3, pos.Z + math.sin(a) * r)
+		spawnBubble(zone, { r = c.r, m = c.m, s = c.s, pos = at })
+	end
+	Game.notifyAll("spill", { x = pos.X, z = pos.Z, n = #list, time = Config.SPILL_TIME,
+		userId = by and by.UserId or 0, name = by and by.DisplayName or "Someone" })
 end
 
 local function count(zone: Config.Zone): number
@@ -278,6 +308,7 @@ Game.action("grab", function(s, id)
 end)
 
 function Bubbles.start()
+	Game.spill = Bubbles.spill
 	folder = Instance.new("Folder")
 	folder.Name = "Bubbles"
 	folder.Parent = Workspace

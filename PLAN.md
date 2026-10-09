@@ -67,6 +67,27 @@ serves that, in this order. `[x]` = built (not yet playtested), `[ ]` = to do.
 - [ ] 10-15 short clips: close calls, chum betrayals, raids (owner)
 - [ ] Small ad test, read the funnels, fix the biggest drop, then scale (owner)
 
+## Phase 5: fun pass (the hook)
+**Grab creatures, and the more you carry, the hungrier the shark gets.
+Make it back to the sand for a big payout.**
+- [x] Shark hunger bar per zone (shared; grabs fill it, rarer = more, night
+      x2). Full = its shark goes for the biggest haul there. Replaces the
+      hidden grudge dice
+- [x] Visible haul: the net's catches trail behind you in bubbles
+- [x] Haul bonus: the dock pays cash for a trip at once, x1.25 per extra
+      creature (up to x3), counting up over your tank. Nets hold more
+      (Bare Hands 2 ... Mega Net 12)
+- [x] The escape: hit the sand with your shark right behind you, it snaps
+      at the waterline (slow-mo, splash wall) and you get +speed
+- [x] Bites spill your haul as bubbles anyone can grab for 40 s
+- [ ] First 2 minutes: first grab in 15 s, a scripted first chase you
+      always escape, the Rubber Duck in ~90 s
+- [ ] Fewer buttons at the start (3), the rest appear when they matter
+- [ ] Cut / merge: no Lucky Storm, no ring chains, chests wash up at dawn,
+      raids after the first rebirth
+- [ ] Zone unlock is a physical moment (buoys light up, water shifts)
+- [ ] Playtest checklist (below)
+
 ## Needs from the owner
 - Product id for **Tank Lock** (and MoneyPack1, still missing)
 - Zone icons for the 3 new Shark Beach zones and the 6 Candy Bay zones

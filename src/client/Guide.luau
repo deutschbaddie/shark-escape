@@ -12,7 +12,7 @@ local Guide = {}
 local C = UI.C
 local player = Players.LocalPlayer
 
-local PRIORITY = { "danger", "raid", "tut", "shop", "boss", "treasure" }
+local PRIORITY = { "danger", "raid", "tut", "shop", "spill", "boss", "treasure" }
 local requests: { [string]: { at: Vector3, label: string? } } = {}
 
 local folder = Instance.new("Folder")

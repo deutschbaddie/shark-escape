@@ -112,6 +112,9 @@ local ON: { [string]: (Game.Session, any) -> () } = {
 	closeCall = function(s)
 		progress(s, "close", 1)
 	end,
+	madeIt = function(s)
+		progress(s, "close", 1)
+	end,
 	dodge = function(s)
 		progress(s, "dodge", 1)
 	end,

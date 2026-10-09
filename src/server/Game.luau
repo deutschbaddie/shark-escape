@@ -24,6 +24,7 @@ export type Session = {
 	plot: World.Plot?,
 	carrying: Data.Creature?,
 	carryModel: Model?,
+	trailModel: Model?, -- the net's catches, trailing behind you in bubbles
 	rideModel: Model?,
 	pending: number,
 	lastPos: Vector3?,
@@ -398,7 +399,45 @@ function Game.setCarry(s: Session, c: Data.Creature?)
 		m.Parent = char
 		s.carryModel = m
 	end
+	Game.updateTrail(s)
 	s.dirty = true
+end
+
+-- THE HAUL, visible: what's in your net trails behind you in a chain of
+-- bubbles, so everyone (and you) can see who's loaded
+local TRAIL_SHOWN = 6
+function Game.updateTrail(s: Session)
+	if s.trailModel then
+		s.trailModel:Destroy()
+		s.trailModel = nil
+	end
+	local bag = s.bag
+	local char = s.player.Character
+	local hrp = root(s.player)
+	if not (bag and #bag > 0 and char and hrp) then
+		return
+	end
+	local trail = Instance.new("Model")
+	trail.Name = "Haul"
+	for i = 1, math.min(#bag, TRAIL_SHOWN) do
+		local c = bag[i]
+		local at = hrp.CFrame * CFrame.new(0, 1.2 + i * 0.35, 2.4 + i * 2.7)
+		local m = Creatures.build(c.r, c.m, 0.5, c.z)
+		local ball = Build.ball(m, 2.6, at, Config.rarity(c.r).color:Lerp(Color3.new(1, 1, 1), 0.5), {
+			Name = "Bubble", Material = Enum.Material.ForceField })
+		m:PivotTo(at)
+		ball.CFrame = at
+		local core = m.PrimaryPart :: BasePart
+		Build.ghost(m)
+		Build.weldToRoot(m)
+		local w = Instance.new("WeldConstraint")
+		w.Part0 = hrp
+		w.Part1 = core
+		w.Parent = core
+		m.Parent = trail
+	end
+	trail.Parent = char
+	s.trailModel = trail
 end
 
 -- nets: room for another catch? (the one in your hands + the bag)
@@ -418,6 +457,7 @@ function Game.takeCatch(s: Session, c: Data.Creature)
 	end
 	s.bag = s.bag or {}
 	table.insert(s.bag :: { Data.Creature }, c)
+	Game.updateTrail(s)
 	s.dirty = true
 end
 
@@ -456,6 +496,28 @@ function Game.dropAll(s: Session)
 	s.bag = nil
 	Game.setCarry(s, nil)
 end
+
+-- THE PAYOFF: a trip's haul pays cash at the dock right away, more per
+-- creature the more you brought at once (Config.Haul)
+function Game.payHaul(s: Session, haul: { Data.Creature })
+	if #haul == 0 then
+		return
+	end
+	local sum = 0
+	for _, c in haul do
+		sum += baseValue(c)
+	end
+	local mult = Config.haulMult(#haul)
+	local coins = math.max(1, math.floor(sum * Game.coinMult(s) * Config.Haul.seconds * mult))
+	s.profile.coins += coins
+	s.dirty = true
+	local plot = s.plot
+	local at = plot and Layout.tankPos(plot.cf) or Vector3.zero
+	Game.notify(s.player, "haul", { n = #haul, mult = mult, coins = coins, x = at.X, y = at.Y, z = at.Z })
+end
+
+-- set by Bubbles: a bitten player's haul floats free for anyone to grab
+Game.spill = nil :: ((pos: Vector3, list: { Data.Creature }, by: Player?) -> ())?
 
 ----------------------------------------------------------------- tank
 -- Everything you catch goes in your tank. The Active ones (c.e) swim and
@@ -655,7 +717,15 @@ function Game.bite(s: Session, sharkPos: Vector3): string
 	if s.carrying then
 		Game.notify(s.player, "lost", { r = s.carrying.r, m = s.carrying.m, z = s.carrying.z, s = s.carrying.s, extra = s.bag and #s.bag or 0 })
 		s.lastLost = s.carrying -- the 9 R$ "Save Your Creature" offer can return it
-		Game.dropAll(s) -- (the whole net goes with it)
+		-- the whole haul spills into the water where you were bitten
+		local list = { s.carrying :: Data.Creature }
+		for _, c in s.bag or {} do
+			table.insert(list, c)
+		end
+		Game.dropAll(s)
+		if Game.spill then
+			Game.spill(hrp.Position, list, s.player)
+		end
 	end
 	s.eatenUntil = os.clock() + Config.Shark.eatenTime + 2.5
 	hrp.Anchored = true
@@ -1360,17 +1430,22 @@ local function fastTick()
 					if not full() then
 						-- unload the net first, then what's in your hands
 						local bag = s.bag or {}
+						local haul: { Data.Creature } = {}
 						while #bag > 0 and not full() do
 							local c = table.remove(bag, 1) :: Data.Creature
+							table.insert(haul, c)
 							Game.addCreature(s, { r = c.r, z = c.z, m = c.m, s = c.s })
 							Game.track(s.player, "dockDeposit", {})
 						end
 						if not full() then
 							local c = s.carrying :: Data.Creature
+							table.insert(haul, c)
 							Game.setCarry(s, nil)
 							Game.addCreature(s, { r = c.r, z = c.z, m = c.m, s = c.s })
 							Game.track(s.player, "dockDeposit", {})
 						end
+						Game.updateTrail(s)
+						Game.payHaul(s, haul)
 						s.dirty = true
 					elseif os.clock() - (s.fullWarned or 0) > 4 then
 						s.fullWarned = os.clock()

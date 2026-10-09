@@ -30,6 +30,7 @@ local Reel = require(script.Reel)
 local Boss = require(script.Boss)
 local SpeedFeel = require(script.SpeedFeel)
 local Perf = require(script.Perf)
+local Haul = require(script.Haul)
 
 -- no reset button: resetting would be a free ride home (or a free raid
 -- defense). Sharks spit you out instead of killing you anyway.
@@ -58,6 +59,7 @@ Reel.start()
 Boss.start()
 SpeedFeel.start()
 Perf.start()
+Haul.start()
 Prompts.start()
 Ride.start()
 Shop.start()

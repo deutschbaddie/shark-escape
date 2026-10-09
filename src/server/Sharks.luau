@@ -210,7 +210,32 @@ local function hunting(h: Hunter): boolean
 	return phase == "hunt" or (h.aggroUntil ~= nil and os.clock() < h.aggroUntil)
 end
 
+-- THE ESCAPE: you hit the sand with your shark right behind you. It snaps
+-- at the shoreline (everyone sees), you get the close-call reward.
+local escapedAt: { [Player]: number } = {}
+local function madeIt(h: Hunter, hrp: BasePart)
+	local s = h.target
+	local cfg = Config.Shark
+	if not s or Layout.inWater(hrp.Position) or (h.state ~= "charge" and h.state ~= "stalk") then
+		return
+	end
+	if flat(h.pos - hrp.Position).Magnitude > cfg.escapeRadius or os.clock() - (escapedAt[s.player] or 0) < cfg.closeCallCooldown then
+		return
+	end
+	escapedAt[s.player] = os.clock()
+	local amount = math.max(5, math.floor(Game.gain(s) * cfg.closeCallSeconds))
+	s.profile.speed += amount
+	s.dirty = true
+	-- the snap lands at the waterline between the shark and you
+	local edge = Vector3.new(hrp.Position.X, 0, Config.SHORE_Z + 5)
+	EventRemote:FireAllClients("snap", { id = h.id, victim = s.player.UserId, x = edge.X, z = edge.Z })
+	Game.notify(s.player, "madeIt", { amount = amount, carried = Game.carryCount(s) })
+end
+
 local function lostTarget(h: Hunter, hrp: BasePart?)
+	if hrp then
+		madeIt(h, hrp)
+	end
 	local island = hrp and Layout.islandAt(hrp.Position, 1)
 	if island and hunting(h) then
 		h.state, h.island, h.timer = "circle", island, 0
@@ -544,20 +569,66 @@ function Sharks.aggro(s: Game.Session, seconds: number?, why: string?, by: strin
 	return true
 end
 
--- after a grab: does the shark notice? (rarer catch, fuller net, deeper zone)
+-- Shark hunger (Config.Hunger): one bar per zone, filled by every grab in
+-- it. Full = its shark goes for whoever there is carrying the most.
+-- Clients read Workspace "Hunger_<zone id>" (0-100).
+local hunger: { [string]: number } = {}
+local hungerSent: { [string]: number } = {}
+
+-- the richest target in a zone: most carried, then the best one carried
+local function biggestHaul(zone: Config.Zone): Game.Session?
+	local best, bestN, bestV = nil, 0, -1
+	for _, s in Game.sessions do
+		local hrp = Game.root(s.player)
+		local n = Game.carryCount(s)
+		if n > 0 and hrp and Game.huntable(s) and Config.zoneAtPos(hrp.Position) == zone then
+			local v = s.carrying and Config.creatureValue(s.carrying.r, s.carrying.z, s.carrying.m, s.carrying.s) or 0
+			if n > bestN or (n == bestN and v > bestV) then
+				best, bestN, bestV = s, n, v
+			end
+		end
+	end
+	return best
+end
+
+-- after a grab: the zone's shark gets hungrier
 function Sharks.onGrab(s: Game.Session, rarityId: string)
 	if s.profile.tut < 5 then
 		return -- (the tutorial teaches sharks with its own practice one)
 	end
-	local cfg = Config.Shark
-	local chance = cfg.grudgeChance[rarityId] or 0.4
-	chance += cfg.grudgePerCarried * math.max(0, Game.carryCount(s) - 1)
+	local cfg = Config.Hunger
 	local hrp = Game.root(s.player)
 	local zone = hrp and Config.zoneAtPos(hrp.Position)
-	chance *= zone and zone.aggro or 1
-	chance *= 1 + 0.08 * ((zone and zone.index or 1) - 1) -- deeper = noisier
-	if rng:NextNumber() < chance then
-		Sharks.aggro(s, nil, "grab")
+	if not zone then
+		return
+	end
+	local add = (cfg.fill[rarityId] or 15) * (zone.aggro or 1) * (phase == "hunt" and cfg.night or 1)
+	hunger[zone.id] = math.min(100, (hunger[zone.id] or 0) + add)
+end
+
+local function hungerTick(dt: number)
+	local cfg = Config.Hunger
+	for id, h in hunger do
+		local zone = Config.zoneById(id)
+		if h >= 100 and zone then
+			-- full: it goes for the biggest haul in its zone (waits if nobody's carrying)
+			local s = biggestHaul(zone)
+			if s and Sharks.aggro(s, cfg.grudge, "hunger") then
+				hunger[id] = cfg.after
+			elseif phase == "hunt" then
+				hunger[id] = cfg.after -- (at night they're all out anyway)
+			end
+		else
+			hunger[id] = math.max(0, h - cfg.decay * dt)
+		end
+		local v = math.floor(hunger[id] + 0.5)
+		if hungerSent[id] ~= v then
+			hungerSent[id] = v
+			Workspace:SetAttribute("Hunger_" .. id, v)
+		end
+		if hunger[id] <= 0 then
+			hunger[id] = nil
+		end
 	end
 end
 
@@ -785,12 +856,14 @@ function Sharks.start()
 		while true do
 			task.wait(0.5)
 			deepSweep()
+			hungerTick(0.5)
 		end
 	end)
 	Players.PlayerRemoving:Connect(function(p)
 		deepWarned[p] = nil
 		closeCallAt[p] = nil
 		thrownAt[p] = nil
+		escapedAt[p] = nil
 		hunted[p] = nil
 		landedAt[p] = nil
 		shelter[p] = nil
