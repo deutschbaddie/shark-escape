@@ -192,6 +192,9 @@ end
 Layout.RING_RADIUS = 5.5
 Layout.RING_Y = 4.6
 Layout.Rings = {} :: { Vector3 }
+Layout.CHAIN_LEN = 5
+Layout.Chain = {} :: { [number]: { chain: number, step: number } }
+Layout.Chains = 0
 do
 	local rng = Random.new(4242)
 	for _, zone in Config.Zones do
@@ -206,6 +209,33 @@ do
 			if not Layout.islandAt(p, 10) then
 				table.insert(Layout.Rings, p)
 				placed += 1
+			end
+		end
+	end
+	-- slaloms: a weaving line of 5 cyan hoops in every zone past the first;
+	-- hit them all in a row for a bigger bonus (Layout.Chain[i] = chain, step)
+	for _, zone in Config.Zones do
+		if zone.index >= 2 then
+			for _ = 1, 10 do
+				local x0 = Config.originX(zone.world) + rng:NextNumber(-W / 2 + 40, W / 2 - 40)
+				local z0 = rng:NextNumber(zone.zStart + 40, zone.zEnd - 260)
+				local pts = {}
+				for k = 0, Layout.CHAIN_LEN - 1 do
+					local p = Vector3.new(x0 + math.sin(k * 1.3) * 14, Layout.RING_Y, z0 + k * 45)
+					if Layout.islandAt(p, 10) then
+						pts = nil
+						break
+					end
+					table.insert(pts, p)
+				end
+				if pts then
+					Layout.Chains += 1
+					for k, p in pts do
+						table.insert(Layout.Rings, p)
+						Layout.Chain[#Layout.Rings] = { chain = Layout.Chains, step = k }
+					end
+					break
+				end
 			end
 		end
 	end

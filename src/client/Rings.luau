@@ -14,11 +14,15 @@ local UI = require(script.Parent.UI)
 local Fx = require(script.Parent.Fx)
 local State = require(script.Parent.State)
 local Ride = require(script.Parent.Ride)
+local Notify = require(script.Parent.Notify)
 
 local Rings = {}
 local player = Players.LocalPlayer
 
 local GOLD = Color3.fromRGB(255, 210, 50)
+local CYAN = Color3.fromRGB(60, 220, 255)
+local SLALOM_GAP = 4 -- seconds allowed between hoops of a slalom
+local slalom: { [number]: { step: number, t: number } } = {}
 local lastPos: Vector3? = nil
 local cooldown: { [number]: number } = {}
 
@@ -55,6 +59,24 @@ local function passed(i: number, at: Vector3)
 	Fx.sound("rideKick", 0.7, 1.15)
 	Fx.shake(0.4)
 	State.action("ring", i)
+	-- slalom progress: hoops of one chain, in order, each within SLALOM_GAP
+	local info = Layout.Chain[i]
+	if info then
+		local prog = slalom[info.chain]
+		if info.step == 1 then
+			slalom[info.chain] = { step = 1, t = now }
+		elseif prog and prog.step == info.step - 1 and now - prog.t < SLALOM_GAP then
+			prog.step, prog.t = info.step, now
+		else
+			slalom[info.chain] = nil
+			return
+		end
+		Fx.popup3D(at + Vector3.new(0, Layout.RING_RADIUS + 4, 0), ("%d / %d"):format(info.step, Layout.CHAIN_LEN), CYAN, true)
+		if info.step == Layout.CHAIN_LEN then
+			slalom[info.chain] = nil
+			State.action("chain", info.chain)
+		end
+	end
 end
 
 local function step()
@@ -88,6 +110,11 @@ end
 function Rings.start()
 	RunService.Heartbeat:Connect(step)
 	Remotes.get("Notify").OnClientEvent:Connect(function(kind, data)
+		if kind == "chain" and typeof(data) == "table" then
+			Notify.takeover("SLALOM!", ("+%s speed"):format(UI.short(data.amount or 0)), CYAN, 1.4)
+			Fx.sound("lucky", 0.8)
+			return
+		end
 		if kind == "ring" and typeof(data) == "table" and typeof(data.amount) == "number" then
 			local r = Layout.Rings[data.i]
 			if r then

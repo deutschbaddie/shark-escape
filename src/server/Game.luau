@@ -43,6 +43,8 @@ export type Session = {
 	carryWarned: boolean?,
 	rings: { [number]: number }?, -- boost ring cooldowns
 	portalAt: number?, -- last portal use
+	chains: { [number]: number }?, -- slalom cooldowns
+	ringSeen: { [number]: number }?, -- when you last passed each ring
 }
 
 Game.sessions = {} :: { [Player]: Session }
@@ -758,6 +760,9 @@ actions.ring = function(s, i)
 	if (hrp.Position - p).Magnitude > 40 then
 		return
 	end
+	s.ringSeen = s.ringSeen or {}
+	local seen = s.ringSeen :: { [number]: number }
+	seen[i] = os.clock() -- (slaloms check this, even while the pay is cooling down)
 	s.rings = s.rings or {}
 	local rings = s.rings :: { [number]: number }
 	if os.clock() - (rings[i] or -100) < 25 then
@@ -768,6 +773,34 @@ actions.ring = function(s, i)
 	s.profile.speed += amount
 	s.dirty = true
 	Game.notify(s.player, "ring", { amount = amount, i = i })
+end
+
+-- slalom done: the client saw every hoop of chain c in order; check the
+-- server saw you pass the last one recently, then pay 30 s of speed gain
+actions.chain = function(s, c)
+	if typeof(c) ~= "number" then
+		return
+	end
+	local last
+	for i, info in Layout.Chain do
+		if info.chain == c and info.step == Layout.CHAIN_LEN then
+			last = i
+		end
+	end
+	local seen = s.ringSeen or {}
+	if not last or os.clock() - (seen[last] or -100) > 3 then
+		return
+	end
+	s.chains = s.chains or {}
+	local chains = s.chains :: { [number]: number }
+	if os.clock() - (chains[c] or -100) < 60 then
+		return
+	end
+	chains[c] = os.clock()
+	local amount = math.max(5, math.floor(Game.gain(s) * 30))
+	s.profile.speed += amount
+	s.dirty = true
+	Game.notify(s.player, "chain", { amount = amount })
 end
 
 -- the plaza portal: across to the other world, right here in this server
