@@ -767,7 +767,7 @@ Config.Shark = {
 	lungeHop = 3, -- this high above the water at landing = you hopped over it
 	lungeGap = 1.4, -- two sharks on you: the second waits this long after a landing
 	maxHunters = 24,
-	newPlayerGrace = 150, -- seconds before a brand-new player can be hunted
+	newPlayerGrace = 300, -- seconds a player still in the first-session guide can't be hunted
 	eatenTime = 3.0, -- length of the bite cutscene before you wash up
 	frenzyLuck = 0.3, -- extra chance to bump a grab up a rarity while it hunts
 	-- islands are shelter, not a bunker: each island covers you this long per

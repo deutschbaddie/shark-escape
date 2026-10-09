@@ -3,7 +3,7 @@
 --   0  swim out and grab a bubble
 --   1  bring it home: a harmless practice shark chases you (the drill);
 --      hit the sand and it snaps at the waterline behind you
---   2  step on the pad to collect coins
+--   2  (was: collect at the pad; dropping off at the tank collects it now)
 --   3  the haul: grab 2 before going home (bigger haul, bigger cash)
 --   4  buy your first ride at the Ride Shop
 --   5  done (server stops the new-player shark grace)
@@ -187,7 +187,9 @@ local function drillTick(pos: Vector3): (Vector3?, string?, string?, string?, Co
 	if drill.done then
 		return nil
 	end
-	if drill.realAttack then
+	-- (night alone doesn't stop it: the guide keeps you safe from real ones;
+	-- only a real shark actually after you does)
+	if SharkView.myHunter() ~= nil then
 		if drill.shark then
 			drillEnd("abort")
 		end
@@ -309,9 +311,9 @@ local function update()
 			end
 		end
 	end
-	if step == 2 and plot then
-		at, label = Layout.padPos(plot), "Collect!"
-		title, sub = "Collect your cash", "Step on the green pad"
+	if step == 2 then
+		haulSince = os.clock()
+		advance(3, true) -- (the tank drop-off pays out now: no pad step)
 	end
 	if step == 3 then
 		-- the haul: two at once pays more (Config.Haul)
@@ -372,10 +374,7 @@ function Onboarding.start()
 		end
 	end)
 	Remotes.get("Notify").OnClientEvent:Connect(function(kind, data)
-		if kind == "collect" and step == 2 then
-			haulSince = os.clock()
-			advance(3)
-		elseif kind == "haul" and step == 3 and typeof(data) == "table" and (data.n or 0) >= 2 then
+		if kind == "haul" and step == 3 and typeof(data) == "table" and (data.n or 0) >= 2 then
 			advance(4)
 		elseif kind == "ride" and step == 4 then
 			advance(5)

@@ -47,7 +47,6 @@ export type Session = {
 	portalAt: number?, -- last portal use
 	gifts: number?, -- playtime gifts claimed this session
 	bag: { Data.Creature }?, -- extra catches in your net (s.carrying is the one in your hands)
-	ringSeen: { [number]: number }?, -- when you last passed each ring
 }
 
 Game.sessions = {} :: { [Player]: Session }
@@ -931,16 +930,13 @@ actions.ring = function(s, i, retried)
 		end
 		return
 	end
-	s.ringSeen = s.ringSeen or {}
-	local seen = s.ringSeen :: { [number]: number }
-	seen[i] = os.clock() -- (slaloms check this, even while the pay is cooling down)
 	s.rings = s.rings or {}
 	local rings = s.rings :: { [number]: number }
-	if os.clock() - (rings[i] or -100) < 25 then
-		return
+	if os.clock() - (rings[i] or -100) < Layout.RING_RESPAWN - 2 then
+		return -- (it's gone for you until it comes back)
 	end
 	rings[i] = os.clock()
-	local amount = math.max(1, math.floor(Game.gain(s) * 5))
+	local amount = math.max(1, math.floor(Game.gain(s) * 10))
 	s.profile.speed += amount
 	s.dirty = true
 	Game.notify(s.player, "ring", { amount = amount, i = i })
@@ -1368,13 +1364,16 @@ local function fastTick()
 		local plot = s.plot
 		if plot then
 			local pad = Layout.padPos(plot.cf)
-			if s.pending > 0 and Layout.segmentDist(pad, from, pos) < Config.COLLECT_RADIUS and math.abs(pos.Y - pad.Y) < 8 then
+			local function collect()
 				local amount = s.pending
 				s.profile.coins += amount
 				s.pending = 0
 				plot.padLabel.Text = "$0"
 				Game.notify(s.player, "collect", { amount = amount })
 				s.dirty = true
+			end
+			if s.pending > 0 and Layout.segmentDist(pad, from, pos) < Config.COLLECT_RADIUS and math.abs(pos.Y - pad.Y) < 8 then
+				collect()
 			end
 			if s.carrying then
 				local tank = Layout.tankPos(plot.cf)
@@ -1401,6 +1400,9 @@ local function fastTick()
 						end
 						Game.updateTrail(s)
 						Game.payHaul(s, haul)
+						if s.pending >= 1 then
+							collect() -- (dropping off at the tank collects the pad too: one stop)
+						end
 						s.dirty = true
 					elseif os.clock() - (s.fullWarned or 0) > 4 then
 						s.fullWarned = os.clock()

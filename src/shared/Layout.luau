@@ -194,10 +194,12 @@ end
 Layout.RING_RADIUS = 5.5
 Layout.RING_Y = 4.6
 Layout.Rings = {} :: { Vector3 }
+Layout.RING_RESPAWN = 60 -- seconds a ring you rode through stays gone (for you)
 do
 	local rng = Random.new(4242)
 	for _, zone in Config.Zones do
-		local count = math.clamp(math.floor(zone.length / 110), 2, 12)
+		-- a few per zone (rare enough to be a treat, not clutter)
+		local count = math.clamp(math.floor(zone.length / 350), 1, 4)
 		local placed = 0
 		for _ = 1, count * 6 do
 			if placed >= count then

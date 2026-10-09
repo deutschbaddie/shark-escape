@@ -181,6 +181,9 @@ local function grab(s: Game.Session, b: Bubble)
 		lucky = true
 	end
 	s.profile.grabs += 1
+	if s.profile.grabs == 1 and Config.rarity(r).index < 2 then
+		r = "Uncommon" -- your very first catch is a little special
+	end
 	if s.profile.grabs == Config.Luck.pityGrab and Config.rarity(r).index < 3 then
 		r = "Rare"
 		pity = true

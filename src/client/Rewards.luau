@@ -30,6 +30,7 @@ local window: Frame? = nil
 local dailyReadyAt = math.huge
 local groupReadyAt = 0
 local autoOpened = false
+local waitForTrip: boolean? = nil -- new player: no calendar until their first trip after the guide
 local askedLike = false
 
 ----------------------------------------------------------------- daily window
@@ -292,8 +293,13 @@ function Rewards.start()
 		if window and wasReady ~= (os.clock() >= dailyReadyAt) then
 			Rewards.openDaily() -- just claimed: redraw with the day ticked off
 		end
-		-- a reward waiting: open the calendar once per session (after the tutorial)
-		if not autoOpened and d.tut >= 5 and (d.dailyWait or 1) <= 0 and not player:GetAttribute("Cinematic") then
+		-- a reward waiting: open the calendar once per session (after the
+		-- tutorial; for a brand-new player, after their first trip home on
+		-- their own, not the second the guide ends)
+		if waitForTrip == nil then
+			waitForTrip = d.tut < 5
+		end
+		if not autoOpened and not waitForTrip and d.tut >= 5 and (d.dailyWait or 1) <= 0 and not player:GetAttribute("Cinematic") then
 			autoOpened = true
 			task.delay(2, Rewards.openDaily)
 		end
@@ -324,6 +330,16 @@ function Rewards.start()
 				Fx.confetti((player.Character and player.Character:GetPivot().Position) or Vector3.zero)
 			else
 				Notify.toast("Next daily reward in " .. UI.timeWords(data.wait or 0), C.gold)
+			end
+		elseif kind == "haul" then
+			local d = State.data
+			if waitForTrip and d and d.tut >= 5 then
+				waitForTrip = false
+				task.delay(2, function()
+					if State.data then
+						onState(State.data)
+					end
+				end)
 			end
 		elseif kind == "quest" then
 			local sub = ("+$%s"):format(UI.short(data.coins or 0))

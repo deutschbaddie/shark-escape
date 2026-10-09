@@ -20,6 +20,7 @@ local UI = require(script.Parent.UI)
 local Fx = require(script.Parent.Fx)
 local Notify = require(script.Parent.Notify)
 local Guide = require(script.Parent.Guide)
+local State = require(script.Parent.State)
 
 local Haul = {}
 local player = Players.LocalPlayer
@@ -30,6 +31,7 @@ local panel: Frame
 local fill: Frame
 local label: TextLabel
 local spillUntil = 0
+local taught = false -- the one line that explains the bar (newer players, once a session)
 
 local function myRoot(): BasePart?
 	local char = player.Character
@@ -69,7 +71,17 @@ local function tick()
 	end
 	local v = Workspace:GetAttribute("Hunger_" .. zone.id)
 	v = typeof(v) == "number" and v or 0
+	local d = State.data
+	if d and d.tut < 5 then
+		panel.Visible = false -- (not during the first-session guide: one thing at a time)
+		return
+	end
 	panel.Visible = true
+	if not taught and d and d.tut >= 5 and (d.playtime or 0) < 3600 then
+		taught = true
+		Notify.banner("Shark hunger", { key = "hungerTip", priority = 3, time = 4.5, color = ORANGE,
+			sub = "Every grab fills it. When it's full, the shark goes for the biggest haul" })
+	end
 	local k = math.clamp(v / 100, 0, 1)
 	fill.Size = UDim2.fromScale(k, 1)
 	local color = k < 0.5 and GREEN:Lerp(ORANGE, k * 2) or ORANGE:Lerp(RED, (k - 0.5) * 2)

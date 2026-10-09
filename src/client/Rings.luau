@@ -1,6 +1,7 @@
 -- Boost rings (Layout.Rings, built by World.luau): ride through one and you
 -- get a burst of speed and a pop into the air (Ride.burst) right away; the
--- server pays a few seconds of speed gain (Game actions.ring).
+-- server pays some speed gain (Game actions.ring). The ring bursts and is
+-- gone (for you) until it fades back in Layout.RING_RESPAWN seconds later.
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -28,30 +29,40 @@ local function ringModel(i: number): Model?
 	return folder and folder:FindFirstChild("Ring" .. i) :: Model?
 end
 
--- the hoop flashes white and swells for a moment
-local function flash(i: number)
+-- the hoop bursts: flashes white, swells and fades out; back in a minute
+local function pop(i: number)
 	local m = ringModel(i)
 	if not m then
 		return
 	end
 	for _, p in m:GetChildren() do
 		if p:IsA("BasePart") then
-			local base = p.Color
+			local base = p:GetAttribute("BaseColor") or p.Color
+			p:SetAttribute("BaseColor", base)
 			p.Color = Color3.new(1, 1, 1)
-			TweenService:Create(p, TweenInfo.new(0.5), { Color = base }):Play()
+			TweenService:Create(p, TweenInfo.new(0.35, Enum.EasingStyle.Quad), { Transparency = 1 }):Play()
 		end
 	end
+	task.delay(Layout.RING_RESPAWN, function()
+		for _, p in m:GetChildren() do
+			if p:IsA("BasePart") then
+				p.Color = p:GetAttribute("BaseColor") or p.Color
+				TweenService:Create(p, TweenInfo.new(1.2), { Transparency = 0 }):Play()
+			end
+		end
+	end)
 end
 
 local function passed(i: number, at: Vector3)
 	local now = os.clock()
-	if now - (cooldown[i] or -10) < 1.5 then
-		return
+	if now - (cooldown[i] or -1e9) < Layout.RING_RESPAWN then
+		return -- (gone for now)
 	end
 	cooldown[i] = now
 	Ride.burst(1.6, 26)
-	flash(i)
+	pop(i)
 	Fx.ring(at, GOLD, Layout.RING_RADIUS * 3)
+	Fx.sparkle(at, GOLD, 24)
 	Fx.sound("rideKick", 0.7, 1.15)
 	Fx.shake(0.4)
 	State.action("ring", i)
