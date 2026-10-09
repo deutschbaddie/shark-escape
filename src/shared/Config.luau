@@ -591,6 +591,21 @@ Config.Tank = {
 	maxDead = 10, -- unequipped catches lie "dead" on the tank floor (no income); past this you must sell some
 }
 
+-- Nets: how many creatures you can carry home in one trip (bought with
+-- coins in the Tank window; kept through rebirths and across worlds). A
+-- shark bite loses the whole haul, so a big net is a big risk too.
+Config.Nets = {
+	{ name = "Bare Hands", cap = 1, price = 0 },
+	{ name = "Small Net", cap = 2, price = 2000 },
+	{ name = "Big Net", cap = 3, price = 50000 },
+	{ name = "Trawl Net", cap = 5, price = 2500000 },
+	{ name = "Mega Net", cap = 8, price = 150000000 },
+}
+function Config.netCap(tier: number?): number
+	local n = Config.Nets[math.clamp(tier or 1, 1, #Config.Nets)]
+	return n.cap
+end
+
 -- hold time (seconds) on the grab prompt: rarer = longer = riskier
 Config.GrabHold = { Common = 0.35, Uncommon = 0.55, Rare = 0.8, Epic = 1.1, Legendary = 1.5 }
 

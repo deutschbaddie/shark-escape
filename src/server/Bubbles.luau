@@ -153,7 +153,7 @@ local function grab(s: Game.Session, b: Bubble)
 		end
 	end
 	local c = { r = r, z = b.zone.id, m = b.m, s = b.s }
-	Game.setCarry(s, c)
+	Game.takeCatch(s, c) -- (your hands, or your net)
 	Game.discover(s, c)
 	Game.notify(s.player, "grab", { r = r, m = b.m, z = b.zone.id, s = b.s, lucky = lucky, pity = pity,
 		v = Config.creatureValue(r, b.zone.id, b.m, b.s) * Game.coinMult(s) })
@@ -162,7 +162,7 @@ end
 -- hold the prompt to grab (server checks you're really there)
 tryGrab = function(player: Player, b: Bubble)
 	local s = Game.sessions[player]
-	if not s or b.taken or s.carrying or os.clock() < s.eatenUntil then
+	if not s or b.taken or Game.handsFull(s) or os.clock() < s.eatenUntil then
 		return
 	end
 	local hrp = Game.root(player)

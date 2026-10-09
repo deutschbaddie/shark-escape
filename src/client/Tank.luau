@@ -23,6 +23,7 @@ local activeText: TextLabel
 local incomeText: TextLabel
 local deadText: TextLabel
 local slotBtn: TextButton
+local netBtn: TextButton
 local isOpen = false
 local lastSig = ""
 
@@ -57,6 +58,15 @@ local function renderHeader(d: any)
 	else
 		UI.setText(slotBtn, "MAX SLOTS")
 		slotBtn.BackgroundColor3 = T.navyLight
+	end
+	-- the next net: carry more per trip
+	local nextNet = Config.Nets[(d.net or 1) + 1]
+	if nextNet then
+		UI.setText(netBtn, ("NET x%d  $%s"):format(nextNet.cap, UI.short(nextNet.price)))
+		netBtn.BackgroundColor3 = d.coins >= nextNet.price and T.blue or T.navyLight
+	else
+		UI.setText(netBtn, "MAX NET")
+		netBtn.BackgroundColor3 = T.navyLight
 	end
 end
 
@@ -148,10 +158,13 @@ local function build()
 
 	UI.button(body, "EQUIP BEST", T.green, function()
 		State.action("equipBest")
-	end, { Size = UDim2.new(0.5, -6, 0, 56), Position = UDim2.new(0, 0, 1, 0), AnchorPoint = Vector2.new(0, 1) })
+	end, { Size = UDim2.new(1 / 3, -8, 0, 56), Position = UDim2.new(0, 0, 1, 0), AnchorPoint = Vector2.new(0, 1) })
 	slotBtn = UI.button(body, "", T.green, function()
 		State.action("buySlot")
-	end, { Size = UDim2.new(0.5, -6, 0, 56), Position = UDim2.new(1, 0, 1, 0), AnchorPoint = Vector2.new(1, 1) })
+	end, { Size = UDim2.new(1 / 3, -8, 0, 56), Position = UDim2.new(0.5, 0, 1, 0), AnchorPoint = Vector2.new(0.5, 1) })
+	netBtn = UI.button(body, "", T.blue, function()
+		State.action("buyNet")
+	end, { Size = UDim2.new(1 / 3, -8, 0, 56), Position = UDim2.new(1, 0, 1, 0), AnchorPoint = Vector2.new(1, 1) })
 end
 
 function Tank.open()

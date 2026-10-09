@@ -43,6 +43,7 @@ export type Session = {
 	carryWarned: boolean?,
 	rings: { [number]: number }?, -- boost ring cooldowns
 	portalAt: number?, -- last portal use
+	bag: { Data.Creature }?, -- extra catches in your net (s.carrying is the one in your hands)
 	chains: { [number]: number }?, -- slalom cooldowns
 	ringSeen: { [number]: number }?, -- when you last passed each ring
 }
@@ -281,6 +282,9 @@ function Game.push(s: Session)
 		tut = p.tut,
 		shields = p.shields,
 		carrying = s.carrying,
+		bag = s.bag and #s.bag or 0,
+		net = s.profile.net,
+		netCap = Config.netCap(s.profile.net),
 		freshLeft = s.carryUntil and math.max(0, s.carryUntil - os.clock()) or nil, -- seconds before it escapes
 		passes = s.passes,
 		boostLeft = math.max(0, p.boostUntil - now),
@@ -381,6 +385,32 @@ function Game.setCarry(s: Session, c: Data.Creature?)
 		s.carryModel = m
 	end
 	s.dirty = true
+end
+
+-- nets: room for another catch? (the one in your hands + the bag)
+function Game.carryCount(s: Session): number
+	return (s.carrying and 1 or 0) + (s.bag and #s.bag or 0)
+end
+
+function Game.handsFull(s: Session): boolean
+	return Game.carryCount(s) >= Config.netCap(s.profile.net)
+end
+
+-- a new catch: into your hands, or into the net if your hands are full
+function Game.takeCatch(s: Session, c: Data.Creature)
+	if not s.carrying then
+		Game.setCarry(s, c)
+		return
+	end
+	s.bag = s.bag or {}
+	table.insert(s.bag :: { Data.Creature }, c)
+	s.dirty = true
+end
+
+-- drop everything you carry (shark bite, portal, reset)
+function Game.dropAll(s: Session)
+	s.bag = nil
+	Game.setCarry(s, nil)
 end
 
 ----------------------------------------------------------------- tank
@@ -579,9 +609,9 @@ function Game.bite(s: Session, sharkPos: Vector3): string
 		return "shield"
 	end
 	if s.carrying then
-		Game.notify(s.player, "lost", { r = s.carrying.r, m = s.carrying.m, z = s.carrying.z, s = s.carrying.s })
+		Game.notify(s.player, "lost", { r = s.carrying.r, m = s.carrying.m, z = s.carrying.z, s = s.carrying.s, extra = s.bag and #s.bag or 0 })
 		s.lastLost = s.carrying -- the 9 R$ "Save Your Creature" offer can return it
-		Game.setCarry(s, nil)
+		Game.dropAll(s) -- (the whole net goes with it)
 	end
 	s.eatenUntil = os.clock() + Config.Shark.eatenTime + 2.5
 	hrp.Anchored = true
@@ -589,7 +619,8 @@ function Game.bite(s: Session, sharkPos: Vector3): string
 	task.delay(Config.Shark.eatenTime + 0.35, function()
 		local h = root(s.player)
 		if h then
-			local x = math.clamp(h.Position.X, -Config.LANE_WIDTH / 2 + 10, Config.LANE_WIDTH / 2 - 10)
+			local ox = Config.originX(Config.worldAt(h.Position)) -- (wash up in your own world)
+			local x = math.clamp(h.Position.X, ox - Config.LANE_WIDTH / 2 + 10, ox + Config.LANE_WIDTH / 2 - 10)
 			h.Anchored = false
 			h.Parent:PivotTo(CFrame.new(x, 14, Config.SHORE_Z - 4) * CFrame.Angles(0, math.pi, 0))
 			Game.notify(s.player, "spat", {})
@@ -736,6 +767,17 @@ actions.code = function(s, text)
 	s.profile.shields += reward.shields or 0
 	Game.notify(s.player, "code", { ok = true, coins = reward.coins, speed = reward.speed, shields = reward.shields })
 	s.dirty = true
+end
+
+actions.buyNet = function(s)
+	local nextTier = Config.Nets[s.profile.net + 1]
+	if nextTier and s.profile.coins >= nextTier.price then
+		s.profile.coins -= nextTier.price
+		s.profile.net += 1
+		Game.notify(s.player, "net", { name = nextTier.name, cap = nextTier.cap })
+		Game.track(s.player, "net", { tier = s.profile.net, price = nextTier.price })
+		s.dirty = true
+	end
 end
 
 actions.buySlot = function(s)
@@ -947,7 +989,7 @@ function Game.switchWorld(s: Session, w: number)
 	end
 	p.coins += s.pending
 	s.pending = 0
-	Game.setCarry(s, nil)
+	Game.dropAll(s)
 	local index = s.plot and s.plot.index
 	if s.plot then
 		emptyPlot(s.plot)
@@ -1106,7 +1148,7 @@ function Game.resetProfile(s: Session)
 		dressPlot(s)
 	end
 	s.pending, s.offline = 0, 0
-	Game.setCarry(s, nil)
+	Game.dropAll(s)
 	if s.canSave then
 		Data.save(s.player.UserId, s.profile)
 	end
@@ -1198,11 +1240,22 @@ local function fastTick()
 			if s.carrying then
 				local tank = Layout.tankPos(plot.cf)
 				if Layout.segmentDist(tank, from, pos) < Config.DEPOSIT_RADIUS then
-					local full = Game.activeCount(s) >= tankSlots(s) and Game.deadCount(s) >= Config.Tank.maxDead
-					if not full then
-						local c = s.carrying :: Data.Creature
-						Game.setCarry(s, nil)
-						Game.addCreature(s, { r = c.r, z = c.z, m = c.m, s = c.s })
+					local function full(): boolean
+						return Game.activeCount(s) >= tankSlots(s) and Game.deadCount(s) >= Config.Tank.maxDead
+					end
+					if not full() then
+						-- unload the net first, then what's in your hands
+						local bag = s.bag or {}
+						while #bag > 0 and not full() do
+							local c = table.remove(bag, 1) :: Data.Creature
+							Game.addCreature(s, { r = c.r, z = c.z, m = c.m, s = c.s })
+						end
+						if not full() then
+							local c = s.carrying :: Data.Creature
+							Game.setCarry(s, nil)
+							Game.addCreature(s, { r = c.r, z = c.z, m = c.m, s = c.s })
+						end
+						s.dirty = true
 					elseif os.clock() - (s.fullWarned or 0) > 4 then
 						s.fullWarned = os.clock()
 						Game.notify(s.player, "tankFull", { max = Config.Tank.maxDead })
@@ -1223,7 +1276,9 @@ local function fastTick()
 			end
 			if left <= 0 and not hrp.Anchored then
 				Game.notify(s.player, "escaped", { r = c.r, m = c.m, z = c.z, s = c.s })
-				Game.setCarry(s, nil)
+				-- the next one from the net takes its place (with a fresh timer)
+				local nextUp = s.bag and table.remove(s.bag, 1) or nil
+				Game.setCarry(s, nextUp)
 			end
 		end
 		-- hard gates: past a wall you haven't unlocked? back to the shore

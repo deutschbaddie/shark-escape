@@ -390,7 +390,8 @@ local function render(d: any)
 		local r = Config.rarity(d.carrying.r)
 		carryChip.Visible = true
 		carryChip.TextColor3 = r.color
-		carryChip.Text = ("%s → bring it home to your tank!"):format(Config.fullName(d.carrying.z, d.carrying.r, d.carrying.m, d.carrying.s))
+		local extra = (d.bag or 0) > 0 and (" +%d in net"):format(d.bag) or ""
+		carryChip.Text = ("%s%s → bring it home to your tank!"):format(Config.fullName(d.carrying.z, d.carrying.r, d.carrying.m, d.carrying.s), extra)
 	else
 		carryChip.Visible = false
 	end
@@ -632,6 +633,11 @@ end
 
 handlers.rideShop = function()
 	HUD.goToRideShop()
+end
+
+handlers.net = function(d)
+	Notify.takeover(d.name:upper() .. "!", ("Carry %d creatures per trip. A bite loses them all!"):format(d.cap), C.blue, 1.8)
+	Fx.sound("buy", 0.8)
 end
 
 handlers.slot = function(d)

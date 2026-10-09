@@ -37,6 +37,7 @@ export type Profile = {
 	claimed: { [string]: boolean }, -- index rewards already taken
 	lastSeen: number,
 	world: number, -- the world these top-level fields belong to
+	net: number, -- Config.Nets tier (shared by every world)
 	wr: number, -- rebirths in this world (sets this run's goal; `rebirths` is the total)
 	worlds: { [string]: { [string]: any } }, -- the other worlds' progress, stashed
 }
@@ -75,6 +76,7 @@ function Data.default(): Profile
 		claimed = {},
 		lastSeen = 0,
 		world = 1,
+		net = 1,
 		wr = 0,
 		worlds = {},
 	}

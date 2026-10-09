@@ -431,7 +431,8 @@ end
 -- grab prompts hide while your hands are full
 local function syncGrabPrompts()
 	local d = State.data
-	local busy = d ~= nil and d.carrying ~= nil
+	-- (hidden only when your net is full too)
+	local busy = d ~= nil and d.carrying ~= nil and (d.bag or 0) + 1 >= (d.netCap or 1)
 	local folder = Workspace:FindFirstChild("Bubbles")
 	if not folder then
 		return
