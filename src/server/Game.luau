@@ -42,7 +42,8 @@ export type Session = {
 	offline: number, -- welcome-back coins waiting to be claimed
 	carryUntil: number?, -- os.clock() when the carried creature wriggles free
 	carryWarned: boolean?,
-	teleporting: boolean?, -- saved and on the way to another world: never save again here
+	teleporting: boolean?,
+	rings: { [number]: number }?, -- boost ring cooldowns -- saved and on the way to another world: never save again here
 }
 
 Game.sessions = {} :: { [Player]: Session }
@@ -745,6 +746,29 @@ actions.buySlot = function(s)
 		Game.notify(s.player, "slot", { slots = tankSlots(s), price = price })
 		s.dirty = true
 	end
+end
+
+-- boost ring: the client saw you ride through ring i; pay a few seconds of
+-- speed gain if you're really near it (once per ring every 25 s)
+actions.ring = function(s, i)
+	local p = typeof(i) == "number" and Layout.Rings[i]
+	local hrp = root(s.player)
+	if not (p and hrp) then
+		return
+	end
+	if (hrp.Position - p).Magnitude > 40 then
+		return
+	end
+	s.rings = s.rings or {}
+	local rings = s.rings :: { [number]: number }
+	if os.clock() - (rings[i] or -100) < 25 then
+		return
+	end
+	rings[i] = os.clock()
+	local amount = math.max(1, math.floor(Game.gain(s) * 5))
+	s.profile.speed += amount
+	s.dirty = true
+	Game.notify(s.player, "ring", { amount = amount, i = i })
 end
 
 -- the plaza portal: save, then teleport to the other world's place

@@ -47,6 +47,20 @@ local roll = 0
 local vy = 0
 local airborne = false
 local hopQueued = false
+-- boost ring burst: extra forward speed on top of the steering (fades out),
+-- kept out of the velocity fed back into Ride.steer so it never compounds
+local burstUntil, burstLen = 0, 1
+local lastKick = Vector3.zero
+
+-- ride through a boost ring: a burst of speed and a pop into the air
+function Ride.burst(seconds: number, pop: number?)
+	burstLen = seconds
+	burstUntil = os.clock() + seconds
+	if not airborne then
+		airborne = true
+		vy = pop or 24
+	end
+end
 local controls: any = nil
 local lastPos: Vector3? = nil
 
@@ -318,8 +332,15 @@ local function step(dt: number)
 
 	-- steering + throttle (Ride.steer)
 	local input, mv = moveInput(hum)
-	local flat, yawRate, event = Ride.steer(steerState, input, mv, hrp.AssemblyLinearVelocity * Vector3.new(1, 0, 1), feel, top, dt)
+	local flat, yawRate, event = Ride.steer(steerState, input, mv, hrp.AssemblyLinearVelocity * Vector3.new(1, 0, 1) - lastKick, feel, top, dt)
 	local heading = steerState.heading
+	-- boost ring burst, fading: up to +70% of your top speed straight ahead
+	local left = burstUntil - t
+	lastKick = Vector3.zero
+	if left > 0 then
+		lastKick = Vector3.new(-math.sin(heading), 0, -math.cos(heading)) * top * 0.7 * (left / burstLen)
+		flat += lastKick
+	end
 	local vf = flat:Dot(Vector3.new(-math.sin(heading), 0, -math.cos(heading)))
 	if event == "whip" and not airborne then
 		Fx.splash(Vector3.new(pos.X, 0.4, pos.Z), 1.1)

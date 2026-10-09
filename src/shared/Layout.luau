@@ -141,4 +141,29 @@ function Layout.nearestSafe(pos: Vector3): (Vector3, number)
 	return best, bestD
 end
 
+----------------------------------------------------------------- boost rings
+-- Hoops standing on the water (facing along the lane): ride through one for
+-- a speed burst + a pop into the air + a little speed (server checks it).
+Layout.RING_RADIUS = 5.5
+Layout.RING_Y = 4.6
+Layout.Rings = {} :: { Vector3 }
+do
+	local rng = Random.new(4242)
+	for _, zone in Config.Zones do
+		local count = math.clamp(math.floor(zone.length / 110), 2, 12)
+		local placed = 0
+		for _ = 1, count * 6 do
+			if placed >= count then
+				break
+			end
+			local p = Vector3.new(rng:NextNumber(-W / 2 + 22, W / 2 - 22), Layout.RING_Y,
+				rng:NextNumber(zone.zStart + 30, zone.zEnd - 30))
+			if not Layout.islandAt(p, 10) then
+				table.insert(Layout.Rings, p)
+				placed += 1
+			end
+		end
+	end
+end
+
 return Layout

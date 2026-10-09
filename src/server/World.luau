@@ -922,6 +922,23 @@ local function buildGroupChest()
 	prompt.Parent = box
 end
 
+----------------------------------------------------------------- boost rings
+local function buildRings()
+	local folder = Build.model("Rings", map)
+	for i, p in Layout.Rings do
+		local m = Build.model("Ring" .. i, folder)
+		local cf = CFrame.new(p) * CFrame.Angles(math.pi / 2, 0, 0) -- stand the hoop up, facing the lane
+		Build.ring(m, Layout.RING_RADIUS, 0.9, cf, C(255, 210, 50), 14, C(255, 255, 255))
+		for _, part in m:GetChildren() do
+			if part:IsA("BasePart") then
+				part.Material = Enum.Material.Neon
+			end
+		end
+		m:SetAttribute("Index", i)
+	end
+	Build.ghost(folder)
+end
+
 ----------------------------------------------------------------- portal
 -- A studded arch in the next world's color with a swirling force field;
 -- its prompt asks the server to teleport (Game actions.portal). The client
@@ -998,6 +1015,7 @@ function World.build()
 	buildBoards()
 	buildGroupChest()
 	buildPortal()
+	buildRings()
 	buildTerrain()
 	buildLane()
 	buildGates()
