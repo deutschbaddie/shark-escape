@@ -656,7 +656,7 @@ function UI.chip(parent: Instance, text: string, color: Color3, props: { [string
 	local f = UI.frame(parent, { Size = UDim2.fromOffset(96, 24), BackgroundColor3 = color })
 	apply(f, props)
 	UI.corner(f, 12)
-	UI.label(f, "meta", text, { Size = UDim2.new(1, -12, 1, -6), Position = UDim2.fromOffset(6, 3), StrokeColor = UI.dark(color, 0.55) })
+	UI.label(f, "meta", text, { Size = UDim2.new(1, -12, 1, -6), Position = UDim2.fromOffset(6, 3), StrokeColor = UI.dark(color, 0.55), ZIndex = f.ZIndex + 1 })
 	return f
 end
 

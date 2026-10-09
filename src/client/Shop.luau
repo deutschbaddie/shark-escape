@@ -729,9 +729,6 @@ function Shop.openStore(section: string?)
 		local pack = packKey and Config.Products[packKey]
 		if pack then
 			local mid = banner(T.pink, pack.name:upper(), art(packKey, pack), "product", pack, false)
-			local step = table.find(Config.StarterLadder, packKey) or 1
-			UI.chip(mid.Parent :: Frame, ("PACK %d OF %d"):format(step, #Config.StarterLadder), T.pink, { Size = UDim2.fromOffset(112, 26),
-				Position = UDim2.fromOffset(14, 14), ZIndex = mid.ZIndex + 2 })
 			local lines = Instance.new("UIGridLayout")
 			lines.CellSize = UDim2.new(0.5, -6, 0, 30)
 			lines.CellPadding = UDim2.fromOffset(12, 4)
