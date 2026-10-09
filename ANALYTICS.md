@@ -30,7 +30,7 @@ Logged once per brand-new player.
 
 One session per rebirth run: player id plus rebirth number.
 
-Lagoon → Coral Reef → Kelp Forest → Shipwreck Bay → Deep Blue → The Abyss → Frozen Sea → Volcano Vents → Lost City → Rebirth. Each rebirth asks for one zone further (The Abyss, then Frozen Sea, Volcano Vents, Lost City), so later runs reach deeper steps.
+Lagoon → Coral Reef → Kelp Forest → Shipwreck Bay → Deep Blue → The Abyss → Frozen Sea → Volcano Vents → Lost City → Rebirth. The first rebirth is at Deep Blue (5K speed), then The Abyss, Frozen Sea, Volcano Vents and Lost City, so later runs reach deeper steps.
 
 - **Target:** about 60% of runs that reach Kelp Forest should reach Shipwreck Bay.
 - A cliff before one zone means its speed gate is too high for the rides available by then.

@@ -130,9 +130,9 @@ export type World = {
 Config.WORLD_GAP = 12000
 Config.Worlds = {
 	{ id = 1, name = "Shark Beach", zones = OCEAN_ZONES, gainMult = 1,
-		rebirthSteps = { 25000, 60000, 150000, 350000 }, unlockRebirths = 0, color = rgb(40, 170, 255) },
+		rebirthSteps = { 5000, 25000, 60000, 150000, 350000 }, unlockRebirths = 0, color = rgb(40, 170, 255) },
 	{ id = 2, name = "Candy Bay", zones = CANDY_ZONES, gainMult = 2.5,
-		rebirthSteps = { 100000, 240000, 600000, 1400000 }, unlockRebirths = 3, color = rgb(255, 110, 200) },
+		rebirthSteps = { 20000, 100000, 240000, 600000, 1400000 }, unlockRebirths = 3, color = rgb(255, 110, 200) },
 } :: { World }
 
 -- every zone of every world (ids are unique across worlds)
@@ -696,8 +696,9 @@ function Config.freshTime(zoneId: string?): number
 end
 
 ----------------------------------------------------------------- rebirth
--- Each rebirth asks for more speed: the first at The Abyss, then one zone
--- further each time (Frozen Sea, Volcano Vents, Lost City), then x2 each.
+-- Each rebirth asks for more speed (Config.Worlds rebirthSteps): in Shark
+-- Beach the first at Deep Blue (~15-18 min, to teach the loop early), then
+-- The Abyss, Frozen Sea, Volcano Vents, Lost City, then x2 each.
 Config.Rebirth = { speed = 25000, mult = 1.5 }
 function Config.rebirthSpeed(rebirths: number?, w: number?): number
 	local n = (rebirths or 0) + 1

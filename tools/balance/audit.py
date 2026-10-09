@@ -27,7 +27,7 @@ RIDES = [(0, 1), (30, 2), (500, 3), (2500, 4), (10000, 5), (40000, 7), (160000, 
 RIDE_NAMES = ["Pool Noodle", "Rubber Duck", "Inner Tube", "Boogie Board", "Surfboard", "Bathtub",
               "Banana Boat", "Jet Ski", "Speedboat", "Dolphin", "Giant Donut", "Rocket Surfboard",
               "Hover Board", "Lava Jet", "Golden Comet"]
-REBIRTH_STEPS = [25000, 60000, 150000, 350000]
+REBIRTH_STEPS = [5000, 25000, 60000, 150000, 350000]
 
 
 def rebirth_speed(n):

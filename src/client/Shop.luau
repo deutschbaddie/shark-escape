@@ -35,6 +35,8 @@ local function closeAll()
 	table.clear(spinners)
 end
 
+Shop.closeAll = closeAll
+
 -- one window at a time; Index and popups share this
 function Shop.window(title: string, color: Color3, size: Vector2?, iconName: string?): (Frame, Frame)
 	closeAll()

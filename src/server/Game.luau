@@ -848,6 +848,24 @@ actions.chain = function(s, c)
 	Game.notify(s.player, "chain", { amount = amount })
 end
 
+-- zone warp (the signpost on the sand): to the start of a zone you've unlocked
+actions.warp = function(s, id)
+	local zone = typeof(id) == "string" and Config.zoneById(id)
+	local hrp = root(s.player)
+	local p = s.profile
+	if not (zone and hrp) or zone.world ~= p.world or zone.gate > p.speed or hrp.Anchored then
+		return
+	end
+	if (Layout.toLocal(hrp.Position) - Layout.Warp).Magnitude > 20 then
+		return
+	end
+	local ox = Config.originX(p.world)
+	local at = Vector3.new(ox, Config.WATER_Y + 4, zone.zStart + 14)
+	hrp.Parent:PivotTo(CFrame.lookAt(at, at + Vector3.new(0, 0, 1)))
+	hrp.AssemblyLinearVelocity = Vector3.zero
+	Game.notify(s.player, "warped", { zone = zone.id })
+end
+
 -- the plaza portal: across to the other world, right here in this server
 actions.portal = function(s)
 	local here = Config.Worlds[s.profile.world] or Config.Worlds[1]
