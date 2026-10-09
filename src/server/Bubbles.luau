@@ -248,7 +248,8 @@ function Bubbles.start()
 			local pos = hrp.Position
 			local from = last[player] or pos
 			last[player] = pos
-			if not Layout.inWater(pos) or Game.handsFull(s) or (pos - from).Magnitude > 120 then
+			-- (a jump longer than your speed allows is a teleport, not a ride)
+			if not Layout.inWater(pos) or Game.handsFull(s) or (pos - from).Magnitude > Game.walkSpeed(s) * 0.1 * 2.5 + 8 then
 				continue
 			end
 			for i = #live, 1, -1 do

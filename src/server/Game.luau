@@ -42,6 +42,7 @@ export type Session = {
 	carryUntil: number?, -- os.clock() when the carried creature wriggles free
 	carryWarned: boolean?,
 	rings: { [number]: number }?, -- boost ring cooldowns
+	trail: { { p: Vector3, t: number } }?, -- recent path (fastTick)
 	portalAt: number?, -- last portal use
 	gifts: number?, -- playtime gifts claimed this session
 	bag: { Data.Creature }?, -- extra catches in your net (s.carrying is the one in your hands)
@@ -640,7 +641,7 @@ function Game.bite(s: Session, sharkPos: Vector3): string
 end
 
 ----------------------------------------------------------------- actions
-local actions: { [string]: (Session, any) -> () } = {}
+local actions: { [string]: (Session, any, any?) -> () } = {} -- (the remote only ever passes one argument)
 
 -- other server modules add their own actions (Rewards: daily, group chest)
 function Game.action(name: string, fn: (Session, any) -> ())
@@ -803,13 +804,32 @@ end
 
 -- boost ring: the client saw you ride through ring i; pay a few seconds of
 -- speed gain if you're really near it (once per ring every 25 s)
-actions.ring = function(s, i)
+-- your recent server-side path really passes through ring p
+local function rodeThrough(s: Session, p: Vector3): boolean
+	local trail = s.trail or {}
+	for k = 2, #trail do
+		if Layout.segmentDist(p, trail[k - 1].p, trail[k].p) < Layout.RING_RADIUS + 4 then
+			return true
+		end
+	end
+	return false
+end
+
+actions.ring = function(s, i, retried)
 	local p = typeof(i) == "number" and Layout.Rings[i]
 	local hrp = root(s.player)
 	if not (p and hrp) then
 		return
 	end
-	if (hrp.Position - p).Magnitude > 40 then
+	if not rodeThrough(s, p) then
+		-- the client can tell us before your position catches up here: look again
+		if not retried then
+			task.delay(0.4, function()
+				if Game.sessions[s.player] == s then
+					actions.ring(s, i, true)
+				end
+			end)
+		end
 		return
 	end
 	s.ringSeen = s.ringSeen or {}
@@ -833,15 +853,28 @@ actions.chain = function(s, c)
 	if typeof(c) ~= "number" then
 		return
 	end
-	local last
+	-- every hoop of the slalom, in order, within 25 s, the last one just now
+	local steps = {}
 	for i, info in Layout.Chain do
-		if info.chain == c and info.step == Layout.CHAIN_LEN then
-			last = i
+		if info.chain == c then
+			steps[info.step] = i
 		end
 	end
 	local seen = s.ringSeen or {}
-	if not last or os.clock() - (seen[last] or -100) > 3 then
+	local now = os.clock()
+	local last = steps[Layout.CHAIN_LEN]
+	if not last or now - (seen[last] or -100) > 3 then
 		return
+	end
+	local t0 = seen[steps[1] or -1]
+	if not t0 or now - t0 > 25 then
+		return
+	end
+	for k = 2, Layout.CHAIN_LEN do
+		local a, b = seen[steps[k - 1] or -1], seen[steps[k] or -1]
+		if not (a and b and b >= a) then
+			return
+		end
 	end
 	s.chains = s.chains or {}
 	local chains = s.chains :: { [number]: number }
@@ -1051,6 +1084,10 @@ local function onCharacter(s: Session, char: Model)
 	end
 	hum.WalkSpeed = Game.walkSpeed(s)
 	hum.JumpPower = 50
+	-- dying (any way) drops what you carry: a reset is never a free ride home
+	hum.Died:Connect(function()
+		Game.dropAll(s)
+	end)
 	if s.plot then
 		task.defer(function()
 			char:PivotTo(Layout.spawnCFrame(s.plot.cf))
@@ -1058,15 +1095,14 @@ local function onCharacter(s: Session, char: Model)
 	end
 	s.inWater = false
 	task.defer(Game.attachRide, s)
-	if s.carrying then
-		local c = s.carrying
-		task.defer(Game.setCarry, s, c)
-	end
 end
 
 function Game.join(player: Player)
 	local profile, canSave = Data.load(player.UserId)
 	if not player.Parent then
+		if canSave then
+			Data.save(player.UserId, profile, true) -- (gone during the load: free the lock)
+		end
 		return
 	end
 	if not Config.Worlds[profile.world] then
@@ -1190,7 +1226,10 @@ end
 function Game.saveAll()
 	for player, s in Game.sessions do
 		if s.canSave then
-			task.spawn(Data.save, player.UserId, s.profile)
+			-- (stops if they leave mid-save, so it can't re-lock a released save)
+			task.spawn(Data.save, player.UserId, s.profile, false, function()
+				return Game.sessions[player] == s
+			end)
 		end
 	end
 end
@@ -1247,6 +1286,13 @@ local function fastTick()
 		local pos = hrp.Position
 		local prev = s.lastPos
 		s.lastPos = pos
+		-- the last ~1.5 s of your path (rings check you really rode through)
+		local trail = s.trail or {}
+		s.trail = trail
+		table.insert(trail, { p = pos, t = os.clock() })
+		while #trail > 0 and os.clock() - trail[1].t > 1.5 do
+			table.remove(trail, 1)
+		end
 		local from = (prev and (prev - pos).Magnitude < 120) and prev or pos
 		local wet = Layout.inWater(pos) and not Layout.islandAt(pos, 0)
 		if wet ~= s.inWater then

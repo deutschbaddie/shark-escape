@@ -104,6 +104,12 @@ local function plotModels(): { Model }
 	return out
 end
 
+local function clearRaid()
+	raidEnds, defendEnds = 0, 0
+	Notify.clear("raid")
+	Guide.set("raid", nil)
+end
+
 local function raidTick()
 	local now = Workspace:GetServerTimeNow()
 	for _, m in plotModels() do
@@ -149,16 +155,15 @@ local function raidTick()
 			sub = "Stay by the tank! If they get home first, you're thrown off" })
 	end
 	local dleft = defendEnds - os.clock()
+	-- (a raid that ended without word: never leave the banner up)
+	if (raidEnds > 0 and left < -4) or (defendEnds > 0 and dleft < -4) then
+		clearRaid()
+		return
+	end
 	if dleft > 0 then
 		Notify.banner(("Your tank is being raided, %d"):format(math.ceil(dleft)), { key = "raid", sticky = true, priority = 6, color = RED,
 			sub = defendBy .. " is stealing from you. Get back to your dock!" })
 	end
-end
-
-local function clearRaid()
-	raidEnds, defendEnds = 0, 0
-	Notify.clear("raid")
-	Guide.set("raid", nil)
 end
 
 ----------------------------------------------------------------- server news

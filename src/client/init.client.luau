@@ -27,6 +27,16 @@ local News = require(script.News)
 local Pvp = require(script.Pvp)
 local Countdown = require(script.Countdown)
 
+-- no reset button: resetting would be a free ride home (or a free raid
+-- defense). Sharks spit you out instead of killing you anyway.
+task.spawn(function()
+	for _ = 1, 20 do
+		if pcall(game:GetService("StarterGui").SetCore, game:GetService("StarterGui"), "ResetButtonCallback", false) then
+			break
+		end
+		task.wait(0.5)
+	end
+end)
 Water.start()
 Audio.start()
 Animals.start()

@@ -115,7 +115,12 @@ function Weather.start()
 		elseif kind == "hunt" then
 			sky("night", 3)
 		elseif kind == "clear" then
-			sky("day", 5)
+			-- sunrise: the clock runs on through dawn (not back through sunset)
+			TweenService:Create(Lighting, TweenInfo.new(2.5, Enum.EasingStyle.Sine), { ClockTime = 29.5 }):Play()
+			task.delay(2.6, function()
+				Lighting.ClockTime = 5.5
+				sky("day", 3)
+			end)
 		end
 	end)
 	build()

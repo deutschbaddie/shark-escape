@@ -205,7 +205,7 @@ function Data.load(userId: number): (Profile, boolean)
 end
 
 -- release = true when the player is leaving (frees the lock for the next server)
-function Data.save(userId: number, profile: Profile, release: boolean?): boolean
+function Data.save(userId: number, profile: Profile, release: boolean?, stillOwned: (() -> boolean)?): boolean
 	profile.lastSeen = os.time()
 	if not store then
 		return false
@@ -214,6 +214,9 @@ function Data.save(userId: number, profile: Profile, release: boolean?): boolean
 		local stolen = false
 		local ok, err = pcall(function()
 			(store :: DataStore):UpdateAsync(key(userId), function(old)
+				if stillOwned and not stillOwned() then
+					return nil -- they left meanwhile: the leave save owns it now
+				end
 				if lockedByOther(old) then
 					stolen = true
 					return nil -- another server owns this player now: never overwrite it

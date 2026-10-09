@@ -673,6 +673,7 @@ Config.Shark = {
 	-- close call: a lunge that lands this close without biting pays you
 	closeCall = 4,
 	closeCallSeconds = 8, -- seconds of your speed gain
+	closeCallCooldown = 15,
 	doubleChance = 0.25, -- two sharks at once (zones from doubleFromZone out)
 	doubleFromZone = 3,
 	spawnDistance = 46,

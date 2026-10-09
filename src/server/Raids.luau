@@ -49,6 +49,10 @@ local function chum(s: Game.Session, targetId: any)
 	if not (t and a and b) or t == s or t.profile.world ~= s.profile.world then
 		return
 	end
+	if not veteran(s, cfg.minPlaytime) then
+		Game.notify(s.player, "announce", { text = "Chum unlocks after 5 minutes of play" })
+		return
+	end
 	if (a.Position - b.Position).Magnitude > cfg.range or not veteran(t, cfg.minPlaytime) or not atSea(t) then
 		Game.notify(s.player, "announce", { text = "They're out of reach" })
 		return
@@ -67,6 +71,20 @@ end
 ----------------------------------------------------------------- raids
 local function tankPos(plot: World.Plot): Vector3
 	return Layout.tankPos(plot.cf)
+end
+
+-- tell whoever's still here that it's over (someone left / took the portal)
+local function abandon(victim: Player)
+	local r = raids[victim]
+	if not r then
+		return
+	end
+	if Game.sessions[victim] then
+		Game.notify(victim, "raidDefended", { by = r.raider.player.DisplayName, gaveUp = true })
+	end
+	if Game.sessions[r.raider.player] then
+		Game.notify(r.raider.player, "raidFail", { why = "left" })
+	end
 end
 
 local function endRaid(victim: Player)
@@ -120,7 +138,7 @@ local function startRaid(s: Game.Session, plotIndex: any)
 	if not atSea(v) then
 		return no("Only while they're out at sea")
 	end
-	if Game.activeCount(v) < 2 then
+	if #v.profile.creatures < 2 then
 		return no("Nothing worth taking")
 	end
 	local r: Raid = { raider = s, victim = v, plot = plot, ends = now + cfg.time }
@@ -131,18 +149,17 @@ local function startRaid(s: Game.Session, plotIndex: any)
 	Game.track(s.player, "raid", { stage = "start" })
 end
 
--- a random Active creature that isn't their best
+-- a random creature from their tank that isn't their best (Active or not,
+-- so unequipping everything from the Tank window can't dodge a raid)
 local function pickLoot(v: Game.Session): Data.Creature?
 	local best, bestV = nil, -1
 	local pool = {}
 	for _, c in v.profile.creatures do
-		if c.e then
-			local val = Config.creatureValue(c.r, c.z, c.m, c.s)
-			if val > bestV then
-				best, bestV = c, val
-			end
-			table.insert(pool, c)
+		local val = Config.creatureValue(c.r, c.z, c.m, c.s)
+		if val > bestV then
+			best, bestV = c, val
 		end
+		table.insert(pool, c)
 	end
 	local i = table.find(pool, best)
 	if i then
@@ -185,6 +202,7 @@ local function tick()
 	for victim, r in raids do
 		local v, s = r.victim, r.raider
 		if not Game.sessions[victim] or not Game.sessions[s.player] or v.profile.world ~= s.profile.world then
+			abandon(victim)
 			endRaid(victim)
 			continue
 		end
@@ -224,9 +242,11 @@ function Raids.start()
 		end
 	end)
 	Players.PlayerRemoving:Connect(function(p)
+		abandon(p)
 		endRaid(p)
 		for victim, r in raids do
 			if r.raider.player == p then
+				abandon(victim)
 				endRaid(victim)
 			end
 		end

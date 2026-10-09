@@ -74,6 +74,7 @@ local nextId = 0
 local phase = "calm"
 local phaseEnds = 0
 local hunted: { [Player]: number } = {} -- hunters on each player
+local closeCallAt: { [Player]: number } = {} -- last paid close call
 local landedAt: { [Player]: number } = {} -- last lunge landing on them
 local double = false -- this hunt sends two sharks at players in deeper zones
 local rng = Random.new()
@@ -254,7 +255,7 @@ local function update(dt: number)
 		local h = hunters[i]
 		h.timer += dt
 		-- a daytime grudge that ran out gives up (night hunters leave at dawn)
-		if (h.state == "stalk" or h.state == "chase") and not hunting(h) then
+		if (h.state == "stalk" or h.state == "charge") and not hunting(h) then
 			h.state, h.timer = "leave", 0
 		end
 		local s = h.target
@@ -338,9 +339,11 @@ local function update(dt: number)
 					if d <= h.biteRadius and not hopped then
 						hit = true
 						doBite(h, s :: Game.Session, p)
-					elseif d <= h.biteRadius + cfg.closeCall then
+					elseif d > h.biteRadius and d <= h.biteRadius + cfg.closeCall
+						and os.clock() - (closeCallAt[(s :: Game.Session).player] or -100) > cfg.closeCallCooldown then
 						-- a hair's breadth: pay the dodge (the clip-worthy moment)
 						local v = s :: Game.Session
+						closeCallAt[v.player] = os.clock()
 						local amount = math.max(5, math.floor(Game.gain(v) * cfg.closeCallSeconds))
 						v.profile.speed += amount
 						v.dirty = true
@@ -393,7 +396,7 @@ local function update(dt: number)
 				h.state, h.timer = "leave", 0
 			end
 		elseif h.state == "leave" then
-			h.yaw = turnToward(h.yaw, yawOf(Vector3.new(h.pos.X >= 0 and 1 or -1, 0, 2)), 2 * dt)
+			h.yaw = turnToward(h.yaw, yawOf(Vector3.new(h.pos.X >= Config.originX(Config.worldAt(h.pos)) and 1 or -1, 0, 2)), 2 * dt)
 			h.pos += forward(h.yaw) * h.speed * 0.7 * dt
 			if h.timer > 3 then
 				if h.target then
@@ -499,11 +502,12 @@ function Sharks.aggro(s: Game.Session, seconds: number?, why: string?, by: strin
 		end
 	end
 	if mine == 0 then
+		local before = #hunters
 		spawnHunter(s, false)
-		local h = hunters[#hunters]
-		if h and h.target == s then
-			h.aggroUntil = untilT
+		if #hunters == before then
+			return false -- (no shark free right now: say nothing)
 		end
+		hunters[#hunters].aggroUntil = untilT
 	end
 	local hrp = Game.root(s.player)
 	local zone = hrp and Config.zoneAtPos(hrp.Position)
@@ -579,6 +583,7 @@ function Sharks.start()
 	end)
 	Players.PlayerRemoving:Connect(function(p)
 		deepWarned[p] = nil
+		closeCallAt[p] = nil
 		hunted[p] = nil
 		landedAt[p] = nil
 		shelter[p] = nil

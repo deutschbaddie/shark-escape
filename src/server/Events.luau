@@ -42,11 +42,13 @@ function Events.start()
 		while true do
 			local on = Events.active()
 			Game.event = on
+			-- when it ends: the weekly window if we're in it, else the forced one
+			local now = os.time()
+			local a, b = Events.window(now)
+			local ends = (now >= a and now < b) and math.max(b, forcedUntil) or forcedUntil
+			Workspace:SetAttribute("EventEnds", on and (Workspace:GetServerTimeNow() + (ends - now)) or nil)
 			if on ~= was then
 				was = on
-				local _, b = Events.window(os.time())
-				local ends = math.max(b, forcedUntil)
-				Workspace:SetAttribute("EventEnds", on and (Workspace:GetServerTimeNow() + (ends - os.time())) or nil)
 				if on then
 					Game.notifyAll("event", { name = Config.Event.name })
 				end

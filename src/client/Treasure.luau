@@ -16,7 +16,7 @@ local Treasure = {}
 local player = Players.LocalPlayer
 
 local GOLD = Color3.fromRGB(255, 200, 40)
-local liveWorld: number? = nil -- the world with a chest waiting
+local live: { [number]: Vector3 } = {} -- worlds with a chest waiting, and where
 
 local function myWorld(): number
 	local d = State.data
@@ -34,11 +34,11 @@ function Treasure.start()
 			return
 		end
 		if data.kind == "spawn" then
-			liveWorld = data.world
+			local at = Vector3.new(data.x, data.y + 3, data.z)
+			live[data.world] = at
 			if data.world ~= myWorld() then
 				return
 			end
-			local at = Vector3.new(data.x, data.y + 3, data.z)
 			Guide.set("treasure", at, "Treasure")
 			Notify.banner("Treasure chest", { key = "treasure", color = GOLD, priority = 2, time = data.quiet and 3 or 6,
 				sub = ("Washed up in %s. First one there wins it!"):format(tostring(data.zone)) })
@@ -46,7 +46,7 @@ function Treasure.start()
 				Fx.sound("discover", 0.8)
 			end
 		elseif data.kind == "won" then
-			liveWorld = nil
+			live[data.world] = nil
 			clear()
 			local pos = Vector3.new(data.x, data.y, data.z)
 			Fx.confetti(pos + Vector3.new(0, 3, 0), { GOLD, Color3.new(1, 1, 1), Color3.fromRGB(255, 120, 60) })
@@ -57,9 +57,7 @@ function Treasure.start()
 			end
 			Notify.takeover("Treasure", sub, GOLD, 2)
 		elseif data.kind == "claimed" or data.kind == "gone" then
-			if data.world == liveWorld then
-				liveWorld = nil
-			end
+			live[data.world] = nil
 			if data.world == myWorld() then
 				clear()
 				if data.kind == "claimed" and data.userId ~= player.UserId then
@@ -68,11 +66,14 @@ function Treasure.start()
 			end
 		end
 	end)
-	-- through the portal: the other world's chest isn't yours to chase
+	-- through the portal: point at this world's chest, if there is one
+	local shownWorld = nil
 	State.Changed:Connect(function(d)
-		if liveWorld and d.world ~= liveWorld then
-			Guide.set("treasure", nil)
+		if d.world == shownWorld then
+			return
 		end
+		shownWorld = d.world
+		Guide.set("treasure", live[d.world], live[d.world] and "Treasure" or nil)
 	end)
 end
 

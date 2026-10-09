@@ -42,7 +42,7 @@ function Travel.go(kind: string)
 		return
 	end
 	local pos = hrp.Position
-	if Layout.inWater(pos) and not Layout.islandAt(pos, 0) then
+	if Layout.inWater(pos) then -- (islands too: no free ride home with a full net)
 		Guide.set("shop", pad + Vector3.new(0, 1, 0), LABELS[kind])
 		Fx.bigWord("Get to land first", UI.C.sky, 1.1)
 		return
