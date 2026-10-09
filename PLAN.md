@@ -55,8 +55,8 @@ serves that, in this order. `[x]` = built (not yet playtested), `[ ]` = to do.
 ## Phase 4: added
 - [x] Daily quests (3 a day from a pool of 7: Rares, bring home, close calls,
       dodges, rings, night catches, chum; cash each, Luck Potion for all 3)
-- [ ] Speed feel past the cap (wider FOV, stronger lines, wind)
-- [ ] Onboarding teaches night + grudges in one line each (no new steps)
+- [x] Speed feel past the cap (wider FOV, stronger lines, wind)
+- [x] Onboarding teaches night + grudges in one line each (no new steps)
 - [x] Analytics: log chum, raids (start / defended / stolen), close calls,
       Megalodon Hour joins, Legendary reel success rate
 - [ ] Rename + thumbnail around the shark, chum and raids (owner)

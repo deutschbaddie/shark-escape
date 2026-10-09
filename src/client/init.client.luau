@@ -28,6 +28,7 @@ local Pvp = require(script.Pvp)
 local Countdown = require(script.Countdown)
 local Reel = require(script.Reel)
 local Boss = require(script.Boss)
+local SpeedFeel = require(script.SpeedFeel)
 
 -- no reset button: resetting would be a free ride home (or a free raid
 -- defense). Sharks spit you out instead of killing you anyway.
@@ -54,6 +55,7 @@ Pvp.start()
 Countdown.start()
 Reel.start()
 Boss.start()
+SpeedFeel.start()
 Prompts.start()
 Ride.start()
 Shop.start()

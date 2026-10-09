@@ -653,8 +653,10 @@ handlers.aggro = function(d)
 	if d.why == "chum" then
 		Notify.takeover("Chummed", ("%s threw chum at you. The %s is coming!"):format(tostring(d.by or "Someone"), name), C.red, 1.4, "Shark")
 	else
-		Notify.banner(("The %s noticed you"):format(name), { key = "aggro", priority = 4, time = 2.2, color = C.red,
-			sub = "Get to sand or an island" })
+		-- (the one line that teaches grudges: grabbing makes noise)
+		local sub = ({ grab = "Grabbing makes noise. Get to sand or an island", reel = "Reel it in before it reaches you" } :: any)[d.why]
+		Notify.banner(("The %s noticed you"):format(name), { key = "aggro", priority = 4, time = 2.6, color = C.red,
+			sub = sub or "Get to sand or an island" })
 	end
 	Fx.sound("sharkAlarm", 0.7)
 	Fx.shake(0.5)
