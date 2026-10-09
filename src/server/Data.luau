@@ -150,41 +150,82 @@ local function reconcile(saved: any): Profile
 	return p
 end
 
+-- Session lock: the save carries _lock = { job, t } naming the server that
+-- owns it. Loading takes the lock (waiting a little for another server
+-- that's still saving that player); saving refuses to overwrite a save
+-- another server has taken since, so a fast rejoin can never be rolled back
+-- by the old server's late save. Autosave (every 2 min) keeps it fresh.
+local LOCK_STALE = 300 -- seconds: an older lock belongs to a dead server
+local LOCK_TRIES = 6 -- ~3 s apart, then take it anyway
+
+local function key(userId: number): string
+	return "p_" .. userId
+end
+
+local function lockedByOther(saved: any): boolean
+	return type(saved) == "table" and type(saved._lock) == "table" and saved._lock.job ~= game.JobId
+		and os.time() - (tonumber(saved._lock.t) or 0) < LOCK_STALE
+end
+
 -- returns profile, canSave
 function Data.load(userId: number): (Profile, boolean)
 	if not store then
 		return Data.default(), false
 	end
-	for attempt = 1, 3 do
-		local ok, result = pcall(function()
-			return (store :: DataStore):GetAsync("p_" .. userId)
+	for attempt = 1, LOCK_TRIES do
+		local saved, waiting = nil, false
+		local ok, err = pcall(function()
+			(store :: DataStore):UpdateAsync(key(userId), function(old)
+				if lockedByOther(old) and attempt < LOCK_TRIES then
+					waiting = true
+					return nil -- leave it alone, try again in a moment
+				end
+				saved = old
+				local new = type(old) == "table" and old or {}
+				new._lock = { job = game.JobId, t = os.time() }
+				return new
+			end)
 		end)
-		if ok then
-			return reconcile(result), true
+		if ok and not waiting then
+			return reconcile(saved), true
 		end
-		warn(("[Data] load failed (%d/3) for %d: %s"):format(attempt, userId, tostring(result)))
-		if RunService:IsStudio() then
-			-- usually "API services not enabled": don't stall the join retrying
-			warn("[Data] Studio: playing with a fresh profile (turn on API services in Game Settings to test saving)")
-			break
+		if not ok then
+			warn(("[Data] load failed (%d/%d) for %d: %s"):format(attempt, LOCK_TRIES, userId, tostring(err)))
+			if RunService:IsStudio() then
+				-- usually "API services not enabled": don't stall the join retrying
+				warn("[Data] Studio: playing with a fresh profile (turn on API services in Game Settings to test saving)")
+				break
+			end
 		end
-		task.wait(attempt)
+		task.wait(3)
 	end
 	return Data.default(), false
 end
 
-function Data.save(userId: number, profile: Profile): boolean
+-- release = true when the player is leaving (frees the lock for the next server)
+function Data.save(userId: number, profile: Profile, release: boolean?): boolean
 	profile.lastSeen = os.time()
 	if not store then
 		return false
 	end
 	for attempt = 1, 3 do
+		local stolen = false
 		local ok, err = pcall(function()
-			(store :: DataStore):UpdateAsync("p_" .. userId, function()
-				return profile
+			(store :: DataStore):UpdateAsync(key(userId), function(old)
+				if lockedByOther(old) then
+					stolen = true
+					return nil -- another server owns this player now: never overwrite it
+				end
+				local out = table.clone(profile) :: any
+				out._lock = if release then nil else { job = game.JobId, t = os.time() }
+				return out
 			end)
 		end)
 		if ok then
+			if stolen then
+				warn(("[Data] %d is playing on another server: this server's save was skipped"):format(userId))
+				return false
+			end
 			return true
 		end
 		warn(("[Data] save failed (%d/3) for %d: %s"):format(attempt, userId, tostring(err)))

@@ -1082,7 +1082,7 @@ function Game.leave(player: Player)
 		end
 	end
 	if s.canSave then
-		Data.save(player.UserId, s.profile)
+		Data.save(player.UserId, s.profile, true)
 	end
 	for _, other in Game.sessions do
 		task.spawn(Game.updateFriendBoost, other)
@@ -1270,7 +1270,7 @@ function Game.start()
 			s.profile.coins += s.pending + s.offline
 			s.pending, s.offline = 0, 0
 			if s.canSave then
-				Data.save(player.UserId, s.profile)
+				Data.save(player.UserId, s.profile, true)
 			end
 		end
 	end)
