@@ -371,8 +371,9 @@ local landed: { [Model]: boolean } = {}
 local function animateTagged(dt: number)
 	local t = os.clock()
 	local now = Workspace:GetServerTimeNow()
+	local cam = Workspace.CurrentCamera.CFrame.Position
 	for _, m in CollectionService:GetTagged("Bubble") do
-		if m:IsA("Model") and m.PrimaryPart then
+		if m:IsA("Model") and m.PrimaryPart and (m.PrimaryPart.Position - cam).Magnitude < 260 then -- (far ones can sit still)
 			local base = m:GetAttribute("BaseCF") :: CFrame?
 			if not base then
 				base = m:GetPivot()

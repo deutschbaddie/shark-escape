@@ -132,19 +132,27 @@ end
 ----------------------------------------------------------------- tank swimming
 -- each tank has an invisible "TankInterior" part; its Slots folder holds the
 -- active creatures, which wander inside the interior box facing where they go
+-- (the plot list is cached and refreshed every couple of seconds; tanks far
+-- from the camera don't swim)
+local plotCache: { Instance } = {}
+local plotCacheAt = -1e9
 local function swimTanks(t: number)
-	for _, plot in (function()
-		local all = {}
+	if os.clock() - plotCacheAt > 2 then
+		plotCacheAt = os.clock()
+		table.clear(plotCache)
 		for _, map in Layout.worldFolders() do
 			for _, p in map:GetChildren() do
-				table.insert(all, p)
+				if p:FindFirstChild("TankInterior") then
+					table.insert(plotCache, p)
+				end
 			end
 		end
-		return all
-	end)() do
+	end
+	local cam = Workspace.CurrentCamera.CFrame.Position
+	for _, plot in plotCache do
 		local slots = plot:FindFirstChild("Slots")
 		local box = plot:FindFirstChild("TankInterior") :: BasePart?
-		if slots and box then
+		if slots and box and (box.Position - cam).Magnitude < 200 then
 			local half = box.Size / 2
 			for i, m in slots:GetChildren() do
 				if m:IsA("Model") and not m:GetAttribute("Dead") then -- dead ones lie still on the floor

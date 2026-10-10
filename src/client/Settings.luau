@@ -1,4 +1,4 @@
--- The Settings panel (the small gear next to Friend Boost on the HUD):
+-- The Settings panel (the gear beside the shark timer on the HUD):
 --   Slow Mode   caps your speed so the water is easier to steer (server action)
 --   Music       the Music sound group on / off
 --   Sounds      effects, UI clicks and ambience on / off

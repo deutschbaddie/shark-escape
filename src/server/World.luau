@@ -113,13 +113,14 @@ local function checkerWall(parent: Instance, a: Vector3, b: Vector3, bottom: num
 	local alongX = math.abs(dir.X) > 0.5
 	local rows = math.max(1, math.floor((top - bottom) / 8 + 0.5))
 	local rowH = (top - bottom) / rows
-	local n = math.max(1, math.floor(len / 12 + 0.5))
+	local n = math.max(1, math.floor(len / 20 + 0.5)) -- (20-stud checks: the walls run the whole sea, keep the part count sane)
 	local step = len / n
 	for i = 0, n - 1 do
 		local mid = a + dir * (step * (i + 0.5))
 		for r = 0, rows - 1 do
 			local size = alongX and Vector3.new(step, rowH, WALL_T) or Vector3.new(WALL_T, rowH, step)
-			local p = Build.part(parent, size, CFrame.new(mid.X, bottom + rowH * (r + 0.5), mid.Z), ((i + r) % 2 == 0) and WALL_A or WALL_B)
+			local p = Build.part(parent, size, CFrame.new(mid.X, bottom + rowH * (r + 0.5), mid.Z), ((i + r) % 2 == 0) and WALL_A or WALL_B,
+				{ CastShadow = false })
 			Build.studs(p, inner)
 		end
 	end
@@ -551,7 +552,8 @@ local function treeRow(parent: Instance, rng: Random, side: number, x: number, y
 		else
 			Props.blockTree(parent, pos, scale)
 		end
-		z += step + rng:NextNumber(-5, 5)
+		-- (sparser past Deep Blue: the sea is long, few riders get there)
+		z += step * (idx >= 5 and 1.8 or 1) + rng:NextNumber(-5, 5)
 	end
 end
 

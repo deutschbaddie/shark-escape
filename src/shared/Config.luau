@@ -120,10 +120,9 @@ local CANDY_ZONES = {
 } :: { Zone }
 
 ----------------------------------------------------------------- worlds
--- Both worlds live in this one place: World 2 is a full copy of the beach +
--- ocean, WORLD_GAP studs off to the side (+X), far enough that neither can
--- see the other. Everything along the lane (zones, the shore ramp) works in
--- Z as before; X picks the world. The plaza portal swaps you between them.
+-- One world now (the old Candy Bay world became the last two biomes of the
+-- sea). The world table stays so old saves keep loading; WORLD_GAP is only
+-- used to place the leftover world-2 plots off to the side.
 export type World = {
 	id: number, name: string, zones: { Zone }, gainMult: number, rebirthSteps: { number },
 	unlockRebirths: number, color: Color3, ox: number, oceanEnd: number,
@@ -421,7 +420,7 @@ Config.Species = {
 		Legendary = { name = "Poseidon Whale", kind = "whale", icon = "", c1 = RGB(40, 170, 160), c2 = RGB(255, 225, 120), horn = true, glow = true, size = 1.25 },
 		Mythic = { name = "Golden Hippocampus", kind = "hippo", icon = "", c1 = RGB(50, 185, 175), c2 = RGB(255, 215, 90), horn = true, glow = true },
 	},
-	-- Candy Bay (World 2)
+	-- the candy biomes at the far end of the sea
 	Soda = {
 		Common = { name = "Fizz Fish", kind = "fish", icon = "", c1 = RGB(120, 220, 255), c2 = RGB(255, 255, 255), c3 = RGB(255, 90, 160) },
 		Uncommon = { name = "Taffy Crab", kind = "crab", icon = "", c1 = RGB(255, 150, 200), c2 = RGB(255, 235, 245), shell = true },

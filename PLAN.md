@@ -31,18 +31,24 @@ serves that, in this order. `[x]` = built (not yet playtested), `[ ]` = to do.
 - [x] Grabbing makes noise: the zone's shark may come for you (grudge)
 - [x] Close call reward (+speed)
 - [x] Near-miss slow-mo feel (blur, desaturate, FOV punch, heartbeat)
-- [x] Legendary reel: grabbing a Legendary starts a timing minigame while
-      its shark charges; miss and it slips away
+- [x] Prize aggro: grabbing a Legendary or Mythic sets its shark on you
+      (replaced the Legendary reel minigame: too hard on phones)
+- [x] Stealing too deep: every zone shark on the way home comes for you
 - [x] Day / night (night = everyone hunted, luckier; dawn resets)
 
 ## Phase 2: make players matter to each other (1-2 weeks)
-- [x] Chum (cut in update 0: bonk does that job)
-- [x] Raids: 35 s at their tank while they're at sea; they rush home to stop it
+- [x] Chum / Send Shark (cut in update 0: bonk does that job)
+- [x] Raids: time at their tank while they're at sea; they rush home to stop it
+- [x] Raid spin: a strip of their creatures rolls to the one you take, each
+      card showing its chance (Mythic possible, rarely)
+- [x] Raid loot walk: carry it home in forced slow mode; anyone can bonk it
+      loose on the way
 - [x] Obvious raid safety: a shield shimmers over your tank while you're on
       the beach; signs say "Owner is home: safe from raids" / "Can be raided
       while you're out"; one heads-up when you leave / come home
 - [x] Tank Lock (Robux product): no raids for 30 min (needs a product id)
-- [x] Server-wide announcements for Legendary / Huge catches
+- [x] Server-wide announcements for Mythic catches only (Legendary ones
+      were too much chatter)
 - [x] A light beam over the catcher's dock for a minute
 
 ## Phase 3: reasons to come back at set times (ongoing)
@@ -57,13 +63,13 @@ serves that, in this order. `[x]` = built (not yet playtested), `[ ]` = to do.
 
 ## Phase 4: added
 - [x] Daily quests (3 a day from a pool of 7: Rares, bring home, close calls,
-      dodges, rings, night catches, chum; cash each, Luck Potion for all 3)
+      dodges, rings, night catches; cash each, Luck Potion for all 3)
 - [x] Speed feel past the cap (wider FOV, stronger lines, wind)
 - [x] Onboarding teaches night + grudges in one line each (no new steps)
-- [x] Analytics: log chum, raids (start / defended / stolen), close calls,
-      Megalodon Hour joins, Legendary reel success rate
-- [ ] Rename + thumbnail around the shark, chum and raids (owner)
-- [ ] 10-15 short clips: close calls, chum betrayals, raids (owner)
+- [x] Analytics: raids (start / defended / stolen / loot home / lost),
+      close calls, Mythic catches, Megalodon Hour joins
+- [ ] Rename + thumbnail around the shark and raids (owner)
+- [ ] 10-15 short clips: close calls, bonks, raids (owner)
 - [ ] Small ad test, read the funnels, fix the biggest drop, then scale (owner)
 
 ## Phase 5: fun pass (the hook)
@@ -83,7 +89,7 @@ Make it back to the sand for a big payout.**
       always escape, the Rubber Duck in ~90 s
 - [x] Fewer buttons at the start (3), the rest appear when they matter
 - [x] Cut / merge: no Lucky Storm, no ring chains, chests wash up at dawn,
-      raids after the first rebirth
+      raids after the first evolve
 - [x] Zone unlock is a physical moment (buoys light up, water shifts)
 - [x] Playtest checklist (below)
 
@@ -99,6 +105,14 @@ Make it back to the sand for a big payout.**
 - [ ] Trading (once sessions hold 20+ minutes)
 - [ ] Playtest the bonk with real kids: funny or mean? Tune immune / cooldown
 
+## Update 0 (one sea)
+- [x] Evolve: one sea of 15 biomes; the first evolve at 3K speed, each
+      evolve opens the next biome past Deep Blue (Candy Bay merged in)
+- [x] Mythic rarity: 15 creatures with their own bodies and auras
+- [x] Candy rides: 5 late-game rides as the cash sink from hour 3
+- [x] Megalodon boss in zone 4 with a real aimed charge
+- [x] System audit: purchases, saving, sharks, bonk, rewards, UI, perf
+
 ### Playtest checklist (3-5 people, phones, 15 minutes, watch, don't help)
 - [ ] First grab within 15 s of spawning?
 - [ ] Did anyone yell or laugh in the first 2 minutes (the practice chase,
@@ -107,7 +121,7 @@ Make it back to the sand for a big payout.**
 - [ ] Ask after 5 min: "what's the game?" Can they say it in one sentence
       (grab, carry, don't get eaten)?
 - [ ] Do they go for a second creature before heading home (the haul)?
-      Do they look at the hunger bar before grabbing?
+      Do they notice the fins gathering before grabbing more?
 - [ ] Did a spilled haul cause a scramble?
 - [ ] Did anyone say "one more trip"?
 - [ ] Anything they tapped that did nothing, or asked "what's this"? Write
@@ -116,8 +130,8 @@ Make it back to the sand for a big payout.**
       onboarding funnel. Fix the biggest drop first.
 
 ## Needs from the owner
-- Product id for **Tank Lock** (and MoneyPack1, still missing), game pass id for the **Golden Noodle**
-- Zone icons for the 3 new Shark Beach zones and the 6 Candy Bay zones
+- Product id for the **Small Cash Pack** (MoneyPack1): the id sent was the Cash Pack's
+- Zone icons for the deep and candy biomes
 - Test the boss with `/boss` (and the whole event with `/event`) on a live server
-- Sound ids: thunder, portal whoosh, chest open, boss roar, reel click
+- Sound ids: thunder, chest open, boss roar
 - Badge ids if you want badges

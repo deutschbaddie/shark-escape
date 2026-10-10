@@ -47,7 +47,6 @@ export type Session = {
 	carryWarned: boolean?,
 	rings: { [number]: number }?, -- boost ring cooldowns
 	trail: { { p: Vector3, t: number } }?, -- recent path (fastTick)
-	portalAt: number?, -- last portal use
 	gifts: number?, -- playtime gifts claimed this session
 	bag: { Data.Creature }?, -- extra catches in your net (s.carrying is the one in your hands)
 	stolen: boolean?, -- carrying a catch from water too deep for you: every shark you pass wants it
@@ -257,16 +256,6 @@ end
 Game.short = formatShort
 
 ----------------------------------------------------------------- state sync
--- worlds this player may enter (World n: unlockRebirths in the world before)
-function Game.unlockedWorlds(s: Session): { [string]: boolean }
-	local out = {}
-	for i, w in Config.Worlds do
-		local prev = Config.Worlds[i - 1]
-		out[tostring(i)] = prev == nil or Data.worldRebirths(s.profile, prev.id) >= w.unlockRebirths
-	end
-	return out
-end
-
 function Game.push(s: Session)
 	local p = s.profile
 	-- everyone's client colors your wake from these (rebirth tier / VIP gold)
@@ -304,7 +293,6 @@ function Game.push(s: Session)
 		rebirths = p.rebirths,
 		wr = p.wr,
 		world = p.world,
-		unlocked = Game.unlockedWorlds(s),
 		tut = p.tut,
 		shields = p.shields,
 		carrying = s.carrying,
@@ -1211,41 +1199,6 @@ local function claimPlot(s: Session)
 	end
 end
 
--- move a player to world w right here (the plaza portal): bank the pad,
--- drop what you carry, swap the world's progress in, dock + respawn there
-function Game.switchWorld(s: Session, w: number)
-	local p = s.profile
-	if p.world == w or not Config.Worlds[w] then
-		return
-	end
-	p.coins += s.pending
-	s.pending = 0
-	Game.dropAll(s)
-	local index = s.plot and s.plot.index
-	if s.plot then
-		emptyPlot(s.plot)
-	end
-	Data.enterWorld(p, w)
-	s.plot = index and World.WorldPlots[w][index] or nil
-	dressPlot(s)
-	Game.attachRide(s)
-	Game.refreshTank(s)
-	local hrp = root(s.player)
-	if hrp and s.plot then
-		local to = Layout.spawnCFrame(s.plot.cf)
-		-- (with streaming on, load the far side before landing there)
-		pcall(s.player.RequestStreamAroundAsync, s.player, to.Position, 6)
-		hrp.Parent:PivotTo(to)
-		hrp.AssemblyLinearVelocity = Vector3.zero
-	end
-	s.dirty = true
-	Game.push(s)
-	Game.track(s.player, "world", { world = w })
-	if Game.onWorld then
-		Game.onWorld(s)
-	end
-end
-
 local function onCharacter(s: Session, char: Model)
 	local hum = char:WaitForChild("Humanoid", 10) :: Humanoid?
 	local hrp = char:WaitForChild("HumanoidRootPart", 10) :: BasePart?
@@ -1557,6 +1510,7 @@ local function fastTick()
 		-- raid loot: done once it's out of your hands and net
 		local loot = s.raidLoot
 		if loot and s.carrying ~= loot and not (s.bag and table.find(s.bag, loot)) then
+			Game.track(s.player, "raidLoot", { home = table.find(s.profile.creatures, loot) ~= nil, r = loot.r })
 			Game.setRaidLoot(s, nil)
 		end
 		-- a carried creature doesn't wait forever: bring it home in time
@@ -1634,7 +1588,6 @@ function Game.start()
 end
 
 Game.onJoin = nil :: ((Session) -> ())?
-Game.onWorld = nil :: ((Session) -> ())? -- after a portal trip
 Game.sharkAggro = nil :: ((Session, number?, string?, string?) -> ())? -- Sharks.aggro
 Game.sharkOnGrab = nil :: ((Session, string) -> ())? -- Sharks.onGrab
 

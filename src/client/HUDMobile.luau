@@ -311,7 +311,7 @@ local function buildRight()
 	timerLabel = UI.outlined(timerPill, "", { Size = UDim2.new(1, -108, 0, 34), Position = UDim2.new(0, 98, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5),
 		TextXAlignment = Enum.TextXAlignment.Left, Font = UI.NUMFONT })
 
-	-- settings: a small gear tucked beside the shark widget
+	-- settings: the gear beside the shark widget
 	menuButtons.Settings = UI.iconButton(gui, "Settings", "", T.navyLight, function()
 		call(HUD.onSettings)
 	end, { Name = "Settings", Size = UDim2.fromOffset(50, 50), Position = UDim2.new(1, -(SP[2] + 6 + TIMER_W + SP[2]), 0, SP[2] + 6), AnchorPoint = Vector2.new(1, 0) })

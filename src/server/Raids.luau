@@ -266,7 +266,7 @@ local function finish(r: Raid)
 	local name = Config.fullName(c.z, c.r, c.m, c.s)
 	Game.notify(s.player, "raidWon", { name = name, from = v.player.DisplayName, spin = spin, win = winAt })
 	Game.notify(v.player, "raidLost", { name = name, by = s.player.DisplayName, safe = Config.Raid.victimCooldown, spin = spin, win = winAt })
-	Game.track(s.player, "raid", { stage = "won" })
+	Game.track(s.player, "raid", { stage = "won", r = c.r }) -- (the spin's rarity)
 end
 
 local function tick()

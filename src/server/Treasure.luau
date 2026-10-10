@@ -152,9 +152,6 @@ function Treasure.start()
 			spawn(w)
 		end
 	end
-	Game.onWorld = function(s)
-		Treasure.tell(s.player)
-	end
 	local acc = 0
 	RunService.Heartbeat:Connect(function(dt)
 		acc += dt

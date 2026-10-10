@@ -26,7 +26,7 @@ Rojo project. Untested in Studio so far.
   Until an id is set, that icon shows an emoji.
 - **Store art:** `assets/store/GameIcon.png` (512x512) and `Thumbnail.png` (1920x1080) go in
   Creator Hub > your experience > Places / Thumbnails.
-- Regenerate art with `tools/icons/render.sh`. Preview all 30 creatures with
+- Regenerate art with `tools/icons/render.sh`. Preview all 90 creatures with
   `tools/preview/dump.py <path-to-luau>` then `tools/preview/render.py`.
 
 ## Offline checks (no Studio needed, just the Luau CLI)
@@ -66,8 +66,8 @@ Rojo project. Untested in Studio so far.
 
 ## Features
 - Onboarding (`Onboarding.luau`): grab a bubble -> dock -> collect pad -> practice shark -> first ride.
-- Creature Index (`Index.luau`): 6 zones x 5 rarities, ??? silhouettes, one-time rewards, CLAIM ALL.
-- Welcome Back (`Hub.luau`): the tank earns 50% while you're offline (max 6h), claim on join.
+- Creature Index (`Index.luau`): 15 biomes x 6 rarities (Common to Mythic), ??? silhouettes, one-time rewards, CLAIM ALL.
+- Welcome Back (`Hub.luau`): the tank earns 7% while you're offline (max 4 h), claim on join.
 - Shark timer, zone title pop-ups, distance meter, offer banner (only once the shop unlocks).
 
 ## Robux store

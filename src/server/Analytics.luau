@@ -39,6 +39,7 @@ end
 -- tank -> haul lesson -> Rubber Duck)
 local ONBOARDING = { "Joined", "In the water", "First catch", "In the tank", "Haul lesson", "First ride", "Coral Reef" }
 local newPlayers: { [Player]: number } = {} -- last onboarding step logged
+local isNew: { [Player]: boolean } = {} -- (SessionMinutes: new all session, even after onboarding)
 
 local function onboard(player: Player, step: number)
 	local last = newPlayers[player]
@@ -99,13 +100,15 @@ local handlers: { [string]: (Player, { [string]: any }) -> () } = {}
 handlers._join = function(player, d)
 	if d.new then
 		newPlayers[player] = 0
+		isNew[player] = true
 		onboard(player, 1)
 	end
 	runStart(player)
 end
 handlers._leave = function(player, d)
-	call("LogCustomEvent", player, "SessionMinutes", math.floor(d.minutes * 10) / 10, { [F1] = newPlayers[player] and "new" or "returning" })
+	call("LogCustomEvent", player, "SessionMinutes", math.floor(d.minutes * 10) / 10, { [F1] = isNew[player] and "new" or "returning" })
 	newPlayers[player] = nil
+	isNew[player] = nil
 end
 handlers._water = function(player, d)
 	if d.wet then
@@ -117,8 +120,11 @@ handlers._tut = function(player, d)
 		onboard(player, 5) -- brought a haul of 2 home (or skipped after 2 min)
 	end
 end
-handlers.grab = function(player)
+handlers.grab = function(player, d)
 	onboard(player, 3)
+	if d.r == "Mythic" and not d.gift then
+		call("LogCustomEvent", player, "MythicCatch", 1, { [F1] = tostring(d.z) })
+	end
 end
 handlers.deposit = function(player)
 	onboard(player, 4)
@@ -149,6 +155,25 @@ handlers.rebirth = function(player, d)
 	if s then
 		runStart(player)
 	end
+end
+handlers.net = function(player, d)
+	coins(player, false, d.price or 0, T.Shop.Name, "Net")
+end
+handlers.noodle = function(player, d)
+	coins(player, false, d.price or 0, T.Shop.Name, "Noodle")
+end
+handlers.sold = function(player, d)
+	coins(player, true, d.coins or 0, T.Gameplay.Name, "Sell")
+end
+handlers.treasure = function(player, d)
+	if d.kind then
+		return -- (the chest's own notices; the payout is tracked once by Treasure)
+	end
+	coins(player, true, d.coins or 0, T.Gameplay.Name, "Treasure")
+end
+-- raid loot after the spin: did the raider walk it home, or get bonked?
+handlers.raidLoot = function(player, d)
+	call("LogCustomEvent", player, d.home and "RaidLootHome" or "RaidLootLost", 1, { [F1] = tostring(d.r) })
 end
 handlers.slot = function(player, d)
 	coins(player, false, d.price or 0, T.Shop.Name, "TankSlot")
@@ -198,7 +223,7 @@ end
 handlers.raid = function(player, d)
 	local name = ({ start = "RaidStart", won = "RaidStolen", defended = "RaidDefended" } :: any)[d.stage]
 	if name then
-		call("LogCustomEvent", player, name, 1)
+		call("LogCustomEvent", player, name, 1, d.r and { [F1] = tostring(d.r) } or nil)
 	end
 end
 handlers.quest = function(player, d)
