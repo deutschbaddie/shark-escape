@@ -130,7 +130,7 @@ local function spawnBubble(zone: Config.Zone, fixed: Fixed?): Bubble
 	prompt.Triggered:Connect(function(player)
 		tryGrab(player, entry)
 	end)
-	if (r == "Legendary" or r == "Mythic") and not fixed then
+	if r == "Mythic" and not fixed then -- (only a Mythic sighting is news for everyone)
 		Game.notifyAll("announce", { text = ("A %s %s appeared in %s"):format(r, Config.fullName(zone.id, r, m, size), zone.name), color = rarity.color,
 			news = true, big = r == "Mythic" })
 	end

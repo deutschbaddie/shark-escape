@@ -1,7 +1,6 @@
--- Server-wide news: someone caught a Legendary, a Huge one or a mutated
--- Epic. Everyone gets a line in chat (bragging rights); only a Mythic also
--- takes a spot on everyone's screen, so other players' news never crowds
--- out your own.
+-- Big catches: yours get a line in chat (and your own big moment on
+-- screen); other players' stay their business, except a Mythic, which is
+-- rare enough to tell everyone.
 
 local Players = game:GetService("Players")
 
@@ -21,10 +20,11 @@ function News.start()
 		local color = Config.rarity(data.r or "Legendary").color
 		local text = ("%s caught a %s!"):format(tostring(data.by), tostring(data.name))
 		local mine = data.userId == player.UserId
-		Notify.chat(mine and ("You caught a %s!"):format(tostring(data.name)) or text, color, data.r == "Mythic" and "MYTHIC" or "BIG CATCH", mine)
-		-- (the catcher gets their own big moment; everyone else just sees the
-		-- chat line, except for a Mythic: rare enough to share the screen)
-		if data.userId ~= player.UserId and data.r == "Mythic" then
+		if mine then
+			Notify.chat(("You caught a %s!"):format(tostring(data.name)), color, data.r == "Mythic" and "MYTHIC" or "BIG CATCH", true)
+		elseif data.r == "Mythic" then
+			-- other players' catches stay their business, except a Mythic
+			Notify.chat(text, color, "MYTHIC")
 			Notify.banner(text, { key = "news", priority = 2, time = 3.5, color = color })
 		end
 	end)

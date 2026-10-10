@@ -810,14 +810,8 @@ end
 
 handlers.announce = function(d)
 	if d.news then
-		if d.by == player.UserId then
-			return -- (your own evolve has its own line)
-		end
-		-- server-wide news goes to the chat log; only a Mythic sighting gets a toast
-		Notify.chat(d.text, d.color, d.big and "MYTHIC" or (d.evolved and "EVOLVED" or "NEWS"))
-		if not d.big then
-			return
-		end
+		-- server-wide news (only a Mythic sighting now): a chat line and a toast
+		Notify.chat(d.text, d.color, "MYTHIC")
 	end
 	Notify.toast(d.text, d.color or C.gold)
 end
