@@ -625,6 +625,7 @@ function Sharks.onGrab(s: Game.Session, rarityId: string)
 		return
 	end
 	local add = (cfg.fill[rarityId] or 15) * (zone.aggro or 1) * (phase == "hunt" and cfg.night or 1)
+		* (Game.mini == "frenzy" and 2 or 1) -- (Feeding Frenzy)
 	hunger[zone.id] = math.min(100, (hunger[zone.id] or 0) + add)
 end
 

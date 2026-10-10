@@ -1,5 +1,5 @@
--- The plaza boards (Layout.Boards): global top 10 for best speed, rebirths
--- and creatures caught, from OrderedDataStores. The players in this server
+-- The plaza boards (Layout.Boards): global top 10 for best speed, rebirths,
+-- creatures caught and Top Bonkers (loot knocked loose), from OrderedDataStores. The players in this server
 -- show right away, so a board is never empty while the global list loads
 -- (or when DataStores are off in Studio).
 
@@ -21,6 +21,9 @@ local BOARDS = {
 	end },
 	Caught = { store = "Caught_v1", value = function(p: any): number
 		return p.grabs
+	end },
+	Bonks = { store = "Bonks_v1", value = function(p: any): number
+		return p.bonks -- creatures knocked loose with the noodle
 	end },
 }
 

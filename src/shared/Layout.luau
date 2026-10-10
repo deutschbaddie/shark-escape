@@ -111,6 +111,8 @@ Layout.Boards = {
 	{ key = "Speed", title = "FASTEST", color = Color3.fromRGB(40, 160, 255), pos = Vector3.new(-130, Config.BEACH_TOP, -116) },
 	{ key = "Rebirths", title = "REBIRTHS", color = Color3.fromRGB(70, 210, 90), pos = Vector3.new(-109, Config.BEACH_TOP, -116) },
 	{ key = "Caught", title = "MOST CAUGHT", color = Color3.fromRGB(255, 150, 30), pos = Vector3.new(-88, Config.BEACH_TOP, -116) },
+	-- across the plaza, between the Index and Sell huts
+	{ key = "Bonks", title = "TOP BONKERS", color = Color3.fromRGB(255, 110, 200), pos = Vector3.new(86, Config.BEACH_TOP, -116) },
 }
 Layout.Board = Layout.Boards[2].pos -- the middle one (palms keep clear of the row)
 Layout.GroupChest = Vector3.new(36, Config.BEACH_TOP, -66) -- "Join Group / Like to Claim!"

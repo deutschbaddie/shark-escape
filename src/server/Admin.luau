@@ -2,6 +2,7 @@
 --   /reset   wipe your own progress back to a brand-new save
 --   /event   start a 15 min Megalodon Hour now
 --   /boss    the boss Megalodon surfaces in your world now
+--   /mini    the next server event (Golden Tide / Feeding Frenzy / Bubble Rain) now
 
 local Players = game:GetService("Players")
 local TextChatService = game:GetService("TextChatService")
@@ -34,6 +35,9 @@ local COMMANDS: { [string]: (Player) -> () } = {
 	end,
 	event = function()
 		Events.force(15) -- a 15 min Megalodon Hour now ("admin abuse")
+	end,
+	mini = function()
+		Events.forceMini(nil)
 	end,
 	boss = function(player)
 		local s = Game.sessions[player]

@@ -329,8 +329,14 @@ local function updateLines(dt: number)
 end
 
 ----------------------------------------------------------------- props
+-- Bubble Rain bubbles (attribute DropAt): fall in from high up, hit the
+-- water with a splash, bounce and settle into the usual bob
+local DROP_H, DROP_T = 70, 1.1
+local landed: { [Model]: boolean } = {}
+
 local function animateTagged(dt: number)
 	local t = os.clock()
+	local now = Workspace:GetServerTimeNow()
 	for _, m in CollectionService:GetTagged("Bubble") do
 		if m:IsA("Model") and m.PrimaryPart then
 			local base = m:GetAttribute("BaseCF") :: CFrame?
@@ -339,7 +345,25 @@ local function animateTagged(dt: number)
 				m:SetAttribute("BaseCF", base)
 			end
 			local seed = (base :: CFrame).Position.X
-			m:PivotTo((base :: CFrame) * CFrame.new(0, math.sin(t * 2 + seed) * 0.5, 0) * CFrame.Angles(0, t * 0.8 + seed, 0))
+			local y = math.sin(t * 2 + seed) * 0.5
+			local dropAt = m:GetAttribute("DropAt")
+			if typeof(dropAt) == "number" then
+				local k = (now - dropAt) / DROP_T
+				if k < 1 then
+					y += DROP_H * (1 - math.max(k, 0)) ^ 2 -- (accelerating down)
+				elseif not landed[m] then
+					landed[m] = true
+					local p = (base :: CFrame).Position
+					Fx.splash(Vector3.new(p.X, 0.5, p.Z), 1.1)
+					m.Destroying:Once(function()
+						landed[m] = nil
+					end)
+				else
+					local b = k - 1 -- (a little bounce after landing)
+					y += math.abs(math.sin(b * 9)) * 2.2 * math.exp(-b * 4)
+				end
+			end
+			m:PivotTo((base :: CFrame) * CFrame.new(0, y, 0) * CFrame.Angles(0, t * 0.8 + seed, 0))
 		end
 	end
 end

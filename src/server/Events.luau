@@ -65,8 +65,62 @@ local function bossDown(_world: number, winners: { [Player]: number })
 	end
 end
 
+-- the server events (Config.MiniEvents): one every 15 min, taking turns
+local miniIndex = 0
+local function runMini(def: any)
+	local cfg = Config.MiniEvents
+	Game.mini = def.id
+	Workspace:SetAttribute("MiniEvent", def.id)
+	Workspace:SetAttribute("MiniEnds", Workspace:GetServerTimeNow() + cfg.length)
+	Game.notifyAll("miniEvent", { id = def.id, length = cfg.length })
+	if def.id == "rain" then
+		for w in Config.Worlds do
+			Bubbles.rain(w, cfg.rain, cfg.length)
+		end
+	end
+	task.wait(cfg.length)
+	Game.mini = nil
+	Workspace:SetAttribute("MiniEvent", nil)
+	Workspace:SetAttribute("MiniEnds", nil)
+	Game.notifyAll("miniEventEnd", { id = def.id })
+end
+
+function Events.forceMini(id: string?)
+	for i, def in Config.MiniEvents.list do
+		if def.id == id or (id == nil and i == miniIndex % #Config.MiniEvents.list + 1) then
+			if not Game.mini then
+				if id == nil then
+					miniIndex += 1 -- (the rotation moves on)
+				end
+				task.spawn(runMini, def)
+			end
+			return
+		end
+	end
+end
+
+local function miniLoop()
+	local cfg = Config.MiniEvents
+	local wait = cfg.first
+	while true do
+		local nextDef = cfg.list[miniIndex % #cfg.list + 1]
+		Workspace:SetAttribute("MiniNext", Workspace:GetServerTimeNow() + wait)
+		Workspace:SetAttribute("MiniNextId", nextDef.id)
+		task.wait(wait)
+		if Game.event or Game.mini then
+			wait = 60 -- (Megalodon Hour, or an admin's /mini, is on: try again after it)
+			continue
+		end
+		miniIndex += 1
+		Workspace:SetAttribute("MiniNext", nil)
+		runMini(nextDef)
+		wait = cfg.every - cfg.length
+	end
+end
+
 function Events.start()
 	Sharks.onBossDown = bossDown
+	task.spawn(miniLoop)
 	task.spawn(function()
 		local was = false
 		while true do

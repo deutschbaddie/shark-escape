@@ -54,6 +54,7 @@ export type Session = {
 Game.sessions = {} :: { [Player]: Session }
 Game.frenzy = false -- set by Sharks while a hunt is on
 Game.event = false -- set by Events during Megalodon Hour
+Game.mini = nil :: string? -- the server event on now (Events: "golden" / "frenzy" / "rain")
 Game.questList = nil :: ((Session) -> { any })? -- set by Quests
 Game.onDawn = nil :: (() -> ())? -- set by Treasure (Sharks calls it every dawn)
 -- set by Sharks: has this player used up their shelter on this island?
@@ -506,7 +507,7 @@ function Game.payHaul(s: Session, haul: { Data.Creature })
 	for _, c in haul do
 		sum += baseValue(c)
 	end
-	local mult = Config.haulMult(#haul)
+	local mult = Config.haulMult(#haul) * (Game.mini == "frenzy" and 2 or 1) -- (Feeding Frenzy: x2)
 	local coins = math.max(1, math.floor(sum * Game.coinMult(s) * Config.Haul.seconds * mult))
 	s.profile.coins += coins
 	s.dirty = true

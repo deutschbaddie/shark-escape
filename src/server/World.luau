@@ -282,6 +282,9 @@ local function buildPlaza()
 	for i = 0, 6 do
 		local x = -W / 2 + 14 + i * (W - 28) / 6
 		local clear = math.abs(x) > 22 and math.abs(x - Layout.Board.X) > 34
+		for _, b in Layout.Boards do
+			clear = clear and math.abs(x - b.pos.X) > 12
+		end
 		for _, h in Layout.Huts do
 			clear = clear and math.abs(x - h.pos.X) > 14
 		end

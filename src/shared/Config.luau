@@ -685,6 +685,22 @@ function Config.netCap(tier: number?): number
 	return n.cap
 end
 
+-- Server events (server Events.luau, client Countdown.luau): every `every`
+-- seconds one of these runs for `length` seconds, taking turns. The HUD
+-- counts down to the next one. (Not during Megalodon Hour.)
+Config.MiniEvents = {
+	first = 360, -- the first one this long after the server starts
+	every = 900,
+	length = 120,
+	goldChance = 0.35, -- Golden Tide: chance any bubble is Gold
+	rain = 14, -- Bubble Rain: extra bubbles per world
+	list = {
+		{ id = "golden", name = "Golden Tide", desc = "Any bubble can be Gold!", color = Color3.fromRGB(255, 200, 40) },
+		{ id = "frenzy", name = "Feeding Frenzy", desc = "Hauls pay x2. Sharks get hungry fast!", color = Color3.fromRGB(255, 80, 90) },
+		{ id = "rain", name = "Bubble Rain", desc = "Bubbles near the shore!", color = Color3.fromRGB(110, 210, 255) },
+	},
+}
+
 -- Noodle Bonk (server Bonk.luau, client Bonk.luau): one button, two uses.
 -- Bonk a rider and the last creature they carry pops out as a bubble anyone
 -- can grab. Bonk a shark that's coming for you and it's dazed for a moment.

@@ -18,6 +18,7 @@ local Bubbles = {}
 
 type Bubble = { model: Model, pos: Vector3, r: string, m: string?, s: number, zone: Config.Zone, taken: boolean?,
 	reservedBy: Player?, reservedUntil: number?, spilled: boolean?,
+	extra: boolean?, -- on top of the zone's quota (spills, Bubble Rain): never respawned
 	z: string } -- the creature's own zone (a spilled one keeps where it was caught)
 
 local live: { Bubble } = {}
@@ -50,6 +51,9 @@ function Bubbles.rollRarity(): string
 end
 
 function Bubbles.rollMutation(): string?
+	if Game.mini == "golden" and rng:NextNumber() < Config.MiniEvents.goldChance then
+		return "Gold" -- (Golden Tide)
+	end
 	local mult = 1
 	for _, m in Config.Mutations do
 		if rng:NextNumber() < m.chance * mult then
@@ -80,7 +84,9 @@ local function spot(zone: Config.Zone): Vector3
 	return Vector3.new(Config.originX(zone.world), 3, zone.zStart + zone.length / 2)
 end
 
-type Fixed = { r: string, z: string?, m: string?, s: number?, pos: Vector3 }
+-- a fixed bubble: a spilled haul (exactly what it was), or Bubble Rain
+-- (`rain`: rolled like any other, dropped in from the sky, gone after `life`)
+type Fixed = { r: string, z: string?, m: string?, s: number?, pos: Vector3, rain: boolean?, life: number? }
 
 -- a bubble in this zone: rolled, or a fixed one (a bitten player's spilled haul)
 local function spawnBubble(zone: Config.Zone, fixed: Fixed?): Bubble
@@ -110,7 +116,7 @@ local function spawnBubble(zone: Config.Zone, fixed: Fixed?): Bubble
 	model:SetAttribute("Zone", zone.id)
 	model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
 	CollectionService:AddTag(model, "Bubble")
-	local entry: Bubble = { model = model, pos = pos, r = r, m = m, s = size, zone = zone, spilled = fixed ~= nil, z = zid }
+	local entry: Bubble = { model = model, pos = pos, r = r, m = m, s = size, zone = zone, spilled = fixed ~= nil and not fixed.rain, extra = fixed ~= nil, z = zid }
 	table.insert(live, entry)
 	nextBubbleId += 1
 	model:SetAttribute("BubbleId", nextBubbleId)
@@ -135,9 +141,12 @@ local function spawnBubble(zone: Config.Zone, fixed: Fixed?): Bubble
 	if r == "Legendary" and not fixed then
 		Game.notifyAll("announce", { text = ("A Legendary %s appeared in %s"):format(Config.fullName(zone.id, r, m, size), zone.name), color = rarity.color })
 	end
+	if fixed and fixed.rain then
+		model:SetAttribute("DropAt", Workspace:GetServerTimeNow()) -- (clients drop it in from the sky)
+	end
 	if fixed then
-		-- spilled: up for grabs a while, then it sinks
-		task.delay(Config.SPILL_TIME, function()
+		-- spilled / rained: up for grabs a while, then it sinks
+		task.delay(fixed.life or Config.SPILL_TIME, function()
 			local i = table.find(live, entry)
 			if i and not entry.taken then
 				entry.taken = true
@@ -167,6 +176,30 @@ function Bubbles.spill(pos: Vector3, list: { any }, by: Player?, why: string?): 
 	return made
 end
 
+-- Bubble Rain (Config.MiniEvents): `n` extra bubbles fall near the shore of
+-- world w (its first two zones), rolled like any other, gone after `life`
+function Bubbles.rain(w: number, n: number, life: number)
+	local zones = Config.worldZones(w)
+	for i = 1, n do
+		local zone = zones[i % 2 == 0 and math.min(2, #zones) or 1]
+		local ox = Config.originX(w)
+		local pos
+		for _ = 1, 12 do
+			local p = Vector3.new(ox + rng:NextNumber(-Config.LANE_WIDTH / 2 + 14, Config.LANE_WIDTH / 2 - 14), 3,
+				rng:NextNumber(zone.zStart + 12, math.min(zone.zEnd - 12, zone.zStart + 160)))
+			if not Layout.islandAt(p, 5) then
+				pos = p
+				break
+			end
+		end
+		if pos then
+			task.delay(i * 0.12, function()
+				spawnBubble(zone, { r = Bubbles.rollRarity(), m = Bubbles.rollMutation(), pos = pos, rain = true, life = life })
+			end)
+		end
+	end
+end
+
 -- take a spilled bubble back out of the water (it was rescued with Robux)
 function Bubbles.unspill(entry: any)
 	local i = entry and table.find(live, entry)
@@ -180,7 +213,7 @@ end
 local function count(zone: Config.Zone): number
 	local n = 0
 	for _, b in live do
-		if b.zone == zone and not b.spilled then -- (spills are extra: they don't fill the zone's quota)
+		if b.zone == zone and not b.extra then -- (spills / rain are extra: they don't fill the zone's quota)
 			n += 1
 		end
 	end
