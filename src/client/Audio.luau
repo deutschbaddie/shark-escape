@@ -320,7 +320,7 @@ function Audio.start()
 		local now = os.clock()
 		updateRides(now)
 
-		-- shore waves swell with the foam line (Water.luau pulses it on sin(t * 1.6))
+		-- shore waves swell and ebb
 		local swell = 0.5 + 0.5 * math.sin(now * 1.6)
 		for _, e in shore do
 			Sounds.setVolume(e.s, 0.5 * (0.55 + 0.45 * swell))

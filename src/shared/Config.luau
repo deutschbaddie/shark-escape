@@ -1318,8 +1318,8 @@ Config.SoundSlots = {
 	rideDolphin = { file = F.swim, loop = { 2.782, 8.443 }, pitch = 1.05, gain = 0.72, every = { "dolphinCall", 4, 8, 0.45 } },
 	rideRocket = { file = F.rocket, gain = 2.9 }, -- already a seamless loop
 	-- ambience
-	ambWaves = { file = F.waves, gain = 0.67 }, -- open-sea bed (a seamless loop)
-	ambShore = { file = F.waves, loop = { 25.95, 36.203 }, pitch = 1.08, eq = { -8, 0, 2 }, gain = 0.79 }, -- small waves on the sand
+	ambWaves = { file = F.waves, gain = 0.2 }, -- open-sea bed (a seamless loop; quiet: it's always on)
+	ambShore = { file = F.waves, loop = { 25.95, 36.203 }, pitch = 1.08, eq = { -8, 0, 2 }, gain = 0.22 }, -- small waves on the sand (many emitters overlap: keep low)
 	ambGulls = { file = F.gulls, loop = { 0.036, 29.93 }, gain = 25 }, -- a very quiet recording
 	ambTank = { file = F.deep, loop = { 0, 2.4 }, pitch = 0.7, eq = { 0, 0, -8 }, gain = 0.26 }, -- a bloop every few seconds
 } :: { [string]: SoundSlot }

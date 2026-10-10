@@ -144,7 +144,26 @@ local function tile(parent: Instance, day: number, state: string, size: UDim2, p
 		hit.Activated:Connect(function()
 			State.action("claimDaily")
 		end)
-		UI.pulse(f)
+		-- it glows in place (the edge brightens and the icon bobs inside the
+		-- tile; the tile itself never grows over its neighbours)
+		local edge = f:FindFirstChild("Accent") :: UIStroke?
+		local icScale = Instance.new("UIScale")
+		icScale.Parent = ic
+		task.spawn(function()
+			local info = TweenInfo.new(0.6, Enum.EasingStyle.Sine)
+			while f.Parent do
+				if edge then
+					TweenService:Create(edge, info, { Color = UI.light(T.green, 0.45) }):Play()
+				end
+				TweenService:Create(icScale, info, { Scale = 1.12 }):Play()
+				task.wait(0.6)
+				if edge then
+					TweenService:Create(edge, info, { Color = T.green }):Play()
+				end
+				TweenService:Create(icScale, info, { Scale = 1 }):Play()
+				task.wait(0.6)
+			end
+		end)
 	end
 end
 
