@@ -17,11 +17,11 @@ then replace the guesses with real analytics after launch.
 import json, math, random, statistics, sys
 
 ZONES = [  # id, gate, length, value, shark aggro
-    ("Lagoon", 0, 260, 1, 0.85), ("Coral Reef", 100, 400, 5, 1.3), ("Kelp Forest", 500, 560, 25, 1.25),
+    ("Lagoon", 0, 260, 1, 0.85), ("Coral Reef", 100, 400, 5, 1.3), ("Kelp Forest", 350, 560, 25, 1.25),
     ("Shipwreck Bay", 1000, 720, 120, 1), ("Deep Blue", 5000, 1000, 600, 1), ("The Abyss", 25000, 1400, 3000, 1),
     ("Frozen Sea", 60000, 1500, 15000, 1.1), ("Volcano Vents", 150000, 1600, 75000, 1.15), ("Lost City", 350000, 1800, 375000, 1.2),
 ]
-RIDES = [(0, 1), (30, 2), (500, 3), (2500, 4), (10000, 5), (40000, 7), (160000, 9), (600000, 12),
+RIDES = [(0, 1), (30, 2), (300, 3), (2500, 4), (10000, 5), (40000, 7), (160000, 9), (600000, 12),
          (2400000, 16), (9000000, 22), (70000000, 30), (200000000, 40),
          (900000000, 55), (4000000000, 75), (18000000000, 100)]
 RIDE_NAMES = ["Pool Noodle", "Rubber Duck", "Inner Tube", "Boogie Board", "Surfboard", "Bathtub",

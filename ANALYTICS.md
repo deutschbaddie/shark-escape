@@ -18,15 +18,21 @@ Logged once per brand-new player.
 | 1 Joined | The first save loads | 100% | — |
 | 2 In the water | They first ride into the sea | 90%+ | They don't see the arrow or the "Grab a sea creature" banner. Check the spawn faces the water. A loading-screen bounce shows here too. |
 | 3 First catch | First creature grabbed | 85%+ | The first grab is a tap. If this still drops, add bubbles closer to the shore. |
-| 4 In the tank | First creature deposited | 80%+ | They got lost on the way back. Make the tank arrow bigger. |
-| 5 First cash | First collect from the pad | 78%+ | They don't find the green pad. Pulse the pad and add a sound. |
-| 6 Shark drill | Drill passed or skipped | 70%+ | The practice shark scares them off. Slow it further, or shorten the circling. |
-| 7 First ride | Rubber Duck bought | 65%+ | Saving $30 takes too long, or the Ride Shop is hard to find. Lower the Duck's price. |
-| 8 Coral Reef | First new zone (100 speed) | 55%+ | The first real goal is too far away. Raise the early speed gain. |
+| 4 In the tank | First creature deposited (after racing the practice shark home) | 80%+ | The practice chase scares them off or they get lost on the way back. Slow the practice shark, make the tank arrow bigger. |
+| 5 Haul lesson | Brought 2 creatures home at once (or skipped after 2 min) | 75%+ | "Grab two" isn't clear. Point at a pair of bubbles close together. |
+| 6 First ride | Rubber Duck bought | 70%+ | The Ride Shop is hard to find. Lower the Duck's price. |
+| 7 Coral Reef | First new zone (100 speed) | 60%+ | The first real goal is too far away. Raise the early speed gain. |
+
+The steps changed with the fun pass (the pad step and the separate shark
+drill are gone). Compare only data logged after that update.
 
 **Read it as:** the biggest drop between two steps is the next thing to fix. Fix one thing, wait 2–3 days, compare.
 
 ## 2. Zones: how deep does a run get?
+
+One funnel per world: "Zones" (Shark Beach) and "Zones 2" (Candy Bay).
+Rebirths are the Rebirth custom event, not a funnel step (logging it as
+step 16 made Roblox count every zone before it as reached).
 
 One session per rebirth run: player id plus rebirth number.
 

@@ -34,7 +34,9 @@ local function call(method: string, ...: any)
 end
 
 ----------------------------------------------------------------- onboarding
-local ONBOARDING = { "Joined", "In the water", "First catch", "In the tank", "First cash", "Shark drill", "First ride", "Coral Reef" }
+-- (the guide since the fun pass: catch -> race the practice shark home ->
+-- tank -> haul lesson -> Rubber Duck)
+local ONBOARDING = { "Joined", "In the water", "First catch", "In the tank", "Haul lesson", "First ride", "Coral Reef" }
 local newPlayers: { [Player]: number } = {} -- last onboarding step logged
 
 local function onboard(player: Player, step: number)
@@ -58,10 +60,13 @@ local function runId(player: Player): string
 	return ("%d-%d"):format(player.UserId, s and s.profile.rebirths or 0)
 end
 
+-- one funnel per world (Shark Beach "Zones", Candy Bay "Zones 2"); only
+-- zones, so every step has a name
 local function zonesStep(player: Player, index: number)
 	local s = Game.sessions[player]
-	local zone = Config.worldZones(s and s.profile.world or 1)[index]
-	call("LogFunnelStepEvent", player, "Zones", runId(player), index, zone and zone.name or ("Zone " .. index))
+	local w = s and s.profile.world or 1
+	local zone = Config.worldZones(w)[index]
+	call("LogFunnelStepEvent", player, w == 1 and "Zones" or ("Zones " .. w), runId(player), index, zone and zone.name or ("Zone " .. index))
 end
 
 local function ridesStep(player: Player, rideId: string)
@@ -108,7 +113,7 @@ handlers._water = function(player, d)
 end
 handlers._tut = function(player, d)
 	if d.step >= 4 then
-		onboard(player, 6) -- drill done (or skipped after two catches)
+		onboard(player, 5) -- brought a haul of 2 home (or skipped after 2 min)
 	end
 end
 handlers.grab = function(player)
@@ -118,11 +123,10 @@ handlers.deposit = function(player)
 	onboard(player, 4)
 end
 handlers.collect = function(player, d)
-	onboard(player, 5)
 	coins(player, true, d.amount or 0, T.Gameplay.Name, "TankCash")
 end
 handlers.ride = function(player, d)
-	onboard(player, 7)
+	onboard(player, 6)
 	ridesStep(player, d.id)
 	coins(player, false, d.price or 0, T.Shop.Name, d.id)
 end
@@ -130,15 +134,16 @@ handlers.unlock = function(player, d)
 	local zone = Config.zoneById(d.zone)
 	if zone then
 		zonesStep(player, zone.index)
-		if zone.index == 2 then
-			onboard(player, 8)
+		if zone.index == 2 and zone.world == 1 then
+			onboard(player, 7)
 		end
 	end
 end
 handlers.rebirth = function(player, d)
 	-- close the old run, then start the next one
 	local s = Game.sessions[player]
-	call("LogFunnelStepEvent", player, "Zones", ("%d-%d"):format(player.UserId, (d.rebirths or 1) - 1), #Config.Zones + 1, "Rebirth")
+	-- (not a step in the Zones funnel: logging it there made Roblox count every
+	-- zone in between as reached, the unnamed 4-player steps)
 	call("LogCustomEvent", player, "Rebirth", d.rebirths or 0)
 	if s then
 		runStart(player)

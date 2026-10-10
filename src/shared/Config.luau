@@ -54,7 +54,7 @@ local OCEAN_ZONES = {
 		sharkSpeed = 80, value = 5, islandEvery = 95, islandRadius = 10,
 		water = Color3.fromRGB(26, 196, 222), clarity = 0.85, floor = Enum.Material.Sandstone,
 		floorColor = Color3.fromRGB(246, 214, 170), tint = Color3.fromRGB(255, 250, 252), aggro = 1.3 },
-	{ id = "Kelp", name = "Kelp Forest", gate = 500, length = 560, depth = 18, shark = "Tiger", sharkLength = 14,
+	{ id = "Kelp", name = "Kelp Forest", gate = 350, length = 560, depth = 18, shark = "Tiger", sharkLength = 14,
 		sharkSpeed = 102, value = 25, islandEvery = 120, islandRadius = 9,
 		water = Color3.fromRGB(24, 170, 170), clarity = 0.72, floor = Enum.Material.Mud,
 		floorColor = Color3.fromRGB(92, 128, 80), tint = Color3.fromRGB(244, 255, 246), aggro = 1.25 },
@@ -233,7 +233,7 @@ export type Ride = {
 Config.Rides = {
 	{ id = "Noodle", name = "Pool Noodle", icon = "", price = 0, gain = 1 },
 	{ id = "Duck", name = "Rubber Duck Floatie", icon = "", price = 30, gain = 2 },
-	{ id = "Tube", name = "Inner Tube", icon = "", price = 500, gain = 3 },
+	{ id = "Tube", name = "Inner Tube", icon = "", price = 300, gain = 3 },
 	{ id = "Boogie", name = "Boogie Board", icon = "", price = 2500, gain = 4 },
 	{ id = "Surf", name = "Surfboard", icon = "", price = 10000, gain = 5 },
 	{ id = "Bathtub", name = "Bathtub", icon = "", price = 40000, gain = 7 },
@@ -675,8 +675,8 @@ Config.Raid = {
 -- shark bite loses the whole haul, so a big net is a big risk too.
 Config.Nets = {
 	{ name = "Bare Hands", cap = 2, price = 0 },
-	{ name = "Small Net", cap = 3, price = 2000 },
-	{ name = "Big Net", cap = 5, price = 50000 },
+	{ name = "Small Net", cap = 3, price = 300 }, -- (an early goal at ~3 min that feeds the haul)
+	{ name = "Big Net", cap = 5, price = 8000 },
 	{ name = "Trawl Net", cap = 8, price = 2500000 },
 	{ name = "Mega Net", cap = 12, price = 150000000 },
 }
