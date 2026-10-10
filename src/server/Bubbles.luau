@@ -17,7 +17,8 @@ local Game = require(script.Parent.Game)
 local Bubbles = {}
 
 type Bubble = { model: Model, pos: Vector3, r: string, m: string?, s: number, zone: Config.Zone, taken: boolean?,
-	reservedBy: Player?, reservedUntil: number?, spilled: boolean? }
+	reservedBy: Player?, reservedUntil: number?, spilled: boolean?,
+	z: string } -- the creature's own zone (a spilled one keeps where it was caught)
 
 local live: { Bubble } = {}
 local byId: { [number]: Bubble } = {}
@@ -79,22 +80,23 @@ local function spot(zone: Config.Zone): Vector3
 	return Vector3.new(Config.originX(zone.world), 3, zone.zStart + zone.length / 2)
 end
 
-type Fixed = { r: string, m: string?, s: number?, pos: Vector3 }
+type Fixed = { r: string, z: string?, m: string?, s: number?, pos: Vector3 }
 
 -- a bubble in this zone: rolled, or a fixed one (a bitten player's spilled haul)
-local function spawnBubble(zone: Config.Zone, fixed: Fixed?)
+local function spawnBubble(zone: Config.Zone, fixed: Fixed?): Bubble
 	local r = fixed and fixed.r or Bubbles.rollRarity()
 	local m = if fixed then fixed.m else Bubbles.rollMutation()
 	local size = fixed and fixed.s or Config.rollSize(rng)
 	local rarity = Config.rarity(r)
 	local pos = fixed and fixed.pos or spot(zone)
+	local zid = fixed and fixed.z or zone.id -- (what it is; `zone` is where it floats)
 
 	local model = Build.model("Bubble", folder)
 	local shell = Build.ball(model, 5.6, CFrame.new(pos), rarity.color:Lerp(Color3.new(1, 1, 1), 0.45), {
 		Name = "Shell", Material = Enum.Material.ForceField, CanCollide = false, CanQuery = false, CastShadow = false,
 	})
 	model.PrimaryPart = shell
-	local creature = Creatures.build(r, m, math.min(Config.sizeScale(size), 1.3), zone.id)
+	local creature = Creatures.build(r, m, math.min(Config.sizeScale(size), 1.3), zid)
 	creature:PivotTo(CFrame.new(pos))
 	creature.Parent = model
 	if rarity.index >= 4 then -- Epic+ gets a sky beam you can see from the shore
@@ -103,12 +105,12 @@ local function spawnBubble(zone: Config.Zone, fixed: Fixed?)
 		})
 	end
 	-- name + rarity tag (rare ones can be seen from further away)
-	NameTag.attach(shell, { r = r, z = zone.id, m = m, s = size }, nil, { height = 4.4, maxDist = (rarity.index >= 3 or size >= 2) and 260 or 90, width = 6 })
+	NameTag.attach(shell, { r = r, z = zid, m = m, s = size }, nil, { height = 4.4, maxDist = (rarity.index >= 3 or size >= 2) and 260 or 90, width = 6 })
 	model:SetAttribute("Rarity", r)
 	model:SetAttribute("Zone", zone.id)
 	model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
 	CollectionService:AddTag(model, "Bubble")
-	local entry: Bubble = { model = model, pos = pos, r = r, m = m, s = size, zone = zone, spilled = fixed ~= nil }
+	local entry: Bubble = { model = model, pos = pos, r = r, m = m, s = size, zone = zone, spilled = fixed ~= nil, z = zid }
 	table.insert(live, entry)
 	nextBubbleId += 1
 	model:SetAttribute("BubbleId", nextBubbleId)
@@ -120,7 +122,7 @@ local function spawnBubble(zone: Config.Zone, fixed: Fixed?)
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.Name = "GrabPrompt"
 	prompt.ActionText = "Grab"
-	prompt.ObjectText = Config.fullName(zone.id, r, m, size)
+	prompt.ObjectText = Config.fullName(zid, r, m, size)
 	prompt.HoldDuration = Config.GrabHold[r] or 0.5
 	prompt.MaxActivationDistance = 12
 	prompt.RequiresLineOfSight = false
@@ -144,28 +146,41 @@ local function spawnBubble(zone: Config.Zone, fixed: Fixed?)
 			end
 		end)
 	end
+	return entry
 end
 
 -- a bitten player's haul floats free around where it happened
-function Bubbles.spill(pos: Vector3, list: { any }, by: Player?)
+function Bubbles.spill(pos: Vector3, list: { any }, by: Player?): { any }
 	local zone = Config.zoneAtPos(pos)
+	local made = {}
 	if not zone then
-		return
+		return made
 	end
 	for i, c in list do
 		local a = (i / #list) * math.pi * 2 + rng:NextNumber(0, 0.6)
 		local r = rng:NextNumber(7, 11)
 		local at = Vector3.new(pos.X + math.cos(a) * r, 3, pos.Z + math.sin(a) * r)
-		spawnBubble(zone, { r = c.r, m = c.m, s = c.s, pos = at })
+		table.insert(made, spawnBubble(zone, { r = c.r, z = c.z, m = c.m, s = c.s, pos = at }))
 	end
 	Game.notifyAll("spill", { x = pos.X, z = pos.Z, n = #list, time = Config.SPILL_TIME,
 		userId = by and by.UserId or 0, name = by and by.DisplayName or "Someone" })
+	return made
+end
+
+-- take a spilled bubble back out of the water (it was rescued with Robux)
+function Bubbles.unspill(entry: any)
+	local i = entry and table.find(live, entry)
+	if i and not entry.taken then
+		entry.taken = true
+		table.remove(live, i)
+		entry.model:Destroy()
+	end
 end
 
 local function count(zone: Config.Zone): number
 	local n = 0
 	for _, b in live do
-		if b.zone == zone then
+		if b.zone == zone and not b.spilled then -- (spills are extra: they don't fill the zone's quota)
 			n += 1
 		end
 	end
@@ -176,6 +191,14 @@ local function grab(s: Game.Session, b: Bubble)
 	local r = b.r
 	local lucky, pity = false, false
 	local idx = Config.rarity(r).index
+	if b.spilled then
+		-- someone's spilled haul: exactly what it was, no luck / pity re-rolls
+		local c = { r = r, z = b.z, m = b.m, s = b.s }
+		Game.takeCatch(s, c)
+		Game.discover(s, c)
+		Game.notify(s.player, "grab", { r = r, m = b.m, z = b.z, s = b.s, v = Config.creatureValue(r, b.z, b.m, b.s) * Game.coinMult(s) })
+		return
+	end
 	if idx < #Config.Rarities and rng:NextNumber() < Game.luck(s) then
 		r = Config.Rarities[idx + 1].id
 		lucky = true
@@ -200,7 +223,7 @@ local function grab(s: Game.Session, b: Bubble)
 			pity = true
 		end
 	end
-	local c = { r = r, z = b.zone.id, m = b.m, s = b.s }
+	local c = { r = r, z = b.z, m = b.m, s = b.s }
 	Game.takeCatch(s, c) -- (your hands, or your net)
 	Game.discover(s, c)
 	if Game.sharkOnGrab then
@@ -209,11 +232,11 @@ local function grab(s: Game.Session, b: Bubble)
 	-- the whole server hears about the big ones
 	local idx = Config.rarity(r).index
 	if idx >= 5 or (b.s or 1) >= 2 or (b.m and idx >= 4) then
-		Game.notifyAll("bigCatch", { by = s.player.DisplayName, userId = s.player.UserId, name = Config.fullName(b.zone.id, r, b.m, b.s), r = r })
+		Game.notifyAll("bigCatch", { by = s.player.DisplayName, userId = s.player.UserId, name = Config.fullName(b.z, r, b.m, b.s), r = r })
 		Game.beamDock(s, Config.rarity(r).color, 60) -- everyone can see whose dock it went to
 	end
-	Game.notify(s.player, "grab", { r = r, m = b.m, z = b.zone.id, s = b.s, lucky = lucky, pity = pity,
-		v = Config.creatureValue(r, b.zone.id, b.m, b.s) * Game.coinMult(s) })
+	Game.notify(s.player, "grab", { r = r, m = b.m, z = b.z, s = b.s, lucky = lucky, pity = pity,
+		v = Config.creatureValue(r, b.z, b.m, b.s) * Game.coinMult(s) })
 end
 
 -- hold the prompt to grab (server checks you're really there)
@@ -246,7 +269,7 @@ tryGrab = function(player: Player, b: Bubble, swept: boolean?, reeled: boolean?)
 		end
 		b.reservedBy, b.reservedUntil = player, os.clock() + REEL_TIME + 2
 		reels[player] = { b = b, started = os.clock() }
-		Game.notify(player, "reel", { time = REEL_TIME, name = Config.fullName(b.zone.id, b.r, b.m, b.s) })
+		Game.notify(player, "reel", { time = REEL_TIME, name = Config.fullName(b.z, b.r, b.m, b.s) })
 		if Game.sharkAggro then
 			Game.sharkAggro(s, REEL_TIME + 6, "reel")
 		end
@@ -297,7 +320,7 @@ Game.action("reel", function(s, ok)
 	if ok == true and took >= REEL_MIN and took <= REEL_TIME + 2 and not b.taken and tryGrab(s.player, b, false, true) then
 		Game.track(s.player, "reelWon", {})
 	else
-		Game.notify(s.player, "slipped", { name = Config.fullName(b.zone.id, b.r, b.m, b.s) })
+		Game.notify(s.player, "slipped", { name = Config.fullName(b.z, b.r, b.m, b.s) })
 	end
 end)
 

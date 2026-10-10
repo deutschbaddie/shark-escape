@@ -101,6 +101,8 @@ local grants: { [string]: (Game.Session) -> boolean } = {
 		-- the creature the shark ate goes straight into your tank
 		local c = s.lastLost
 		s.lastLost = nil
+		Bubbles.unspill(s.lastLostSpill) -- (no copy left floating for anyone to grab)
+		s.lastLostSpill = nil
 		if c then
 			Game.addCreature(s, { r = c.r, z = c.z, m = c.m, s = c.s })
 		else

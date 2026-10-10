@@ -33,6 +33,8 @@ export type Session = {
 	eatenUntil: number,
 	fullWarned: number?,
 	lastLost: any?,
+	lastLostSpill: any?,
+	wentOutAt: number?, -- when you last rode off the beach -- its spilled bubble (gone if Rescue is bought)
 	dirty: boolean,
 	inWater: boolean,
 	leaderSpeed: IntValue?,
@@ -512,7 +514,7 @@ function Game.payHaul(s: Session, haul: { Data.Creature })
 end
 
 -- set by Bubbles: a bitten player's haul floats free for anyone to grab
-Game.spill = nil :: ((pos: Vector3, list: { Data.Creature }, by: Player?) -> ())?
+Game.spill = nil :: ((pos: Vector3, list: { Data.Creature }, by: Player?) -> { any })?
 
 ----------------------------------------------------------------- tank
 -- Everything you catch goes in your tank. The Active ones (c.e) swim and
@@ -719,7 +721,8 @@ function Game.bite(s: Session, sharkPos: Vector3): string
 		end
 		Game.dropAll(s)
 		if Game.spill then
-			Game.spill(hrp.Position, list, s.player)
+			-- (the one in your hands is first: Rescue takes it back out of the water)
+			s.lastLostSpill = Game.spill(hrp.Position, list, s.player)[1]
 		end
 	end
 	s.eatenUntil = os.clock() + Config.Shark.eatenTime + 2.5
@@ -1358,6 +1361,9 @@ local function fastTick()
 		local wet = Layout.inWater(pos) and not Layout.islandAt(pos, 0)
 		if wet ~= s.inWater then
 			s.inWater = wet
+			if wet then
+				s.wentOutAt = os.clock() -- (the escape reward needs a real trip out)
+			end
 			Game.setRideVisible(s, wet)
 			Game.track(s.player, "_water", { wet = wet })
 		end

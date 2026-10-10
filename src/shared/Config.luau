@@ -744,6 +744,7 @@ Config.Shark = {
 	closeCallSeconds = 8, -- seconds of your speed gain
 	closeCallCooldown = 15,
 	escapeRadius = 40, -- reach the sand with your shark this close: you made it
+	escapeMinSea = 8, -- ...after at least this long out at sea
 	doubleChance = 0.25, -- two sharks at once (zones from doubleFromZone out)
 	doubleFromZone = 3,
 	spawnDistance = 46,

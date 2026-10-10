@@ -223,7 +223,12 @@ local escapedAt: { [Player]: number } = {}
 local function madeIt(h: Hunter, hrp: BasePart)
 	local s = h.target
 	local cfg = Config.Shark
-	if not s or Layout.inWater(hrp.Position) or (h.state ~= "charge" and h.state ~= "stalk") then
+	-- only a real chase: it was charging you (or just missed a lunge), and
+	-- you'd been out at sea a while, not dipping a toe in to farm it
+	if not s or Layout.inWater(hrp.Position) or (h.state ~= "charge" and h.state ~= "overshoot") then
+		return
+	end
+	if os.clock() - (s.wentOutAt or os.clock()) < cfg.escapeMinSea then
 		return
 	end
 	if flat(h.pos - hrp.Position).Magnitude > cfg.escapeRadius or os.clock() - (escapedAt[s.player] or 0) < cfg.closeCallCooldown then
