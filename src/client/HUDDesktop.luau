@@ -521,7 +521,7 @@ local function frame()
 			end
 			lastZone = id
 		end
-		-- night, or a daytime grudge (a shark you drew by grabbing / chum)
+		-- night, or a daytime grudge (a shark you drew by grabbing)
 		if phase ~= "calm" or SharkView.myHunter() then
 			sharkLine(pos)
 			grudgeShown = phase == "calm"
@@ -673,16 +673,12 @@ end
 
 handlers.aggro = function(d)
 	local name = Config.sharkName(d.shark)
-	if d.why == "chum" then
-		Notify.takeover("Shark sent!", ("%s sent the %s after you!"):format(tostring(d.by or "Someone"), name), C.red, 1.4, "Shark")
-	else
-		-- (the one line that teaches it: the hungry shark wants the biggest haul)
-		local sub = ({ fins = "Your haul drew it in. Get to the sand!",
-			prize = "It wants your catch. Get it home!",
-			stolen = "Every shark wants your stolen catch!" } :: any)[d.why]
-		Notify.banner((d.why == "fins" or d.why == "prize" or d.why == "stolen") and ("The %s is coming for you"):format(name) or ("The %s noticed you"):format(name), { key = "aggro", priority = 4, time = 2.6, color = C.red,
-			sub = sub or "Get to the sand!" })
-	end
+	-- (the one line that teaches it: the hungry shark wants the biggest haul)
+	local sub = ({ fins = "Your haul drew it in. Get to the sand!",
+		prize = "It wants your catch. Get it home!",
+		stolen = "Every shark wants your stolen catch!" } :: any)[d.why]
+	Notify.banner((d.why == "fins" or d.why == "prize" or d.why == "stolen") and ("The %s is coming for you"):format(name) or ("The %s noticed you"):format(name), { key = "aggro", priority = 4, time = 2.6, color = C.red,
+		sub = sub or "Get to the sand!" })
 	Fx.sound("sharkAlarm", 0.7)
 	Fx.shake(0.5)
 end

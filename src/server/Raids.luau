@@ -1,6 +1,4 @@
 -- Player vs player, shark style:
---   Chum   throw a bucket at a rider near you: their zone's shark comes for
---          them (Config.Chum; by day; cooldown)
 --   Raid   hold RAID at another player's tank while they're out at sea (in
 --          the water or on an island: anywhere off the beach). While the
 --          owner is home a shield shimmers over the tank (plot attribute
@@ -12,7 +10,7 @@
 --          picks one of their creatures for your tank (rarer = less likely:
 --          a Mythic is a long shot). After a raid the tank is safe a while, and
 --          you can't keep picking on the same player.
--- Chum: players who've played a while. Raids: after your first evolve
+-- Raids: after your first evolve
 -- (raider and owner both), between players within a couple of evolves.
 
 local RunService = game:GetService("RunService")
@@ -24,7 +22,6 @@ local Layout = require(Shared.Layout)
 local Data = require(script.Parent.Data)
 local Game = require(script.Parent.Game)
 local World = require(script.Parent.World)
-local Sharks = require(script.Parent.Sharks)
 
 local Raids = {}
 
@@ -35,7 +32,6 @@ local raids: { [Player]: Raid } = {} -- by victim
 local raidedAt: { [number]: number } = {}
 local raiderAt: { [number]: number } = {}
 local pairAt: { [string]: number } = {} -- "raider:victim": last raid between them
-local chumAt: { [Player]: number } = {}
 local rng = Random.new()
 
 local function veteran(s: Game.Session, minPlaytime: number): boolean
@@ -75,11 +71,6 @@ local function updateGuards()
 			if raids[s.player] then
 				why = nil -- (mid-raid: they're on their way)
 			end
-			-- can sharks be sent after them? (clients only offer it when it'd work)
-			local bait = veteran(s, Config.Chum.minPlaytime)
-			if s.player:GetAttribute("Baitable") ~= bait then
-				s.player:SetAttribute("Baitable", bait)
-			end
 			if plot.model:GetAttribute("Guarded") ~= why then
 				plot.model:SetAttribute("Guarded", why)
 				local dome = plot.model:FindFirstChild("Guard", true) :: BasePart?
@@ -90,54 +81,6 @@ local function updateGuards()
 			end
 		end
 	end
-end
-
-local function atSea(s: Game.Session): boolean
-	local hrp = Game.root(s.player)
-	return hrp ~= nil and Layout.inWater(hrp.Position) and Layout.islandAt(hrp.Position, 0) == nil
-end
-
------------------------------------------------------------------ chum
-local function chum(s: Game.Session, targetId: any)
-	local cfg = Config.Chum
-	local now = os.clock()
-	if typeof(targetId) ~= "number" or now - (chumAt[s.player] or -1e9) < cfg.cooldown then
-		return
-	end
-	local target = Players:GetPlayerByUserId(targetId)
-	local t = target and Game.sessions[target]
-	local a, b = Game.root(s.player), target and Game.root(target)
-	if not (t and a and b) or t == s or t.profile.world ~= s.profile.world then
-		return
-	end
-	if not veteran(s, cfg.minPlaytime) then
-		Game.notify(s.player, "announce", { text = "Sending sharks unlocks after 5 minutes" })
-		return
-	end
-	if (a.Position - b.Position).Magnitude > cfg.range or not veteran(t, cfg.minPlaytime) or not atSea(t) then
-		Game.notify(s.player, "announce", { text = "They're out of reach" })
-		return
-	end
-	-- (at night, or while they're mid-bite, no shark would come: leave the shield be)
-	if t.profile.shields > 0 and Sharks.phase() ~= "hunt" and Game.huntable(t) then
-		-- a Shark Shield eats the chum (and is used up)
-		t.profile.shields -= 1
-		t.dirty = true
-		chumAt[s.player] = now
-		Game.notify(t.player, "announce", { text = ("Your shield blocked %s's shark"):format(s.player.DisplayName) })
-		Game.notify(s.player, "announce", { text = ("%s's shield blocked your shark"):format(target.DisplayName) })
-		return
-	end
-	local ok = Game.sharkAggro and Game.sharkAggro(t, cfg.grudge, "chum", s.player.DisplayName)
-	if not ok then
-		Game.notify(s.player, "announce", { text = "The sharks are busy right now" })
-		return
-	end
-	chumAt[s.player] = now
-	local zone = Config.zoneAtPos(b.Position)
-	Game.notify(s.player, "chumThrown", { name = target.DisplayName, cooldown = cfg.cooldown, shark = zone and zone.shark or nil })
-	Game.notifyAll("chumSplash", { x = b.Position.X, z = b.Position.Z })
-	Game.track(s.player, "chum", {})
 end
 
 ----------------------------------------------------------------- raids
@@ -352,7 +295,6 @@ local function tick()
 end
 
 function Raids.start()
-	Game.action("chum", chum)
 	Game.action("raid", startRaid)
 	local acc = 0
 	RunService.Heartbeat:Connect(function(dt)
@@ -372,7 +314,6 @@ function Raids.start()
 				endRaid(victim)
 			end
 		end
-		chumAt[p] = nil -- (raid cooldowns are by UserId and outlive a rejoin)
 	end)
 end
 

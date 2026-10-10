@@ -84,7 +84,6 @@ One session per prompt: Prompted → Bought. The item is in custom field 1, and 
 | Rebirth | Rebirth number | Count rebirths over time. |
 | DailyClaim | Day 1–7 | Day 7 claims ÷ Day 1 claims = your weekly retention hook. |
 | GroupChest | 1 | Count group-chest claims (each also asks them to join the group). |
-| Chum | 1 | Chum thrown. Near zero = the button isn't noticed; very high = it may feel unfair (watch SessionMinutes). |
 | RaidStart / RaidStolen / RaidDefended | 1 | Stolen ÷ Start should sit around 30-50%. Near 100% = owners can't get home in time (raise Config.Raid.time). |
 | CloseCall | 1 | How often the shark just misses. The chase is working when this is a few per session. |
 | BossReward | 1 | Players who got a Legendary from the boss Megalodon. Compare with players online during Megalodon Hour. |

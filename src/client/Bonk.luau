@@ -349,12 +349,13 @@ function Bonk.start()
 			if d.shield then
 				Notify.toast("Your shield blocked a bonk", Color3.fromRGB(120, 210, 255))
 			elseif d.lost then
-				Notify.toast(("Bonked! Your %s popped out"):format(tostring(d.lost)), Color3.fromRGB(255, 120, 200))
+				Notify.toast((d.n or 1) > 1 and ("Bonked! Your %d creatures spilled"):format(d.n) or ("Bonked! Your %s popped out"):format(tostring(d.lost)),
+					Color3.fromRGB(255, 120, 200))
 			else
 				Notify.toast(("Bonked by %s!"):format(tostring(d.by)), Color3.fromRGB(255, 120, 200))
 			end
 		elseif kind == "bonkedLoot" then
-			Notify.toast(("Knocked loose: %s! Grab it!"):format(tostring(d.name)), T.gold)
+			Notify.toast((d.n or 1) > 1 and ("%d creatures spilled! Grab them!"):format(d.n) or ("Knocked loose: %s! Grab it!"):format(tostring(d.name)), T.gold)
 		elseif kind == "bonkShark" then
 			sharkReadyAt = os.clock() + (d.cooldown or Config.Bonk.sharkCooldown)
 			Notify.toast("Shark dazed! Go!", T.gold)

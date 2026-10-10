@@ -9,7 +9,7 @@
 --   Store (every Robux prompt)        Prompted -> Bought
 --   Economy  coins in (tank cash, Index, chest, codes) and out (rides, tank slots)
 --   Custom   SharkEaten, GateBlocked, Rebirth, DailyClaim, GroupChest, SessionMinutes,
---            Chum, RaidStart / RaidStolen / RaidDefended, CloseCall,
+--            RaidStart / RaidStolen / RaidDefended, CloseCall,
 --            BossReward, Quest, Escaped, Haul,
 --            SharkDazed, BonkLoot, InvitedJoin, InviteReward
 
@@ -183,7 +183,6 @@ local function count(name: string): (Player, any) -> ()
 		call("LogCustomEvent", player, name, 1)
 	end
 end
-handlers.chum = count("Chum")
 handlers.closeCall = count("CloseCall")
 handlers.bossReward = count("BossReward")
 handlers.madeIt = count("Escaped")

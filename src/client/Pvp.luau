@@ -1,7 +1,4 @@
--- Chum and raids on this client (server: Raids.luau).
---   Chum: a SEND SHARK button shows up when another rider is near you at
---         sea (by day, both of you past 5 minutes); tap it and their zone's
---         shark comes for them. Then a cooldown.
+-- Raids on this client (server: Raids.luau).
 --   Raid: other players' docks get a RAID prompt (hold F). While a raid is
 --         on, a red countdown hangs over that tank for everyone; the owner
 --         gets an alarm and the guide arrow home; the raider a countdown.
@@ -29,9 +26,6 @@ local Pvp = {}
 local player = Players.LocalPlayer
 local C = UI.C
 
-local chumBtn: TextButton
-local chumTarget: Player? = nil
-local chumReadyAt = 0
 local raidEnds = 0 -- my raid (as the raider)
 local defendEnds = 0 -- my tank under raid
 local defendBy = ""
@@ -41,73 +35,6 @@ local GREEN = Color3.fromRGB(110, 255, 150)
 local ORANGE = Color3.fromRGB(255, 165, 60) -- raids: urgent, never scary red
 local myGuard: string? = "start"
 local toldOut, toldHome = false, false
-
-local function myRoot(): BasePart?
-	local char = player.Character
-	return char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
-end
-
-local function atSea(pos: Vector3): boolean
-	return Layout.inWater(pos) and Layout.islandAt(pos, 0) == nil
-end
-
------------------------------------------------------------------ chum button
-local function buildChum()
-	local gui = Instance.new("ScreenGui")
-	gui.Name = "Chum"
-	UI.hideInCutscenes(gui)
-	gui.ResetOnSpawn = false
-	gui.Parent = player:WaitForChild("PlayerGui")
-	UI.autoScale(gui)
-	chumBtn = UI.button(gui, "SEND SHARK", ORANGE, function()
-		if chumTarget and os.clock() >= chumReadyAt then
-			State.action("chum", chumTarget.UserId)
-		end
-	end, { Size = UDim2.fromOffset(250, 54), Position = UDim2.new(0.5, 0, 1, -150), AnchorPoint = Vector2.new(0.5, 1), Visible = false })
-end
-
--- the nearest other rider at sea in reach, in your world
-local function pickTarget(): Player?
-	local me = myRoot()
-	if not me then
-		return nil
-	end
-	local best, bestD = nil, Config.Chum.range
-	for _, p in Players:GetPlayers() do
-		local char = p ~= player and p.Character
-		local hrp = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
-		-- (only riders a shark can actually be sent after: not brand-new players)
-		if hrp and p:GetAttribute("Baitable") == true and atSea(hrp.Position) and Config.worldAt(hrp.Position) == Config.worldAt(me.Position) then
-			local d = (hrp.Position - me.Position).Magnitude
-			if d < bestD then
-				best, bestD = p, d
-			end
-		end
-	end
-	return best
-end
-
-local night = false -- (at night sharks hunt everyone anyway: nothing to send)
-local explained = false
-local function chumTick()
-	local me = player:GetAttribute("Baitable") == true -- (you need 5 minutes in too)
-	chumTarget = (me and not night) and pickTarget() or nil
-	local wait = chumReadyAt - os.clock()
-	chumBtn.Visible = chumTarget ~= nil
-	if chumTarget then
-		if not explained then
-			explained = true
-			Notify.toast("Send a shark after a nearby rider!", ORANGE)
-		end
-		if wait > 0 then
-			UI.setText(chumBtn, ("SEND SHARK  %ds"):format(math.ceil(wait)))
-			chumBtn.BackgroundColor3 = UI.T.navyLight
-		else
-			UI.setText(chumBtn, "SEND SHARK: " .. chumTarget.DisplayName)
-			chumBtn.BackgroundColor3 = ORANGE
-		end
-	end
-end
 
 ----------------------------------------------------------------- raid prompts + boards
 local safeSign: (Model, any) -> ()
@@ -258,19 +185,6 @@ end
 ----------------------------------------------------------------- server news
 local handlers: { [string]: (any) -> () } = {}
 
-handlers.chumThrown = function(d)
-	chumReadyAt = os.clock() + (d.cooldown or Config.Chum.cooldown)
-	local shark = d.shark and Config.sharkName(d.shark) or "A shark"
-	Notify.toast(("%s is after %s!"):format(shark, tostring(d.name)), ORANGE)
-	Fx.sound("splash", 0.8, 0.8)
-end
-
-handlers.chumSplash = function(d)
-	local pos = Vector3.new(d.x, 0.5, d.z)
-	Fx.splash(pos, 1.6)
-	Fx.ring(pos, ORANGE, 22)
-end
-
 handlers.raided = function(d)
 	defendEnds = os.clock() + (d.seconds or Config.Raid.time)
 	defendBy = tostring(d.by)
@@ -348,19 +262,10 @@ handlers.raidFail = function(d)
 	end
 end
 
-
 function Pvp.start()
-	buildChum()
 	Prompts.Triggered:Connect(function(prompt)
 		if prompt.Name == "RaidTank" then
 			State.action("raid", prompt:GetAttribute("Plot"))
-		end
-	end)
-	Remotes.get("SharkEvent").OnClientEvent:Connect(function(kind)
-		if kind == "hunt" or kind == "warning" then
-			night = true
-		elseif kind == "clear" then
-			night = false
 		end
 	end)
 	Remotes.get("Notify").OnClientEvent:Connect(function(kind, data)
@@ -374,7 +279,6 @@ function Pvp.start()
 		acc += dt
 		if acc >= 0.25 then
 			acc = 0
-			chumTick()
 			raidTick()
 		end
 	end)

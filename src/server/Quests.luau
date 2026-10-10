@@ -1,7 +1,7 @@
 -- Daily quests (Config.Quests): 3 a day, new ones at midnight UTC, picked
 -- the same way all day for a player (seeded by user id + day). Progress
 -- comes from the events every system already sends (Game.trackers): grabs,
--- dock deposits, close calls, dodges, rings, chum. A done quest pays at once;
+-- dock deposits, close calls, dodges, rings, bonks. A done quest pays at once;
 -- all 3 add a Luck Potion. The client shows them in the Daily window.
 
 local Shared = game.ReplicatedStorage.Shared
@@ -30,10 +30,10 @@ local function ensure(s: Game.Session): any
 	local p = s.profile
 	local q = p.quests
 	if type(q) ~= "table" or q.day ~= today() or type(q.ids) ~= "table" or type(q.n) ~= "table" then
-		local canChum = p.tut >= 5 and p.playtime >= math.max(Config.Chum.minPlaytime, Config.Bonk.protect)
+		local canBonk = p.tut >= 5 and p.playtime >= Config.Bonk.protect
 		local pool = {}
 		for _, d in Config.Quests.pool do
-			if not d.vet or canChum then
+			if not d.vet or canBonk then
 				table.insert(pool, d.id)
 			end
 		end
@@ -120,9 +120,6 @@ local ON: { [string]: (Game.Session, any) -> () } = {
 	end,
 	ring = function(s)
 		progress(s, "rings", 1)
-	end,
-	chumThrown = function(s)
-		progress(s, "chum", 1)
 	end,
 	bonkedLoot = function(s)
 		progress(s, "bonk", 1)

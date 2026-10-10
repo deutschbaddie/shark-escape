@@ -1,7 +1,7 @@
 -- Noodle Bonk (Config.Bonk / Config.Noodles). One button, two uses:
 --   a shark coming for you  -> dazed for a moment (Sharks.bonk)
---   a rider in reach         -> the last creature they carry pops out as a
---                               bubble anyone can grab, and they get knocked
+--   a rider in reach         -> everything they carry spills out as bubbles
+--                               anyone can grab, and they get knocked
 -- Only at sea; new players can only bonk sharks and can't be bonked. The
 -- swing itself is seen by everyone (character attribute "BonkAt": clients
 -- animate it, client Bonk.luau).
@@ -70,20 +70,24 @@ local function pick(s: Game.Session, hrp: BasePart, reach: number): (Game.Sessio
 	return best, bestRoot
 end
 
--- the last creature they carry pops loose (net first, then the hands)
-local function popLoot(t: Game.Session): any?
+-- everything they carry spills loose (the net and the hands)
+local function popLoot(t: Game.Session): { any }
+	local out = {}
 	local bag = t.bag
 	if bag and #bag > 0 then
-		local c = table.remove(bag)
+		for _, c in bag do
+			table.insert(out, c)
+		end
+		table.clear(bag)
 		Game.updateTrail(t)
 		t.dirty = true
-		return c
 	end
 	local c = t.carrying
 	if c then
+		table.insert(out, c)
 		Game.setCarry(t, nil)
 	end
-	return c
+	return out
 end
 
 local function swing(s: Game.Session)
@@ -128,13 +132,14 @@ local function swing(s: Game.Session)
 		Game.notify(t.player, "bonked", { x = hrp.Position.X, z = hrp.Position.Z, by = s.player.DisplayName, shield = true })
 		return
 	end
-	local c = popLoot(t)
+	local loot = popLoot(t)
+	local c = loot[1]
 	Game.notifyAll("bonkHit", { x = at.X, y = at.Y, z = at.Z, by = s.player.UserId, target = t.player.UserId, loot = c ~= nil })
 	Game.notify(t.player, "bonked", { x = hrp.Position.X, z = hrp.Position.Z, by = s.player.DisplayName,
-		lost = c and Config.fullName(c.z, c.r, c.m, c.s) or nil })
+		lost = c and Config.fullName(c.z, c.r, c.m, c.s) or nil, n = #loot })
 	if c then
-		-- it pops out a little way off, toward the bonker (a scramble)
-		Bubbles.spill(at, { c }, t.player, "bonk")
+		-- they splash out all around them (a scramble)
+		Bubbles.spill(at, loot, t.player, "bonk")
 		-- the board counts each rider once a minute (no two friends farming it)
 		local key = s.player.UserId .. ">" .. t.player.UserId
 		if now - (scored[key] or -1e9) >= 60 then
@@ -142,7 +147,7 @@ local function swing(s: Game.Session)
 			s.profile.bonks += 1
 		end
 		s.dirty = true
-		Game.notify(s.player, "bonkedLoot", { name = Config.fullName(c.z, c.r, c.m, c.s), target = t.player.DisplayName })
+		Game.notify(s.player, "bonkedLoot", { name = Config.fullName(c.z, c.r, c.m, c.s), target = t.player.DisplayName, n = #loot })
 	end
 end
 

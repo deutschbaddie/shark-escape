@@ -10,7 +10,7 @@ serves that, in this order. `[x]` = built (not yet playtested), `[ ]` = to do.
   Moments are plain notifications (top banners, toasts), or a unique
   physical effect (the shark jaws, the red edge glow). Never a big tilted word.
 - **New players see 3 things first:** ride, catch, shark. Everything else
-  shows up later (offers after 10 min, raids/chum after 10 min).
+  shows up later (offers after 10 min, raids after 10 min).
 - **Playtest every phase** with 2+ players on a phone before moving on.
 
 ## Phase 0: stop the bleeding
@@ -36,8 +36,7 @@ serves that, in this order. `[x]` = built (not yet playtested), `[ ]` = to do.
 - [x] Day / night (night = everyone hunted, luckier; dawn resets)
 
 ## Phase 2: make players matter to each other (1-2 weeks)
-- [x] Chum: throw at a nearby rider, their shark comes for them (cooldown)
-- [x] A Shark Shield blocks chum (and is used up)
+- [x] Chum (cut in update 0: bonk does that job)
 - [x] Raids: 35 s at their tank while they're at sea; they rush home to stop it
 - [x] Obvious raid safety: a shield shimmers over your tank while you're on
       the beach; signs say "Owner is home: safe from raids" / "Can be raided

@@ -698,9 +698,6 @@ Config.NextUpdate = 0
 -- this. 0 hides it.
 Config.LikeGoal = 1000
 
--- Chum: throw a bucket at a nearby rider and their zone's shark comes for
--- them (by day; at night the sharks are out anyway)
-Config.Chum = { range = 90, cooldown = 45, grudge = 18, minPlaytime = 300 }
 
 -- Raids: hold the RAID prompt at another player's tank while they're out at
 -- sea; after `time` seconds you take one of their creatures (never their
@@ -989,7 +986,7 @@ Config.Products = {
 	Rescue = { iconName = "Shield", id = 3717313850, price = 9, name = "Save Your Creature", icon = "", desc = "Get back the creature the shark just ate" },
 	SpeedPack0 = { iconName = "SpeedPack0", id = 3717313910, price = 9, name = "Mini Speed Pack", icon = "", desc = "3 minutes of your speed gain" },
 	MoneyPack0 = { iconName = "MoneyPack0", id = 3717314065, price = 9, name = "Mini Cash Pack", icon = "", desc = "3 minutes of your tank income" },
-	Shield = { iconName = "Shield", id = 3717314118, price = 9, name = "Shark Shield", icon = "", desc = "Survive one bite (or one sent shark), keep your creature" },
+	Shield = { iconName = "Shield", id = 3717314118, price = 9, name = "Shark Shield", icon = "", desc = "Survive one bite (or one bonk), keep your creatures" },
 	-- id 0 = shows SOON until you create the product and paste its id here
 	TankLock = { iconName = "Lock", id = 0, price = 29, name = "Tank Lock", icon = "", desc = "No one can raid your tank for 30 minutes" },
 	SpeedBoost = { iconName = "Boost", id = 3717315209, price = 49, name = "2x Speed (15 min)", icon = "", desc = "Double speed gain for 15 minutes" },
@@ -1232,7 +1229,7 @@ Config.DAILY_GAP_HOURS, Config.DAILY_RESET_HOURS = 20, 48
 
 -- Daily quests: 3 a day (new ones at midnight UTC), picked from this pool.
 -- Each pays cash when done (income-scaled); all 3 add a Luck Potion.
--- `vet` = only for players who can chum (Config.Chum.minPlaytime).
+-- `vet` = only for players who can bonk other riders (Config.Bonk.protect).
 Config.Quests = {
 	perDay = 3,
 	coinSeconds = 180,
@@ -1245,7 +1242,6 @@ Config.Quests = {
 		{ id = "dodge", text = "Dodge %d shark lunges", goal = 3 },
 		{ id = "rings", text = "Ride through %d boost rings", goal = 5 },
 		{ id = "night", text = "Catch %d creatures at night", goal = 5 },
-		{ id = "chum", text = "Send sharks after %d riders", goal = 2, vet = true },
 		{ id = "bonk", text = "Bonk loot loose %d times", goal = 2, vet = true },
 		{ id = "daze", text = "Daze %d sharks with your noodle", goal = 2 },
 	},

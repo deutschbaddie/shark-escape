@@ -1,5 +1,5 @@
 -- Server-side shark AI. Day and night: by day, grabbing a creature can draw
--- its zone's shark onto you for a while (a grudge: Sharks.onGrab / chum:
+-- its zone's shark onto you for a while (a grudge: Sharks.onGrab:
 -- Sharks.aggro); at dusk (5 s warning) every player in open water gets their
 -- own shark until dawn (the variant of their zone; deeper, sometimes two),
 -- which hunts like a real one:
@@ -67,7 +67,7 @@ type Hunter = {
 	lastSpd: number,
 	lastSpdAt: number,
 	accel: number,
-	aggroUntil: number?, -- a daytime shark you drew by grabbing / chum: hunts until then
+	aggroUntil: number?, -- a daytime shark you drew by grabbing: hunts until then
 }
 
 local hunters: { Hunter } = {}
@@ -573,7 +573,7 @@ local function islandExposed(s: Game.Session, island: Layout.Island): boolean
 	return left ~= nil and left <= 0
 end
 
--- you took something from its waters (or got chummed): that zone's shark
+-- you took something from its waters that zone's shark
 -- comes for you in the day too, for Config.Shark.grudge seconds
 function Sharks.aggro(s: Game.Session, seconds: number?, why: string?, by: string?): boolean
 	if phase == "hunt" or not Game.huntable(s) then
