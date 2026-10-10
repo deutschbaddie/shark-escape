@@ -60,7 +60,7 @@ local function pickSpot(w: number): (Vector3?, Config.Zone?)
 	local deepest = 0
 	for _, s in Game.sessions do
 		if s.profile.world == w then
-			deepest = math.max(deepest, Config.zoneForSpeed(s.profile.speed, w).index)
+			deepest = math.max(deepest, Config.zoneForSpeed(s.profile.speed, w, s.profile.rebirths).index)
 		end
 	end
 	if deepest == 0 then

@@ -109,17 +109,13 @@ Layout.Huts = {
 -- three leaderboards in a row along the back wall, left of the Shop
 Layout.Boards = {
 	{ key = "Speed", title = "FASTEST", color = Color3.fromRGB(40, 160, 255), pos = Vector3.new(-130, Config.BEACH_TOP, -116) },
-	{ key = "Rebirths", title = "REBIRTHS", color = Color3.fromRGB(70, 210, 90), pos = Vector3.new(-109, Config.BEACH_TOP, -116) },
+	{ key = "Rebirths", title = "EVOLVES", color = Color3.fromRGB(70, 210, 90), pos = Vector3.new(-109, Config.BEACH_TOP, -116) },
 	{ key = "Caught", title = "MOST CAUGHT", color = Color3.fromRGB(255, 150, 30), pos = Vector3.new(-88, Config.BEACH_TOP, -116) },
 	-- across the plaza, between the Index and Sell huts
 	{ key = "Bonks", title = "TOP BONKERS", color = Color3.fromRGB(255, 110, 200), pos = Vector3.new(86, Config.BEACH_TOP, -116) },
 }
 Layout.Board = Layout.Boards[2].pos -- the middle one (palms keep clear of the row)
 Layout.GroupChest = Vector3.new(36, Config.BEACH_TOP, -66) -- "Join Group / Like to Claim!"
--- to the other world: off in the back-right corner (behind the last dock,
--- right of the Sell hut), turned to face the plaza, out of everyone's way
-Layout.Portal = Vector3.new(134, Config.BEACH_TOP, -80)
-Layout.PORTAL_YAW = math.pi / 2
 Layout.EventBoard = Vector3.new(38, Config.BEACH_TOP, -112) -- Megalodon Hour / next update countdowns
 
 -- standing at a hut's pad (the server checks before selling)

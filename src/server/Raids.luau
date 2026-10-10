@@ -187,7 +187,7 @@ local function startRaid(s: Game.Session, plotIndex: any)
 		return
 	end
 	if not raider(s) then
-		return no("Raids unlock after your first rebirth")
+		return no("Raids unlock after you evolve")
 	elseif not raider(v) then
 		return no("They're too new to raid")
 	end

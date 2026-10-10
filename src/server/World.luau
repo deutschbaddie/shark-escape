@@ -615,6 +615,7 @@ local function buildGates()
 			local g = Build.model("Gate_" .. zone.id, folder)
 			local z = zone.zStart
 			g:SetAttribute("Gate", zone.gate)
+			g:SetAttribute("Evolve", zone.evolve or 0) -- (evolves needed: the client signs say so)
 			g:SetAttribute("ZoneName", zone.name)
 			-- the sign: zone name + what it takes to get in, on two posts
 			local tint = zone.water:Lerp(C(255, 255, 255), 0.25)
@@ -1009,51 +1010,6 @@ local function buildEventBoard()
 		C(120, 230, 255))
 end
 
------------------------------------------------------------------ portal
--- A studded arch in the next world's color with a swirling force field;
--- its prompt asks the server to teleport (Game actions.portal). The client
--- shows locked / open on the sign (Portal.luau).
-local function buildPortal()
-	local other = Config.Worlds[WORLD == 1 and 2 or 1]
-	local m = Build.model("Portal", map)
-	local base = CFrame.new(Layout.Portal) * CFrame.Angles(0, Layout.PORTAL_YAW, 0)
-	local col, trim = other.color, other.color:Lerp(C(255, 255, 255), 0.5)
-	studAll(Build.part(m, Vector3.new(18, 1, 8), base * CFrame.new(0, 0.5, 0), C(70, 74, 100), { Name = "Base" }))
-	for _, sx in { -1, 1 } do
-		studAll(Build.part(m, Vector3.new(3, 15, 3), base * CFrame.new(sx * 7.5, 8.5, 0), col))
-		studAll(Build.part(m, Vector3.new(3.6, 1.2, 3.6), base * CFrame.new(sx * 7.5, 1.6, 0), trim))
-		studAll(Build.part(m, Vector3.new(3.6, 1.2, 3.6), base * CFrame.new(sx * 7.5, 15.4, 0), trim))
-	end
-	studAll(Build.part(m, Vector3.new(19, 3, 3.4), base * CFrame.new(0, 17.5, 0), col, { Name = "Top" }))
-	-- the gateway itself
-	local field = Build.part(m, Vector3.new(12, 14, 0.6), base * CFrame.new(0, 8, 0), col:Lerp(C(255, 255, 255), 0.25), {
-		Name = "Field", Material = Enum.Material.ForceField, Transparency = 0.05, CanCollide = false, CanQuery = false, CastShadow = false,
-	})
-	local light = Instance.new("PointLight")
-	light.Color = col
-	light.Range = 18
-	light.Brightness = 2
-	light.Parent = field
-	-- sign: where it goes (the client adds the lock line)
-	local anchor = Build.part(m, Vector3.new(0.2, 0.2, 0.2), base * CFrame.new(0, 21.5, 0), C(255, 255, 255),
-		{ Name = "Sign", Transparency = 1, CanCollide = false, CanQuery = false, CanTouch = false })
-	local title = label(anchor, Vector2.new(18, 3.6), Vector3.new(0, 1.2, 0), other.name:upper(), C(255, 255, 255), 160)
-	title.Name = "Title"
-	title.Font = Enum.Font.LuckiestGuy
-	local sub = label(anchor, Vector2.new(18, 1.8), Vector3.new(0, -1.4, 0), "", trim, 160)
-	sub.Name = "Sub"
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.Name = "Portal"
-	prompt.ActionText = "Enter"
-	prompt.ObjectText = other.name
-	prompt.HoldDuration = 0.4
-	prompt.MaxActivationDistance = 14
-	prompt.RequiresLineOfSight = false
-	prompt.Style = Enum.ProximityPromptStyle.Custom
-	prompt.KeyboardKeyCode = Enum.KeyCode.E
-	prompt.Parent = field
-	m:SetAttribute("Target", other.id)
-end
 
 -- Builds everything. Safe to run again (and from the Studio command bar to
 -- preview the map in edit mode): the old map is removed first.
@@ -1102,7 +1058,6 @@ function World.build()
 		end
 		buildBoards()
 		buildGroupChest()
-		buildPortal()
 		buildEventBoard()
 		buildLane()
 		buildGates()

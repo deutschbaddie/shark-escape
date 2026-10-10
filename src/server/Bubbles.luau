@@ -340,7 +340,7 @@ end
 
 -- Golden Bubble / Starter Pack: straight into your hands (or your tank)
 function Bubbles.give(s: Game.Session, r: string, zoneId: string?, size: number?)
-	local zone = Config.zoneForSpeed(s.profile.speed, s.profile.world)
+	local zone = Config.zoneForSpeed(s.profile.speed, s.profile.world, s.profile.rebirths)
 	local c = { r = r, z = zoneId or zone.id, m = Bubbles.rollMutation(), s = size or Config.rollSize(rng) }
 	Game.discover(s, c)
 	if s.carrying then

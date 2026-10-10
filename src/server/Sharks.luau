@@ -655,7 +655,9 @@ local function deepSweep()
 	for player, s in Game.sessions do
 		local hrp = Game.root(player)
 		local zone = hrp and Layout.inWater(hrp.Position) and Config.zoneAtPos(hrp.Position)
-		if not (zone and zone.gate > s.profile.speed and Game.huntable(s)) then
+		-- too slow for it, or not evolved enough for it: hunted nonstop
+		local locked = zone and (zone.gate > s.profile.speed or (zone.evolve or 0) > s.profile.rebirths)
+		if not (zone and locked and Game.huntable(s)) then
 			deepWarned[player] = nil
 			continue
 		end
@@ -675,7 +677,8 @@ local function deepSweep()
 		end
 		if deepWarned[player] ~= zone.id then
 			deepWarned[player] = zone.id
-			Game.notify(player, "tooDeep", { zone = zone.id, need = zone.gate })
+			Game.notify(player, "tooDeep", { zone = zone.id, need = zone.gate,
+				evolve = (zone.evolve or 0) > s.profile.rebirths and zone.evolve or nil })
 			Game.track(player, "gate", { zone = zone.id }) -- (analytics: GateBlocked = went in too slow)
 		end
 	end

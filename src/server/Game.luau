@@ -1039,32 +1039,6 @@ actions.ring = function(s, i, retried)
 	Game.notify(s.player, "ring", { amount = amount, i = i })
 end
 
--- the plaza portal: across to the other world, right here in this server
-actions.portal = function(s)
-	local here = Config.Worlds[s.profile.world] or Config.Worlds[1]
-	local target = here.id == 1 and 2 or 1
-	local w = Config.Worlds[target]
-	if not w or (s.portalAt and os.clock() - s.portalAt < 3) then
-		return
-	end
-	local hrp = root(s.player)
-	if not (hrp and (Layout.toLocal(hrp.Position) - Layout.Portal).Magnitude < 24) then
-		return
-	end
-	if not Game.unlockedWorlds(s)[tostring(target)] then
-		local need = w.unlockRebirths - Data.worldRebirths(s.profile, here.id)
-		Game.notify(s.player, "announce", { text = ("Rebirth %d more time%s in %s to open %s"):format(need, need == 1 and "" or "s", here.name, w.name) })
-		return
-	end
-	s.portalAt = os.clock()
-	Game.notify(s.player, "portal", { name = w.name, world = target })
-	task.delay(0.9, function() -- the client's flash covers the jump
-		if Game.sessions[s.player] == s then
-			Game.switchWorld(s, target)
-		end
-	end)
-end
-
 actions.rebirth = function(s)
 	local p = s.profile
 	if p.speed < Config.rebirthSpeed(p.wr, p.world) then
@@ -1085,8 +1059,15 @@ actions.rebirth = function(s)
 	if hrp and s.plot then
 		hrp.Parent:PivotTo(Layout.spawnCFrame(s.plot.cf))
 	end
-	Game.notifyAll("announce", { text = ("%s REBIRTHED! (x%s speed)"):format(s.player.DisplayName, tostring(Config.Rebirth.mult ^ p.rebirths)) })
-	Game.notify(s.player, "rebirth", { rebirths = p.rebirths })
+	-- evolving opens the next deep biome at the end of the sea
+	local biome
+	for _, zone in Config.worldZones(p.world) do
+		if zone.evolve == p.rebirths then
+			biome = zone.name
+		end
+	end
+	Game.notifyAll("announce", { text = ("%s evolved!"):format(s.player.DisplayName) })
+	Game.notify(s.player, "rebirth", { rebirths = p.rebirths, biome = biome })
 	s.dirty = true
 end
 
@@ -1250,8 +1231,10 @@ function Game.join(player: Player)
 		return
 	end
 	if not Config.Worlds[profile.world] then
-		Data.enterWorld(profile, 1)
+		Data.enterWorld(profile, 1) -- (Candy Bay is now the deep end of the one sea)
 	end
+	-- one sea: your evolves are your rebirths, wherever you made them
+	profile.wr = math.max(profile.wr, profile.rebirths)
 	local s: Session = {
 		player = player,
 		profile = profile,
@@ -1394,7 +1377,7 @@ local function secondTick()
 		end
 		-- zone unlock moments
 		for _, zone in Config.worldZones(p.world) do
-			if zone.gate > 0 and before < zone.gate and p.speed >= zone.gate then
+			if zone.gate > 0 and before < zone.gate and p.speed >= zone.gate and (zone.evolve or 0) <= p.rebirths then
 				Game.notify(s.player, "unlock", { zone = zone.id })
 			end
 		end

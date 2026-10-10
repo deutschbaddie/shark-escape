@@ -333,7 +333,7 @@ local function buildRight()
 		call(HUD.onTank)
 	end)
 	PlayGifts.square(main, SQ, 3) -- free playtime gifts
-	menuButtons.Rebirth = square(extra, "Rebirth", T.purple, 1, function()
+	menuButtons.Rebirth = square(extra, "Evolve", T.purple, 1, function()
 		call(HUD.onRebirth)
 	end)
 	menuButtons.Rebirth.Visible = false
@@ -576,8 +576,8 @@ local function render(d: any)
 		paintFill(goalFill, T.blue)
 	else
 		local ready = d.speed >= target
-		zoneLabel.Text = "Rebirth"
-		goalText.Text = ready and "Rebirth ready" or ("%s / %s"):format(UI.short(d.speed), UI.short(target))
+		zoneLabel.Text = "Evolve"
+		goalText.Text = ready and "Evolve ready" or ("%s / %s"):format(UI.short(d.speed), UI.short(target))
 		frac = math.clamp(d.speed / target, 0.06, 1)
 		paintFill(goalFill, T.green)
 	end
@@ -1023,8 +1023,13 @@ end
 handlers.tooDeep = function(d)
 	local zone = Config.zoneById(d.zone)
 	local shark = zone and Config.sharkName(zone.shark) or "shark"
-	Notify.banner("Too deep for your speed", { key = "deep", priority = 4, time = 3.5, color = C.red,
-		sub = ("The %s hunts you here! Need %s speed"):format(shark, UI.short(d.need or 0)) })
+	if d.evolve then
+		Notify.banner("Not evolved enough", { key = "deep", priority = 4, time = 3.5, color = C.red,
+			sub = ("The %s hunts you here! Evolve %d times to fish here"):format(shark, d.evolve) })
+	else
+		Notify.banner("Too deep for your speed", { key = "deep", priority = 4, time = 3.5, color = C.red,
+			sub = ("The %s hunts you here! Need %s speed"):format(shark, UI.short(d.need or 0)) })
+	end
 	Fx.sound("sharkAlarm", 0.6)
 end
 
@@ -1065,7 +1070,7 @@ end
 handlers.rebirth = function(d)
 	Fx.flash(Color3.new(1, 1, 1), 0.8, 0)
 	Fx.sound("rebirth", 0.8)
-	Notify.takeover("Rebirth", ("Permanent x%s speed gain"):format(tostring(Config.Rebirth.mult ^ d.rebirths)), C.green, 2, "Rebirth")
+	Notify.takeover("You evolved", d.biome and ("%s is open"):format(d.biome) or ("x%s speed for good"):format(tostring(Config.Rebirth.mult ^ d.rebirths)), C.green, 2, "Rebirth")
 end
 
 handlers.purchase = function(d)

@@ -117,21 +117,26 @@ function Hub.confirmRebirth()
 	local now = Config.Rebirth.mult ^ d.rebirths
 	local nextMult = Config.Rebirth.mult ^ (d.rebirths + 1)
 	local win = Shop.popup({
-		title = "Rebirth?",
+		title = "Evolve?",
 		icon = "Rebirth",
 		color = C.purple,
 		text = (function()
-			-- a new wake color at this rebirth? say so
-			for _, t in Config.WakeTiers do
-				if t.at == d.rebirths + 1 then
-					return ("Start over for a permanent speed boost and a %s wake."):format(t.name:lower())
+			-- a new deep biome (or wake color) at this evolve? say so
+			for _, zone in Config.worldZones(d.world) do
+				if zone.evolve == d.rebirths + 1 then
+					return ("Start over, get faster, and open %s."):format(zone.name)
 				end
 			end
-			return "Start over for a permanent speed gain boost."
+			for _, t in Config.WakeTiers do
+				if t.at == d.rebirths + 1 then
+					return ("Start over, get faster, and get a %s wake."):format(t.name:lower())
+				end
+			end
+			return "Start over and get faster for good."
 		end)(),
 		value = ("%s  →  %s"):format(multText(now), multText(nextMult)),
 		valueColor = C.gold,
-		primary = { text = "REBIRTH", color = C.green, fn = function()
+		primary = { text = "EVOLVE", color = C.green, fn = function()
 			State.action("rebirth")
 		end },
 		secondary = { text = "Cancel" },
@@ -278,7 +283,7 @@ local function updateShowcase()
 		sub.TextColor3 = can and C.money or C.gold
 	else
 		label.Text = "Every ride owned!"
-		sub.Text = "Rebirth for a permanent boost"
+		sub.Text = "Evolve for a permanent boost"
 	end
 end
 
@@ -292,7 +297,9 @@ local function gateTick()
 		local need = g:GetAttribute("Gate")
 		local wall = g:FindFirstChild("Wall") :: BasePart?
 		if typeof(need) == "number" then
-			local open = d.speed >= need
+			local evolveNeed = (g:GetAttribute("Evolve") :: number?) or 0
+			local evolved = (d.rebirths or 0) >= evolveNeed
+			local open = d.speed >= need and evolved
 			for _, tex in (wall and wall:GetChildren() or {}) do -- (no walls since the sea opened up)
 				if tex:IsA("Texture") then
 					tex.Transparency = open and 1 or 0
@@ -318,7 +325,9 @@ local function gateTick()
 						t.TextColor3 = open and C.money or C.white
 					end
 					if sub then
-						sub.Text = open and "You're fast enough" or ("Recommended %s speed · you have %s"):format(UI.short(need), UI.short(d.speed))
+						sub.Text = open and "You're fast enough"
+							or not evolved and ("Evolve %d times to fish here"):format(evolveNeed)
+							or ("Recommended %s speed · you have %s"):format(UI.short(need), UI.short(d.speed))
 						sub.TextColor3 = open and C.money or C.gold
 					end
 				end

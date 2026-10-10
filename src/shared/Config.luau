@@ -40,6 +40,7 @@ export type Zone = {
 	tint: Color3,
 	world: number?, -- which world (set below)
 	aggro: number?, -- shark aggression (1 = normal): >1 circles less, lunges from further
+	evolve: number?, -- evolves needed to fish here (set below)
 	zStart: number,
 	zEnd: number,
 	index: number,
@@ -85,35 +86,35 @@ local OCEAN_ZONES = {
 		floorColor = Color3.fromRGB(235, 225, 200), tint = Color3.fromRGB(240, 255, 250) },
 } :: { Zone }
 
--- World 2: Candy Bay. Same game, sweeter sea: every zone pays 4x its
--- Shark Beach twin, speed gain is x2.5 (on top of your rebirths), and gates
--- / rebirth goals are x4.
+-- Past the Lost City the sea turns to candy: six more biomes, the deepest
+-- part of the one sea (they were a separate world, Candy Bay). Each zone
+-- pays 5x the one before it; gates follow the evolve goals.
 local function rgb(r: number, g: number, b: number): Color3
 	return Color3.fromRGB(r, g, b)
 end
 local CANDY_ZONES = {
-	{ id = "Soda", name = "Soda Shallows", gate = 0, length = 260, depth = 7, shark = "Gummy", sharkLength = 8,
-		sharkSpeed = 60, value = 4, islandEvery = 70, islandRadius = 11, aggro = 0.9,
+	{ id = "Soda", name = "Soda Shallows", gate = 700000, length = 1000, depth = 7, shark = "Gummy", sharkLength = 8,
+		sharkSpeed = 370, value = 1875000, islandEvery = 70, islandRadius = 11, aggro = 1.2,
 		water = rgb(120, 230, 255), clarity = 0.9, floor = Enum.Material.Sand,
 		floorColor = rgb(255, 214, 236), tint = rgb(255, 250, 255) },
-	{ id = "Gumdrop", name = "Gumdrop Reef", gate = 400, length = 400, depth = 12, shark = "Jelly", sharkLength = 12,
-		sharkSpeed = 95, value = 20, islandEvery = 95, islandRadius = 10, aggro = 1.3,
+	{ id = "Gumdrop", name = "Gumdrop Reef", gate = 1400000, length = 1100, depth = 12, shark = "Jelly", sharkLength = 12,
+		sharkSpeed = 380, value = 9375000, islandEvery = 95, islandRadius = 10, aggro = 1.25,
 		water = rgb(255, 140, 210), clarity = 0.8, floor = Enum.Material.Snow,
 		floorColor = rgb(255, 190, 230), tint = rgb(255, 245, 252) },
-	{ id = "Lolly", name = "Lollipop Lagoon", gate = 2000, length = 560, depth = 18, shark = "Licorice", sharkLength = 14,
-		sharkSpeed = 120, value = 100, islandEvery = 120, islandRadius = 9, aggro = 1.25,
+	{ id = "Lolly", name = "Lollipop Lagoon", gate = 2800000, length = 1200, depth = 18, shark = "Licorice", sharkLength = 14,
+		sharkSpeed = 390, value = 46875000, islandEvery = 120, islandRadius = 9, aggro = 1.25,
 		water = rgb(190, 130, 255), clarity = 0.7, floor = Enum.Material.Pavement,
 		floorColor = rgb(225, 200, 255), tint = rgb(250, 245, 255) },
-	{ id = "Cane", name = "Candy Cane Cove", gate = 4000, length = 720, depth = 26, shark = "Peppermint", sharkLength = 18,
-		sharkSpeed = 160, value = 480, islandEvery = 150, islandRadius = 9,
+	{ id = "Cane", name = "Candy Cane Cove", gate = 5600000, length = 1300, depth = 26, shark = "Peppermint", sharkLength = 18,
+		sharkSpeed = 400, value = 234375000, islandEvery = 150, aggro = 1.3, islandRadius = 9,
 		water = rgb(255, 110, 130), clarity = 0.6, floor = Enum.Material.Salt,
 		floorColor = rgb(255, 235, 235), tint = rgb(255, 245, 245) },
-	{ id = "Choco", name = "Chocolate Deep", gate = 20000, length = 1000, depth = 48, shark = "Fudge", sharkLength = 22,
-		sharkSpeed = 230, value = 2400, islandEvery = 210, islandRadius = 8,
+	{ id = "Choco", name = "Chocolate Deep", gate = 11200000, length = 1400, depth = 48, shark = "Fudge", sharkLength = 22,
+		sharkSpeed = 410, value = 1171875000, islandEvery = 210, aggro = 1.3, islandRadius = 8,
 		water = rgb(120, 70, 40), clarity = 0.4, floor = Enum.Material.Asphalt,
 		floorColor = rgb(90, 55, 35), tint = rgb(255, 240, 228) },
-	{ id = "Sugar", name = "Sugar Abyss", gate = 100000, length = 1400, depth = 80, shark = "SugarKing", sharkLength = 40,
-		sharkSpeed = 320, value = 12000, islandEvery = 300, islandRadius = 8, aggro = 1.1,
+	{ id = "Sugar", name = "Sugar Abyss", gate = 22400000, length = 1600, depth = 80, shark = "SugarKing", sharkLength = 40,
+		sharkSpeed = 420, value = 5859375000, islandEvery = 300, islandRadius = 8, aggro = 1.35,
 		water = rgb(70, 30, 100), clarity = 0.3, floor = Enum.Material.Rock,
 		floorColor = rgb(60, 30, 80), tint = rgb(250, 235, 255) },
 } :: { Zone }
@@ -128,11 +129,16 @@ export type World = {
 	unlockRebirths: number, color: Color3, ox: number, oceanEnd: number,
 }
 Config.WORLD_GAP = 12000
+-- ONE SEA: everyone shares one beach and one ocean; better players ride
+-- further out past everyone else. Evolving (rebirth) opens the next biome
+-- (zone.evolve below). Each evolve goal is the speed that gets you into
+-- the deepest biome you can reach so far.
+for _, zone in CANDY_ZONES do
+	table.insert(OCEAN_ZONES, zone)
+end
 Config.Worlds = {
 	{ id = 1, name = "Shark Beach", zones = OCEAN_ZONES, gainMult = 1,
 		rebirthSteps = { 5000, 25000, 60000, 150000, 350000 }, unlockRebirths = 0, color = rgb(40, 170, 255) },
-	{ id = 2, name = "Candy Bay", zones = CANDY_ZONES, gainMult = 2.5,
-		rebirthSteps = { 20000, 100000, 240000, 600000, 1400000 }, unlockRebirths = 3, color = rgb(255, 110, 200) },
 } :: { World }
 
 -- every zone of every world (ids are unique across worlds)
@@ -143,6 +149,9 @@ for w, world in Config.Worlds do
 	for i, zone in world.zones do
 		zone.world = w
 		zone.index = i
+		-- evolves needed to fish here: Deep Blue and shallower are free, then
+		-- one more biome per evolve (The Abyss: 1 ... Sugar Abyss: 10)
+		zone.evolve = math.max(0, i - 5)
 		zone.zStart = z
 		zone.zEnd = z + zone.length
 		z = zone.zEnd
@@ -196,11 +205,12 @@ function Config.zoneById(id: string): Zone?
 end
 
 -- the furthest zone this speed is allowed into
-function Config.zoneForSpeed(speed: number, w: number?): Zone
+-- the deepest zone this speed (and, if given, this many evolves) opens
+function Config.zoneForSpeed(speed: number, w: number?, evolves: number?): Zone
 	local zones = Config.worldZones(w)
 	local best = zones[1]
 	for _, zone in zones do
-		if speed >= zone.gate then
+		if speed >= zone.gate and (evolves == nil or (zone.evolve or 0) <= evolves) then
 			best = zone
 		end
 	end
