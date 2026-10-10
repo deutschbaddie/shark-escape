@@ -3,7 +3,7 @@
 --                cooldown sweep; it glows when a shark is charging you and a
 --                bonk would land.
 --   The swing    procedural, layered on top of whatever ride pose you're in
---                (Water.poseOverlay): a wind-up over the shoulder with a lean
+--                (Water.overlays): a wind-up over the shoulder with a lean
 --                back, a fast overhead whack with a lean in, then a springy
 --                settle. A foam noodle appears in the hand for the swing; its
 --                tip lags behind (trails back on the wind-up, whips forward
@@ -38,7 +38,7 @@ local DUR = 0.5 -- the whole swing
 local WIND, HIT = 0.28, 0.42 -- (fractions of DUR: wind-up ends, the whack lands)
 local LA, LB, THICK = 2.6, 2.8, 0.75 -- noodle: grip half, tip half, thickness
 
-type Swing = { start: number, parts: { BasePart }, color: Color3, released: boolean? }
+type Swing = { start: number, parts: { BasePart }, color: Color3 }
 local swings: { [Model]: Swing } = {}
 
 local button: TextButton
@@ -124,50 +124,24 @@ local function play(char: Model)
 	end
 end
 
--- what we layered on each joint last frame: if the ride pose didn't set the
--- joint again this frame we must not stack on our own result
-local applied: { [any]: { base: CFrame, result: CFrame } } = {}
-
-local function layer(j: any, add: CFrame?)
-	if not (j and j.Parent) then
-		return
-	end
-	local cur = j.Transform
-	local last = applied[j]
-	local base = (last and cur == last.result) and last.base or cur
-	if add then
-		local result = base * add
-		j.Transform = result
-		applied[j] = { base = base, result = result }
-	else
-		j.Transform = base -- (the swing is over: hand the joint back)
-		applied[j] = nil
-	end
-end
-
--- the swing on the joints (after the ride pose, every frame)
-Water.poseOverlay = function(char, joints)
+-- the swing on the joints (Water layers it over the ride pose each frame)
+table.insert(Water.overlays, function(char)
 	local sw = swings[char]
 	if not sw then
-		return
+		return nil
 	end
 	local u = (os.clock() - sw.start) / DUR
 	if u >= 1 then
-		if not sw.released then
-			sw.released = true
-			layer(joints.RightShoulder, nil)
-			layer(joints.RightElbow, nil)
-			layer(joints.Waist, nil)
-			layer(joints.LeftShoulder, nil)
-		end
-		return
+		return nil
 	end
 	local f = pose(u)
-	layer(joints.RightShoulder, CFrame.Angles(f.sh, 0, f.shOut))
-	layer(joints.RightElbow, CFrame.Angles(f.el, 0, 0))
-	layer(joints.Waist, CFrame.Angles(f.wPitch, f.wYaw, 0))
-	layer(joints.LeftShoulder, CFrame.Angles(f.off, 0, -f.off * 0.4)) -- (the other arm swings up for balance)
-end
+	return {
+		RightShoulder = CFrame.Angles(f.sh, 0, f.shOut),
+		RightElbow = CFrame.Angles(f.el, 0, 0),
+		Waist = CFrame.Angles(f.wPitch, f.wYaw, 0),
+		LeftShoulder = CFrame.Angles(f.off, 0, -f.off * 0.4), -- (the other arm swings up for balance)
+	}
+end)
 
 -- the noodle follows the hand (after the joints have moved this frame)
 local function updateNoodles()

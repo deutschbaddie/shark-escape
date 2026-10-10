@@ -219,6 +219,17 @@ local function count(zone: Config.Zone): number
 	return n
 end
 
+-- tells every client to play the net scoop (client Grab.luau): from the
+-- bubble, into the sack (or over the head)
+local function scoop(s: Game.Session, b: Bubble, r: string)
+	local char = s.player.Character
+	if char then
+		char:SetAttribute("GrabFrom", b.pos)
+		char:SetAttribute("GrabWhat", ("%s|%s|%s|%s"):format(r, b.z, b.m or "", tostring(b.s or 1)))
+		char:SetAttribute("GrabAt", Workspace:GetServerTimeNow()) -- (last: clients listen for this one)
+	end
+end
+
 local function grab(s: Game.Session, b: Bubble)
 	local r = b.r
 	local lucky, pity = false, false
@@ -228,6 +239,7 @@ local function grab(s: Game.Session, b: Bubble)
 		local c = { r = r, z = b.z, m = b.m, s = b.s }
 		Game.takeCatch(s, c)
 		Game.discover(s, c)
+		scoop(s, b, r)
 		Game.notify(s.player, "grab", { r = r, m = b.m, z = b.z, s = b.s, v = Config.creatureValue(r, b.z, b.m, b.s) * Game.coinMult(s) })
 		return
 	end
@@ -257,6 +269,7 @@ local function grab(s: Game.Session, b: Bubble)
 	end
 	local c = { r = r, z = b.z, m = b.m, s = b.s }
 	Game.takeCatch(s, c) -- (your hands, or your net)
+	scoop(s, b, r)
 	Game.discover(s, c)
 	if Game.sharkOnGrab then
 		Game.sharkOnGrab(s, r) -- the shark may notice

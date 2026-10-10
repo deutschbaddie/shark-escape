@@ -20,9 +20,12 @@ local Fx = require(script.Parent.Fx)
 local UI = require(script.Parent.UI)
 
 local Water = {}
--- set by Bonk.luau: (character, its joints by name, time) -> layer a move on
--- top of the ride pose
-Water.poseOverlay = nil :: ((Model, { [string]: any }, number) -> ())?
+-- moves layered on top of the ride pose (the Noodle Bonk swing, the net
+-- scoop): each returns { [joint name] = extra rotation } for this frame, or
+-- nil. Water multiplies them onto the pose itself, so they never stack up
+-- frame after frame, and hands each joint back when they're done.
+Water.overlays = {} :: { (Model, number) -> { [string]: CFrame }? }
+local touched: { [Model]: { [string]: boolean } } = {}
 local player = Players.LocalPlayer
 local Terrain = Workspace.Terrain
 
@@ -181,6 +184,7 @@ local function addRider(char: Model)
 	char.AncestryChanged:Connect(function(_, parent)
 		if not parent then
 			riders[char] = nil
+			touched[char] = nil
 		end
 	end)
 end
@@ -260,9 +264,39 @@ RunService.PreSimulation:Connect(function()
 					j.Transform = name == "Root" and CFrame.new(offset) * fn(t, sway) or fn(t, sway)
 				end
 			end
-			-- moves layered on top of the ride pose (the Noodle Bonk swing)
-			if Water.poseOverlay then
-				Water.poseOverlay(char, r.joints, t)
+			-- moves layered on top of the ride pose
+			local adds: { [string]: CFrame }? = nil
+			for _, fn in Water.overlays do
+				local got = fn(char, t)
+				if got then
+					adds = adds or {}
+					for name, cf in got do
+						(adds :: any)[name] = ((adds :: any)[name] or CFrame.identity) * cf
+					end
+				end
+			end
+			local mine = touched[char]
+			if adds or mine then
+				local now: { [string]: boolean } = {}
+				for name, cf in adds or {} do
+					local j = r.joints[name]
+					if j and j.Parent then
+						-- on top of what the pose set this frame (or the rest pose)
+						local base = pose[name] and j.Transform or CFrame.identity
+						j.Transform = base * cf
+						now[name] = true
+					end
+				end
+				-- joints a move just let go of (and the pose doesn't drive): back to rest
+				for name in mine or {} do
+					if not now[name] and not pose[name] then
+						local j = r.joints[name]
+						if j and j.Parent then
+							j.Transform = CFrame.identity
+						end
+					end
+				end
+				touched[char] = next(now) and now or nil
 			end
 		end
 	end

@@ -673,11 +673,12 @@ Config.Raid = {
 -- coins in the Tank window; kept through rebirths and across worlds). A
 -- shark bite loses the whole haul, so a big net is a big risk too.
 Config.Nets = {
-	{ name = "Bare Hands", cap = 2, price = 0 },
-	{ name = "Small Net", cap = 3, price = 300 }, -- (an early goal at ~3 min that feeds the haul)
-	{ name = "Big Net", cap = 5, price = 8000 },
-	{ name = "Trawl Net", cap = 8, price = 2500000 },
-	{ name = "Mega Net", cap = 12, price = 150000000 },
+	-- (look: the sack on your back, Game.updateTrail: its size, cloth and rim)
+	{ name = "Bare Hands", cap = 2, price = 0, size = 0.75, cloth = Color3.fromRGB(190, 160, 120), rim = Color3.fromRGB(120, 90, 60) },
+	{ name = "Small Net", cap = 3, price = 300, size = 0.85, cloth = Color3.fromRGB(215, 185, 135), rim = Color3.fromRGB(150, 105, 60) }, -- (an early goal at ~3 min that feeds the haul)
+	{ name = "Big Net", cap = 5, price = 8000, size = 1, cloth = Color3.fromRGB(90, 160, 230), rim = Color3.fromRGB(40, 70, 140) },
+	{ name = "Trawl Net", cap = 8, price = 2500000, size = 1.15, cloth = Color3.fromRGB(80, 200, 120), rim = Color3.fromRGB(30, 110, 60) },
+	{ name = "Mega Net", cap = 12, price = 150000000, size = 1.3, cloth = Color3.fromRGB(255, 205, 60), rim = Color3.fromRGB(200, 120, 20), shine = true },
 }
 function Config.netCap(tier: number?): number
 	local n = Config.Nets[math.clamp(tier or 1, 1, #Config.Nets)]

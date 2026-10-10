@@ -25,7 +25,7 @@ export type Session = {
 	plot: World.Plot?,
 	carrying: Data.Creature?,
 	carryModel: Model?,
-	trailModel: Model?, -- the net's catches, trailing behind you in bubbles
+	trailModel: Model?, -- the net sack on your back with its catches
 	rideModel: Model?,
 	pending: number,
 	lastPos: Vector3?,
@@ -404,9 +404,12 @@ function Game.setCarry(s: Session, c: Data.Creature?)
 	s.dirty = true
 end
 
--- THE HAUL, visible: what's in your net trails behind you in a chain of
--- bubbles, so everyone (and you) can see who's loaded
-local TRAIL_SHOWN = 6
+-- THE HAUL, visible: what's in your net rides in a sack on your back. It
+-- swells as it fills, the top few catches poke out of the opening, and it
+-- looks like your net tier (Config.Nets: size, cloth, rim; the Mega Net
+-- shines). Everyone can see who's loaded. (The catch in your hands rides
+-- over your head as before.)
+local SHOWN = 3
 function Game.updateTrail(s: Session)
 	if s.trailModel then
 		s.trailModel:Destroy()
@@ -414,31 +417,55 @@ function Game.updateTrail(s: Session)
 	end
 	local bag = s.bag
 	local char = s.player.Character
-	local hrp = root(s.player)
-	if not (bag and #bag > 0 and char and hrp) then
+	local torso = char and (char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")) :: BasePart?
+	if not (bag and #bag > 0 and char and torso) then
 		return
 	end
-	local trail = Instance.new("Model")
-	trail.Name = "Haul"
-	for i = 1, math.min(#bag, TRAIL_SHOWN) do
-		local c = bag[i]
-		local at = hrp.CFrame * CFrame.new(0, 1.2 + i * 0.35, 2.4 + i * 2.7)
-		local m = Creatures.build(c.r, c.m, 0.5, c.z)
-		local ball = Build.ball(m, 2.6, at, Config.rarity(c.r).color:Lerp(Color3.new(1, 1, 1), 0.5), {
-			Name = "Bubble", Material = Enum.Material.ForceField })
-		m:PivotTo(at)
-		ball.CFrame = at
-		local core = m.PrimaryPart :: BasePart
-		Build.ghost(m)
+	local net = Config.Nets[math.clamp(s.profile.net, 1, #Config.Nets)]
+	local fill = math.clamp(#bag / math.max(Config.netCap(s.profile.net) - 1, 1), 0, 1)
+	local k = (net.size or 1) * (0.8 + 0.35 * fill)
+	-- hung on the back, leaning a little away from it
+	local at = torso.CFrame * CFrame.new(0, -0.05, torso.Size.Z / 2 + 0.55 * k) * CFrame.Angles(-0.12, 0, 0)
+	local sack = Instance.new("Model")
+	sack.Name = "Haul"
+	local body = Build.ell(sack, Vector3.new(1.5, 1.6, 1.15) * k, at, net.cloth, { Name = "Sack", Material = Enum.Material.Fabric })
+	-- the netting: darker cords wrapped round it
+	for i, y in { -0.35, 0.05, 0.42 } do
+		local w = (i == 2 and 1.0 or 0.92)
+		Build.ell(sack, Vector3.new(1.52 * w, 0.09, 1.17 * w) * k, at * CFrame.new(0, y * k, 0), net.rim, { Name = "Cord", Material = Enum.Material.Fabric })
+	end
+	-- the rim round the opening, and a strap over your shoulder
+	local top = at * CFrame.new(0, 0.72 * k, 0)
+	Build.cyl(sack, 0.16, 1.05 * k, top, net.rim, { Name = "Rim", Material = net.shine and Enum.Material.Metal or Enum.Material.Fabric,
+		Reflectance = net.shine and 0.25 or 0 })
+	local strapFrom = top.Position
+	local strapTo = (torso.CFrame * CFrame.new(-torso.Size.X * 0.3, torso.Size.Y * 0.45, -torso.Size.Z / 2 - 0.05)).Position
+	local mid = (strapFrom + strapTo) / 2 + Vector3.new(0, 0.25, 0)
+	Build.part(sack, Vector3.new(0.18, 0.1, (strapTo - strapFrom).Magnitude + 0.2), CFrame.lookAt(mid, strapTo), net.rim,
+		{ Name = "Strap", Material = Enum.Material.Fabric })
+	-- the catches poking out of the top, heads up
+	local spots = { Vector3.new(-0.28, 0.82, 0.08), Vector3.new(0.26, 0.86, -0.04), Vector3.new(0, 0.95, -0.2) }
+	for i = 1, math.min(#bag, SHOWN) do
+		local c = bag[#bag - i + 1] -- (the newest on top)
+		local m = Creatures.build(c.r, c.m, 0.42 * k, c.z)
+		local p = spots[i] * k
+		m:PivotTo(at * CFrame.new(p) * CFrame.Angles(math.pi / 2 - 0.35, (i - 2) * 0.6, (i - 2) * 0.25))
 		Build.weldToRoot(m)
 		local w = Instance.new("WeldConstraint")
-		w.Part0 = hrp
-		w.Part1 = core
-		w.Parent = core
-		m.Parent = trail
+		w.Part0 = body
+		w.Part1 = m.PrimaryPart
+		w.Parent = m.PrimaryPart
+		m.Parent = sack
 	end
-	trail.Parent = char
-	s.trailModel = trail
+	sack.PrimaryPart = body
+	Build.ghost(sack)
+	Build.weldToRoot(sack)
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = torso
+	weld.Part1 = body
+	weld.Parent = body
+	sack.Parent = char
+	s.trailModel = sack
 end
 
 -- nets: room for another catch? (the one in your hands + the bag)

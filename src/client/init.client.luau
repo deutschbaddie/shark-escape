@@ -31,6 +31,7 @@ local SpeedFeel = require(script.SpeedFeel)
 local Perf = require(script.Perf)
 local Haul = require(script.Haul)
 local Bonk = require(script.Bonk)
+local Grab = require(script.Grab)
 
 -- no reset button: resetting would be a free ride home (or a free raid
 -- defense). Sharks spit you out instead of killing you anyway.
@@ -60,6 +61,7 @@ SpeedFeel.start()
 Perf.start()
 Haul.start()
 Bonk.start()
+Grab.start()
 Prompts.start()
 Ride.start()
 Shop.start()
