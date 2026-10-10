@@ -18,7 +18,7 @@ import json, math, random, statistics, sys
 
 ZONES = [  # id, gate, length, value, shark aggro
     ("Lagoon", 0, 260, 1, 0.85), ("Coral Reef", 100, 400, 5, 1.3), ("Kelp Forest", 350, 560, 25, 1.25),
-    ("Shipwreck Bay", 1000, 720, 120, 1), ("Deep Blue", 5000, 1000, 600, 1), ("The Abyss", 25000, 1400, 3000, 1),
+    ("Shipwreck Bay", 1000, 720, 120, 1), ("Deep Blue", 3000, 1000, 600, 1), ("The Abyss", 25000, 1400, 3000, 1),
     ("Frozen Sea", 60000, 1500, 15000, 1.1), ("Volcano Vents", 150000, 1600, 75000, 1.15), ("Lost City", 350000, 1800, 375000, 1.2),
 ]
 RIDES = [(0, 1), (30, 2), (300, 3), (2500, 4), (10000, 5), (40000, 7), (160000, 9), (600000, 12),
@@ -27,7 +27,7 @@ RIDES = [(0, 1), (30, 2), (300, 3), (2500, 4), (10000, 5), (40000, 7), (160000, 
 RIDE_NAMES = ["Pool Noodle", "Rubber Duck", "Inner Tube", "Boogie Board", "Surfboard", "Bathtub",
               "Banana Boat", "Jet Ski", "Speedboat", "Dolphin", "Giant Donut", "Rocket Surfboard",
               "Hover Board", "Lava Jet", "Golden Comet"]
-REBIRTH_STEPS = [5000, 25000, 60000, 150000, 350000]
+REBIRTH_STEPS = [3000, 25000, 60000, 150000, 350000]
 
 
 def rebirth_speed(n):

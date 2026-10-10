@@ -63,7 +63,7 @@ local OCEAN_ZONES = {
 		sharkSpeed = 140, value = 120, islandEvery = 150, islandRadius = 9,
 		water = Color3.fromRGB(20, 132, 190), clarity = 0.6, floor = Enum.Material.Ground,
 		floorColor = Color3.fromRGB(110, 96, 78), tint = Color3.fromRGB(240, 248, 255) },
-	{ id = "Deep", name = "Deep Blue", gate = 5000, length = 1000, depth = 48, shark = "Mecha", sharkLength = 22,
+	{ id = "Deep", name = "Deep Blue", gate = 3000, length = 1000, depth = 48, shark = "Mecha", sharkLength = 22,
 		sharkSpeed = 215, value = 600, islandEvery = 210, islandRadius = 8,
 		water = Color3.fromRGB(16, 84, 170), clarity = 0.45, floor = Enum.Material.Slate,
 		floorColor = Color3.fromRGB(46, 58, 84), tint = Color3.fromRGB(228, 238, 255) },
@@ -138,7 +138,7 @@ for _, zone in CANDY_ZONES do
 end
 Config.Worlds = {
 	{ id = 1, name = "Shark Beach", zones = OCEAN_ZONES, gainMult = 1,
-		rebirthSteps = { 5000, 25000, 60000, 150000, 350000 }, unlockRebirths = 0, color = rgb(40, 170, 255) },
+		rebirthSteps = { 3000, 25000, 60000, 150000, 350000 }, unlockRebirths = 0, color = rgb(40, 170, 255) },
 } :: { World }
 
 -- every zone of every world (ids are unique across worlds)
