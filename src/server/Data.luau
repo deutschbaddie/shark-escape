@@ -40,6 +40,8 @@ export type Profile = {
 	net: number, -- Config.Nets tier (shared by every world)
 	lockUntil: number, -- Tank Lock (os.time): no raids until then
 	quests: { day: number, ids: { string }, n: { number }, bonus: boolean },
+	bonks: number,
+	noodle: number,
 	wr: number, -- rebirths in this world (sets this run's goal; `rebirths` is the total)
 	worlds: { [string]: { [string]: any } }, -- the other worlds' progress, stashed
 }
@@ -81,6 +83,8 @@ function Data.default(): Profile
 		net = 1,
 		lockUntil = 0,
 		quests = { day = 0, ids = {}, n = {}, bonus = false }, -- today's (Quests.luau)
+		bonks = 0, -- creatures knocked loose with the noodle (Top Bonkers board)
+		noodle = 1, -- Config.Noodles tier bought with coins
 		wr = 0,
 		worlds = {},
 	}

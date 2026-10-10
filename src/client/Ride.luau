@@ -50,6 +50,9 @@ local hopQueued = false
 -- boost ring burst: extra forward speed on top of the steering (fades out),
 -- kept out of the velocity fed back into Ride.steer so it never compounds
 local burstUntil, burstLen = 0, 1
+-- bonked: shoved away from the bonker, popped up and spun round once
+local knockUntil, knockVel, spinStart = 0, Vector3.zero, -10
+local KNOCK_TIME, SPIN_TIME = 0.55, 0.7
 local lastKick = Vector3.zero
 
 -- ride through a boost ring: a burst of speed and a pop into the air
@@ -61,6 +64,20 @@ function Ride.burst(seconds: number, pop: number?)
 		vy = pop or 24
 	end
 end
+function Ride.knock(from: Vector3, power: number)
+	local r = rig
+	if not r then
+		return
+	end
+	local away = (r.hrp.Position - from) * Vector3.new(1, 0, 1)
+	away = away.Magnitude > 0.1 and away.Unit or -r.hrp.CFrame.LookVector
+	knockVel = away * power
+	knockUntil = os.clock() + KNOCK_TIME
+	spinStart = os.clock()
+	airborne = true
+	vy = 30
+end
+
 local controls: any = nil
 local lastPos: Vector3? = nil
 
@@ -339,8 +356,12 @@ local function step(dt: number)
 	lastKick = Vector3.zero
 	if left > 0 then
 		lastKick = Vector3.new(-math.sin(heading), 0, -math.cos(heading)) * top * 0.7 * (left / burstLen)
-		flat += lastKick
 	end
+	local kleft = knockUntil - t
+	if kleft > 0 then
+		lastKick += knockVel * (kleft / KNOCK_TIME) -- (fades out; kept out of the steering like the burst)
+	end
+	flat += lastKick
 	local vf = flat:Dot(Vector3.new(-math.sin(heading), 0, -math.cos(heading)))
 	if event == "whip" and not airborne then
 		Fx.splash(Vector3.new(pos.X, 0.4, pos.Z), 1.1)
@@ -384,7 +405,13 @@ local function step(dt: number)
 		pitch += math.clamp(vy / 80, -0.4, 0.4)
 	end
 	local wobble = (feel.wobble or 0) * math.sin(t * 1.3) * (1 - speedK * 0.6)
-	r.ao.CFrame = CFrame.Angles(0, heading + wobble, 0) * CFrame.Angles(pitch, 0, roll)
+	-- bonked: one full spin, fast then settling
+	local spin = 0
+	local st = (t - spinStart) / SPIN_TIME
+	if st < 1 then
+		spin = math.pi * 2 * (1 - (1 - st) ^ 3)
+	end
+	r.ao.CFrame = CFrame.Angles(0, heading + wobble + spin, 0) * CFrame.Angles(pitch, 0, roll)
 end
 
 ----------------------------------------------------------------- setup

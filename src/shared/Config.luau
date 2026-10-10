@@ -685,6 +685,28 @@ function Config.netCap(tier: number?): number
 	return n.cap
 end
 
+-- Noodle Bonk (server Bonk.luau, client Bonk.luau): one button, two uses.
+-- Bonk a rider and the last creature they carry pops out as a bubble anyone
+-- can grab. Bonk a shark that's coming for you and it's dazed for a moment.
+-- Only at sea. Players in the guide or in their first `protect` seconds can't
+-- bonk riders or be bonked (sharks, yes). After a bonk you're safe for
+-- `immune` seconds. A Shark Shield blocks one bonk.
+Config.Bonk = {
+	sharkCooldown = 8, -- between shark bonks
+	daze = 1.6, -- seconds a bonked shark is dazed
+	immune = 4,
+	protect = 600, -- playtime (s) before riders can bonk / be bonked
+	knock = 70, -- how hard you get knocked (studs/s)
+}
+-- the noodle you swing: better ones reach further and swing sooner (coins,
+-- in the Ride Shop window; the Golden Noodle is a game pass)
+Config.Noodles = {
+	{ name = "Pool Noodle", reach = 11, cooldown = 2.6, price = 0, color = Color3.fromRGB(255, 120, 200) },
+	{ name = "Super Noodle", reach = 13, cooldown = 2.2, price = 5000, color = Color3.fromRGB(80, 200, 255) },
+	{ name = "Mega Noodle", reach = 15, cooldown = 1.8, price = 250000, color = Color3.fromRGB(150, 90, 255) },
+	{ name = "Golden Noodle", reach = 16, cooldown = 1.8, price = 0, pass = "GoldenNoodle", color = Color3.fromRGB(255, 200, 40) },
+}
+
 -- THE HOOK: carry more, earn more, but the shark wants you more.
 -- Haul: what you bring home in one trip pays cash at the dock right away
 -- (`seconds` of its $/s), x1.25 for every creature after the first, up
@@ -862,6 +884,8 @@ Config.Passes = {
 	GoldDuck = { iconName = "GoldDuck", id = 2022776256, price = 99, name = "Golden Duck", icon = "", desc = "Ride it - x1.25 speed gain" },
 	SharkBoard = { iconName = "SharkBoard", id = 2023016262, price = 199, name = "Shark Board", icon = "", desc = "Ride it - x1.5 speed gain" },
 	RainbowSki = { iconName = "RainbowSki", id = 2023094256, price = 399, name = "Rainbow Jet Ski", icon = "", desc = "Ride it - x2 speed gain" },
+	-- (needs its game pass id: create it on the Creator Dashboard)
+	GoldenNoodle = { iconName = "Crown", id = 0, price = 149, name = "Golden Noodle", icon = "", desc = "A shiny bonk noodle: the longest reach" },
 }
 
 Config.Products = {

@@ -305,6 +305,8 @@ function Game.push(s: Session)
 		dealBought = p.dealBought,
 		dailyDay = p.daily.day,
 		quests = Game.questList and Game.questList(s) or nil,
+		noodle = p.noodle, -- (Config.Noodles tier; the Golden Noodle pass is in `passes`)
+		bonks = p.bonks,
 		questsReset = 86400 - now % 86400, -- seconds to new quests (midnight UTC)
 		dailyWait = math.max(0, p.daily.last + Config.DAILY_GAP_HOURS * 3600 - now),
 		groupWait = math.max(0, p.groupClaim + Config.GroupChest.cooldownHours * 3600 - now),

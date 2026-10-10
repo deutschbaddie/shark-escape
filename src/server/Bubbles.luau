@@ -150,7 +150,7 @@ local function spawnBubble(zone: Config.Zone, fixed: Fixed?): Bubble
 end
 
 -- a bitten player's haul floats free around where it happened
-function Bubbles.spill(pos: Vector3, list: { any }, by: Player?): { any }
+function Bubbles.spill(pos: Vector3, list: { any }, by: Player?, why: string?): { any }
 	local zone = Config.zoneAtPos(pos)
 	local made = {}
 	if not zone then
@@ -162,7 +162,7 @@ function Bubbles.spill(pos: Vector3, list: { any }, by: Player?): { any }
 		local at = Vector3.new(pos.X + math.cos(a) * r, 3, pos.Z + math.sin(a) * r)
 		table.insert(made, spawnBubble(zone, { r = c.r, z = c.z, m = c.m, s = c.s, pos = at }))
 	end
-	Game.notifyAll("spill", { x = pos.X, z = pos.Z, n = #list, time = Config.SPILL_TIME,
+	Game.notifyAll("spill", { x = pos.X, z = pos.Z, n = #list, time = Config.SPILL_TIME, why = why,
 		userId = by and by.UserId or 0, name = by and by.DisplayName or "Someone" })
 	return made
 end

@@ -31,7 +31,7 @@ local SharkView = {}
 local player = Players.LocalPlayer
 local VARIANTS = { "Baby", "Hammerhead", "Tiger", "GreatWhite", "Mecha", "Megalodon", "Frost", "Magma", "King", "Gummy", "Jelly", "Licorice", "Peppermint", "Fudge", "SugarKing" }
 -- wire codes from server Sharks.luau ("chase" = the charge)
-local STATE_NAMES = { "chase", "circle", "leave", "bite", "stalk", "overshoot", "lunge" }
+local STATE_NAMES = { "chase", "circle", "leave", "bite", "stalk", "overshoot", "lunge", "dazed" }
 local BONES = { "Root", "Head", "Jaw", "Spine2", "Spine3", "Spine4", "Tail", "PecL", "PecR" }
 
 local folder = Instance.new("Folder")
@@ -67,6 +67,7 @@ type Shark = {
 	victim: number,
 	alive: boolean,
 	dived: boolean?,
+	dazedAt: number?, -- bonked (Noodle Bonk): when
 	extra: { [string]: any }?,
 }
 
@@ -344,6 +345,7 @@ local function angleLerp(a: number, b: number, t: number): number
 end
 
 local updateDanger: (number) -> ()
+local dizzyStars: (any, number) -> ()
 local updateShelter: (number) -> ()
 
 ----------------------------------------------------------------- your shark
@@ -429,6 +431,12 @@ RunService.RenderStepped:Connect(function(dt)
 			local newYaw = angleLerp(sh.yaw, sh.targetYaw, 1 - math.exp(-dt * 10))
 			local yawRate = ((newYaw - sh.yaw + math.pi) % (2 * math.pi) - math.pi) / math.max(dt, 1e-3)
 			sh.roll += (math.clamp(-yawRate * 0.12, -0.4, 0.4) - sh.roll) * math.min(dt * 6, 1)
+			if sh.state == "dazed" then
+				-- bonked silly: a dizzy rock side to side, nose wandering
+				local k = 1 - math.clamp((now - (sh.dazedAt or now)) / 1.6, 0, 1)
+				sh.roll = math.sin(now * 13) * 0.45 * (0.4 + 0.6 * k)
+				newYaw += math.sin(now * 7) * 0.012
+			end
 			sh.yaw = newYaw
 		end
 		animate(sh, dt, now)
@@ -1028,6 +1036,25 @@ Remotes.get("SharkEvent").OnClientEvent:Connect(function(kind, data)
 		end
 		return
 	end
+	if kind == "daze" then
+		-- bonked on the nose: it stops dead, rocks, and stars spin round its head
+		local sh = sharks[data.id]
+		if not sh then
+			return
+		end
+		if sh.extra and not sh.extra.airborne then
+			sh.extra = nil
+		elseif sh.extra then
+			sh.extra = nil -- (knocked out of a leap: it flops down)
+			sh.dived = false
+		end
+		sh.dazedAt = os.clock()
+		local head = sh.pos + Vector3.new(-math.sin(sh.yaw), 0, -math.cos(sh.yaw)) * sh.L * 0.38
+		Fx.splash(Vector3.new(head.X, 0.5, head.Z), math.clamp(sh.L / 10, 0.8, 2.5))
+		Fx.ring(Vector3.new(head.X, 1, head.Z), Color3.fromRGB(255, 230, 90), sh.L * 1.2)
+		dizzyStars(sh, data.seconds or 1.6)
+		return
+	end
 	if kind == "snap" then
 		-- you made it: it rears up at the waterline and bites air
 		local at = Vector3.new(data.x, 0.5, data.z)
@@ -1094,6 +1121,44 @@ Remotes.get("SharkEvent").OnClientEvent:Connect(function(kind, data)
 		end
 	end
 end)
+
+----------------------------------------------------------------- dazed
+-- little stars orbiting a dazed shark's head (a cartoon "seeing stars"),
+-- bobbing, then shrinking away
+function dizzyStars(sh: any, seconds: number)
+	local stars = {}
+	for i = 1, 4 do
+		local p = Instance.new("Part")
+		p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
+		p.Material = Enum.Material.Neon
+		p.Color = i % 2 == 0 and Color3.fromRGB(255, 240, 120) or Color3.fromRGB(255, 200, 40)
+		p.Size = Vector3.one * math.clamp(sh.L / 14, 0.6, 1.8)
+		p.Parent = folder
+		stars[i] = p
+	end
+	local t0 = os.clock()
+	local conn
+	conn = RunService.RenderStepped:Connect(function()
+		local t = os.clock() - t0
+		if t >= seconds or not sharks[sh.id] then
+			conn:Disconnect()
+			for _, p in stars do
+				p:Destroy()
+			end
+			return
+		end
+		local fade = math.clamp((seconds - t) / 0.35, 0, 1)
+		local head = sh.pos + Vector3.new(-math.sin(sh.yaw), 0, -math.cos(sh.yaw)) * sh.L * 0.3
+		local y = sh.L * 0.32 + 2 + math.sin(t * 6) * 0.3
+		local r = math.max(2, sh.L * 0.18)
+		for i, p in stars do
+			local a = t * 7 + i / #stars * math.pi * 2
+			p.CFrame = CFrame.new(head.X + math.cos(a) * r, y + math.sin(a * 2) * 0.4, head.Z + math.sin(a) * r)
+				* CFrame.Angles(t * 5, t * 8 + i, math.pi / 4)
+			p.Size = Vector3.one * math.clamp(sh.L / 14, 0.6, 1.8) * fade
+		end
+	end)
+end
 
 ----------------------------------------------------------------- local-only sharks
 -- Practice shark (onboarding) and the warning breach use client-only ids < 0.

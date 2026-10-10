@@ -39,7 +39,7 @@ for i, v in VARIANTS do
 end
 
 -- wire codes (SharkView.STATE_NAMES must match)
-local STATE = { charge = 1, circle = 2, leave = 3, bite = 4, stalk = 5, overshoot = 6, lunge = 7 }
+local STATE = { charge = 1, circle = 2, leave = 3, bite = 4, stalk = 5, overshoot = 6, lunge = 7, dazed = 8 }
 
 type Hunter = {
 	id: number,
@@ -418,6 +418,16 @@ local function update(dt: number)
 						EventRemote:FireAllClients("miss", { id = h.id, victim = (s :: Game.Session).player.UserId, x = h.to.X, z = h.to.Z })
 						Game.track((s :: Game.Session).player, "dodge", {})
 					end
+				end
+			end
+		elseif h.state == "dazed" then
+			-- bonked on the nose: it reels back, then has to circle in again
+			h.pos = clampLane(h.pos - forward(h.yaw) * h.speed * 0.25 * math.max(0, 1 - h.timer) * dt)
+			if h.timer > Config.Bonk.daze then
+				if alive and Game.huntable(s :: Game.Session) and hunting(h) then
+					restalk(h, (hrp :: BasePart).Position, cfg.recircle / h.aggro)
+				else
+					h.state, h.timer = "leave", 0
 				end
 			end
 		elseif h.state == "overshoot" then
@@ -843,6 +853,39 @@ function Sharks.harpoon(s: Game.Session)
 			Sharks.onBossDown(b.world, winners)
 		end
 	end
+end
+
+-- Noodle Bonk on a shark (Bonk.luau): the nearest one coming for this
+-- player (or any hunting shark) whose head is in reach gets dazed.
+-- true = one was hit
+function Sharks.bonk(s: Game.Session, at: Vector3, reach: number): boolean
+	local best, bestD = nil, math.huge
+	for _, h in hunters do
+		if h.state == "stalk" or h.state == "charge" or h.state == "lunge" or h.state == "overshoot" then
+			local head = h.pos + forward(h.yaw) * h.length * 0.38
+			local d = flat(head - at).Magnitude - h.length * 0.15
+			if h.target ~= s then
+				d += 4 -- (your own shark first)
+			end
+			if d <= reach and d < bestD then
+				best, bestD = h, d
+			end
+		end
+	end
+	if not best then
+		return false
+	end
+	local h = best :: Hunter
+	if h.state == "lunge" then
+		-- knocked out of the air: it flops down where it is
+		h.pos = flat(h.pos)
+		if h.target then
+			landedAt[h.target.player] = os.clock()
+		end
+	end
+	h.state, h.timer = "dazed", 0
+	EventRemote:FireAllClients("daze", { id = h.id, seconds = Config.Bonk.daze, by = s.player.UserId })
+	return true
 end
 
 function Sharks.bossUp(w: number): boolean

@@ -20,6 +20,9 @@ local Fx = require(script.Parent.Fx)
 local UI = require(script.Parent.UI)
 
 local Water = {}
+-- set by Bonk.luau: (character, its joints by name, time) -> layer a move on
+-- top of the ride pose
+Water.poseOverlay = nil :: ((Model, { [string]: any }, number) -> ())?
 local player = Players.LocalPlayer
 local Terrain = Workspace.Terrain
 
@@ -256,6 +259,10 @@ RunService.PreSimulation:Connect(function()
 				if j and j.Parent then
 					j.Transform = name == "Root" and CFrame.new(offset) * fn(t, sway) or fn(t, sway)
 				end
+			end
+			-- moves layered on top of the ride pose (the Noodle Bonk swing)
+			if Water.poseOverlay then
+				Water.poseOverlay(char, r.joints, t)
 			end
 		end
 	end

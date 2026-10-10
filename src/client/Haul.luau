@@ -142,6 +142,20 @@ local function onSpill(d: any)
 	local hrp = myRoot()
 	local at = Vector3.new(d.x, 3, d.z)
 	local time = d.time or Config.SPILL_TIME
+	if d.why == "bonk" then
+		-- bonked loose: no banner (the bonk says it), just the arrow for whoever's close
+		if hrp and (hrp.Position - at).Magnitude < 140 then
+			spillUntil = os.clock() + 15
+			Guide.set("spill", at, d.userId == player.UserId and "Grab it back" or "Loot")
+			local mine = spillUntil
+			task.delay(15, function()
+				if spillUntil == mine then
+					Guide.set("spill", nil)
+				end
+			end)
+		end
+		return
+	end
 	if d.userId == player.UserId then
 		-- yours: once you've washed up, go get it back
 		task.delay(Config.Shark.eatenTime + 1, function()
