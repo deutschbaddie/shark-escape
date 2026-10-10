@@ -1060,14 +1060,14 @@ actions.rebirth = function(s)
 		hrp.Parent:PivotTo(Layout.spawnCFrame(s.plot.cf))
 	end
 	-- evolving opens the next deep biome at the end of the sea
-	local biome
+	local biome, biomeId
 	for _, zone in Config.worldZones(p.world) do
 		if zone.evolve == p.rebirths then
-			biome = zone.name
+			biome, biomeId = zone.name, zone.id
 		end
 	end
 	Game.notifyAll("announce", { text = ("%s evolved!"):format(s.player.DisplayName) })
-	Game.notify(s.player, "rebirth", { rebirths = p.rebirths, biome = biome })
+	Game.notify(s.player, "rebirth", { rebirths = p.rebirths, biome = biome, zone = biomeId })
 	s.dirty = true
 end
 

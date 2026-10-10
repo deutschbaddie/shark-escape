@@ -868,13 +868,34 @@ builders.Cloud = function(m)
 		ell(m, Vector3.new(spec[3], spec[3] * 0.85, spec[3]), CFrame.new(p), (i % 2 == 0) and lighter(CANDY_BLUE, 0.2) or lighter(CANDY_PINK, 0.2),
 			{ Material = Enum.Material.SmoothPlastic, Reflectance = 0 })
 	end
-	-- the paper cone it came on, poking out the back
-	local base = c + Vector3.new(0, 0.1, RING_RZ + 0.7)
-	local tip = base + Vector3.new(0, -0.45, 1.6)
-	for k = 0, 3 do
-		local a, b = base:Lerp(tip, k / 4), base:Lerp(tip, (k + 1) / 4)
-		rod(m, a, b, 0.5 - k * 0.09, (k % 2 == 0) and WHITE or C(255, 90, 150))
+	-- a rainbow arching over the back, its ends sunk in the fluff
+	local bands = { C(255, 70, 90), C(255, 150, 40), C(255, 220, 60), C(90, 220, 110), C(70, 160, 255), C(160, 100, 240) }
+	local zb = c.Z + RING_RZ + 0.55
+	for j, col in bands do
+		local r = 2.3 - (j - 1) * 0.18 -- (bands just touch: overlapping ones flicker)
+		local pts = {}
+		for k = 0, 10 do
+			local a = k / 10 * math.pi
+			table.insert(pts, Vector3.new(math.cos(a) * r, 0.35 + math.sin(a) * r * 0.85, zb))
+		end
+		for k = 1, #pts - 1 do
+			rod(m, pts[k], pts[k + 1], 0.175, col, { Reflectance = 0 })
+		end
+		for k = 2, #pts - 1 do
+			ball(m, pts[k], 0.175, col, { Reflectance = 0 })
+		end
 	end
+	-- a puff at each foot of the rainbow
+	for _, sd in { -1, 1 } do
+		ell(m, Vector3.new(1.0, 0.85, 1.0), CFrame.new(sd * 2.0, 0.45, zb), WHITE, { Material = Enum.Material.SmoothPlastic, Reflectance = 0 })
+	end
+	-- a happy face on the back puff, smiling at whoever's behind you
+	local face = CFrame.new(c + Vector3.new(0, 0.1, RING_RZ + 0.66)) * CFrame.Angles(0, math.pi, 0)
+	for _, sd in { -1, 1 } do
+		eye(m, face * CFrame.new(sd * 0.24, 0.12, 0), Vector3.new(0.18, 0.24, 0.1))
+		keep(ell(m, Vector3.new(0.22, 0.13, 0.08), face * CFrame.new(sd * 0.42, -0.08, 0.02), C(255, 110, 150)))
+	end
+	keep(ell(m, Vector3.new(0.26, 0.1, 0.08), face * CFrame.new(0, -0.14, 0), INK))
 	-- sugar sparkles
 	local sp = Instance.new("Sparkles")
 	sp.SparkleColor = C(255, 220, 245)
@@ -938,6 +959,15 @@ end
 -- Lollipop Jet: a jet ski in swirl colors, with a lollipop flag on the back
 builders.LollyJet = function(m)
 	jetSki(m, { C(255, 90, 170), WHITE, C(150, 110, 255), WHITE, C(90, 220, 255) }, WHITE)
+	-- a big swirl candy on each side, behind your feet
+	for _, sd in { -1, 1 } do
+		local at = CFrame.new(sd * 1.62, 0.05, 1.35)
+		local cols = { C(255, 90, 170), WHITE, C(150, 110, 255), WHITE, C(255, 90, 170) }
+		for k = 0, 4 do
+			local d = 1.0 * (1 - k * 0.18)
+			keep(Build.cyl(m, 0.1 + k * 0.025, d, at * CFrame.Angles(0, 0, math.pi / 2), cols[k + 1]))
+		end
+	end
 	local stick = Vector3.new(0.9, 0.2, 3.3)
 	rod(m, stick, stick + Vector3.new(0, 2.6, 0.2), 0.12, WHITE)
 	local disc = CFrame.new(stick + Vector3.new(0, 3.05, 0.22))
@@ -984,27 +1014,80 @@ builders.CaneBoard = function(m)
 	end
 end
 
--- Sugar Rocket: the rocket board in pink and white with rainbow sprinkles
--- and a candy star on the nose
+-- Sugar Rocket: a striped candy firework you ride astride: pink and white
+-- bands, a sprinkle-dusted nose cone with a star on top, four fins and
+-- rainbow flames out the back
 builders.SugarRocket = function(m)
-	rocketBoard(m, C(255, 120, 200), WHITE, C(120, 230, 255), C(250, 235, 250))
-	local cols = { C(255, 220, 60), C(120, 230, 255), C(140, 240, 140), C(200, 130, 255), WHITE }
-	local rng = Random.new(11)
-	for i = 1, 16 do
-		local z = rng:NextNumber(-2.4, 2.6)
-		local x = rng:NextNumber(-0.85, 0.85) * (1 - math.abs(z) / 4.5)
-		if z > -1.1 and (math.abs(z) > 0.9 or math.abs(x) > 0.5) then -- (not under the feet or on the nose chevrons)
-			blk(m, Vector3.new(0.09, 0.05, 0.3), CFrame.new(x, DECK + 0.01 + (i % 3) * 0.006, z) * CFrame.Angles(0, rng:NextNumber(0, math.pi), 0), cols[i % #cols + 1])
-		end
+	local pink, white, cyan, gold = C(255, 110, 190), C(252, 245, 252), C(110, 225, 255), C(255, 215, 70)
+	local y, z0, z1 = 0.46, -2.0, 2.9 -- body axis, nose end, tail end
+	local D = 0.98
+	-- body: alternating candy bands
+	local n = 7
+	for k = 0, n - 1 do
+		local a, b = z0 + (z1 - z0) * k / n, z0 + (z1 - z0) * (k + 1) / n
+		rod(m, Vector3.new(0, y, a), Vector3.new(0, y, b), D, (k % 2 == 0) and pink or white, { Reflectance = 0.15 })
 	end
+	-- nose cone: tapering rings out to a rounded tip, then a star
+	for k = 0, 3 do
+		local za, zb = z0 - k * 0.42, z0 - (k + 1) * 0.42
+		rod(m, Vector3.new(0, y, za), Vector3.new(0, y, zb), D * (1 - k * 0.22), (k % 2 == 0) and white or pink, { Reflectance = 0.15 })
+	end
+	ball(m, Vector3.new(0, y, z0 - 1.68), D * 0.3, pink, { Reflectance = 0.15 })
+	local starAt = CFrame.new(0, y, z0 - 1.95)
 	for i = 0, 4 do
 		local a = i / 5 * math.pi * 2
-		wdg(m, Vector3.new(0.06, 0.5, 0.22), CFrame.new(0, DECK + 0.06, -1.7) * CFrame.Angles(math.pi / 2, 0, a) * CFrame.new(0, 0.25, 0), C(255, 240, 120),
-			{ Material = Enum.Material.Neon })
+		wdg(m, Vector3.new(0.08, 0.42, 0.2), starAt * CFrame.Angles(0, 0, a) * CFrame.new(0, 0.2, 0), gold, { Material = Enum.Material.Neon })
 	end
+	-- sprinkles on the nose
+	local cols = { C(255, 220, 60), cyan, C(140, 240, 140), C(200, 130, 255), white }
+	for i = 0, 9 do
+		local a = i / 10 * math.pi * 2 + 0.3
+		local z = z0 - 0.25 - (i % 3) * 0.3
+		local r = D / 2 * (1 - (i % 3) * 0.2)
+		local p = Vector3.new(math.cos(a) * r, y + math.sin(a) * r, z)
+		keep(blk(m, Vector3.new(0.08, 0.08, 0.26), CFrame.lookAt(p, p + Vector3.new(math.cos(a), math.sin(a), 0)) * CFrame.Angles(0, 0, a), cols[i % #cols + 1]))
+	end
+	-- four fins at the tail (an X, clear of your legs)
+	for i = 0, 3 do
+		local a = (i + 0.5) / 4 * math.pi * 2
+		wdg(m, Vector3.new(0.12, 0.85, 1.1), CFrame.new(0, y, z1 - 0.4) * CFrame.Angles(0, 0, a) * CFrame.new(0, D / 2 + 0.38, 0), (i % 2 == 0) and cyan or pink)
+	end
+	-- nozzle, then hot rainbow flames
+	rod(m, Vector3.new(0, y, z1), Vector3.new(0, y, z1 + 0.35), 0.8, C(80, 80, 95), { Reflectance = 0.2 })
+	rod(m, Vector3.new(0, y, z1 + 0.33), Vector3.new(0, y, z1 + 0.36), 0.66, C(255, 160, 220), { Material = Enum.Material.Neon })
+	ell(m, Vector3.new(0.5, 0.5, 1.4), CFrame.new(0, y, z1 + 1.0), C(255, 240, 200), { Material = Enum.Material.Neon })
+	local flame = ell(m, Vector3.new(0.8, 0.8, 2.2), CFrame.new(0, y, z1 + 1.3), C(255, 110, 200), { Material = Enum.Material.Neon, Transparency = 0.35 })
+	local fire = Instance.new("Fire")
+	fire.Size = 3
+	fire.Heat = 0
+	fire.Color = C(255, 140, 220)
+	fire.SecondaryColor = C(120, 220, 255)
+	fire.Parent = flame
+	-- saddle on top, footrests either side, handlebar out of the body
+	ell(m, Vector3.new(1.0, 0.36, 2.0), CFrame.new(0, SEAT_TOP - 0.17, 0.95), C(60, 40, 80))
+	ell(m, Vector3.new(1.04, 0.12, 1.7), CFrame.new(0, SEAT_TOP - 0.2, 0.95), gold)
+	for _, sd in { -1, 1 } do
+		rod(m, Vector3.new(sd * 0.45, 0.25, -0.45), Vector3.new(sd * 1.45, 0.25, -0.45), 0.16, C(80, 80, 95))
+		rrect(m, 0.6, 0.7, 0.1, 0.2, CFrame.new(sd * 1.25, 0.2, -0.45), gold)
+	end
+	-- twin side boosters behind your feet, with their own little flames
+	for _, sd in { -1, 1 } do
+		local x, by, a0, a1 = sd * 1.0, 0.05, 0.55, 2.5
+		rod(m, Vector3.new(x, by, a0), Vector3.new(x, by, a1), 0.5, white, { Reflectance = 0.15 })
+		for k = 0, 2 do
+			local zb = a0 + 0.35 + k * 0.6
+			rod(m, Vector3.new(x, by, zb), Vector3.new(x, by, zb + 0.18), 0.52, pink, { Reflectance = 0.15 })
+		end
+		ell(m, Vector3.new(0.5, 0.5, 0.7), CFrame.new(x, by, a0), cyan, { Reflectance = 0.15 })
+		rod(m, Vector3.new(x * 0.75, by + 0.1, 1.5), Vector3.new(0, y, 1.5), 0.16, C(80, 80, 95))
+		ell(m, Vector3.new(0.3, 0.3, 0.9), CFrame.new(x, by, a1 + 0.5), C(255, 240, 200), { Material = Enum.Material.Neon })
+		ell(m, Vector3.new(0.46, 0.46, 1.3), CFrame.new(x, by, a1 + 0.7), C(120, 220, 255), { Material = Enum.Material.Neon, Transparency = 0.35 })
+	end
+	handlebar(m, Vector3.new(0, y + 0.4, -1.35), white, pink)
 	local sp = Instance.new("Sparkles")
 	sp.SparkleColor = C(255, 180, 230)
 	sp.Parent = m:FindFirstChildWhichIsA("BasePart")
+	wake(m, z1 + 2.4, 2.0)
 end
 
 -- Where each ride wants the rider's stance anchor (Rig.ANCHOR), in ride
@@ -1026,7 +1109,7 @@ Rides.FIT = {
 	Hover = Vector3.new(0, DECK, 0), Comet = Vector3.new(0, DECK, 0),
 	JetSki = SEAT, RainbowSki = SEAT, Banana = SEAT, Speedboat = SEAT, Dolphin = SEAT, LavaSki = SEAT,
 	Cloud = knee(CLOUD_TOP), GummyShark = SEAT, LollyJet = SEAT,
-	CaneBoard = Vector3.new(0, DECK, 0), SugarRocket = Vector3.new(0, DECK, 0),
+	CaneBoard = Vector3.new(0, DECK, 0), SugarRocket = SEAT,
 } :: { [string]: Vector3 }
 
 function Rides.build(id: string): Model

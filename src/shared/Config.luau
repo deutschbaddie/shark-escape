@@ -316,7 +316,7 @@ Config.RideFeel.Cloud = { stance = "sit", accel = 0.5, coast = 2.0, turn = 3.0, 
 Config.RideFeel.GummyShark = { stance = "straddle", accel = 0.3, coast = 1.1, turn = 4.4, grip = 4.5, lean = 0.45, bob = 0.5, bobSpeed = 3.2 }
 Config.RideFeel.LollyJet = Config.RideFeel.LavaSki
 Config.RideFeel.CaneBoard = { stance = "stand", accel = 0.2, coast = 1.0, turn = 3.6, grip = 5.5, lean = 0.6, bob = 0.14, bobSpeed = 3, plane = 0.1 }
-Config.RideFeel.SugarRocket = { stance = "stand", accel = 0.15, coast = 0.9, turn = 3.5, grip = 5.5, lean = 0.5, bob = 0.12, bobSpeed = 6, plane = 0.12 }
+Config.RideFeel.SugarRocket = { stance = "straddle", accel = 0.15, coast = 0.9, turn = 4.4, grip = 5, lean = 0.55, bob = 0.14, bobSpeed = 5, plane = 0.16 }
 Config.RideFeel.Comet = { stance = "stand", accel = 0.2, coast = 0.9, turn = 3.4, grip = 5.5, lean = 0.5, bob = 0.12, bobSpeed = 6, plane = 0.12 }
 
 function Config.feel(rideId: string?): RideFeel

@@ -1071,6 +1071,16 @@ handlers.rebirth = function(d)
 	Fx.flash(Color3.new(1, 1, 1), 0.8, 0)
 	Fx.sound("rebirth", 0.8)
 	Notify.takeover("You evolved", d.biome and ("%s is open"):format(d.biome) or ("x%s speed for good"):format(tostring(Config.Rebirth.mult ^ d.rebirths)), C.green, 2, "Rebirth")
+	-- a party where you stand, and the newly opened biome's line lights up
+	local pos = myPos()
+	if pos then
+		Fx.confetti(pos)
+		Fx.sparkle(pos + Vector3.new(0, 3, 0), Color3.fromRGB(110, 255, 140), 40)
+	end
+	local zone = d.zone and Config.zoneById(d.zone)
+	if zone then
+		Fx.gateWave(zone.zStart, Config.originX(zone.world), Config.LANE_WIDTH, Color3.fromRGB(110, 255, 140))
+	end
 end
 
 handlers.purchase = function(d)
