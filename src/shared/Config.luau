@@ -695,7 +695,7 @@ Config.MiniEvents = {
 	rain = 14, -- Bubble Rain: extra bubbles per world
 	list = {
 		{ id = "golden", name = "Golden Tide", desc = "Any bubble can be Gold!", color = Color3.fromRGB(255, 200, 40) },
-		{ id = "frenzy", name = "Feeding Frenzy", desc = "Hauls pay x2. Sharks get hungry fast!", color = Color3.fromRGB(255, 80, 90) },
+		{ id = "frenzy", name = "Feeding Frenzy", desc = "Hauls pay x2. Fins come twice as fast!", color = Color3.fromRGB(255, 80, 90) },
 		{ id = "rain", name = "Bubble Rain", desc = "Bubbles near the shore!", color = Color3.fromRGB(110, 210, 255) },
 	},
 }
@@ -745,15 +745,17 @@ function Config.haulMult(n: number): number
 	return math.min(1 + Config.Haul.step * math.max(0, n - 1), Config.Haul.max)
 end
 
--- Shark hunger: every zone has a bar everyone in it can see. Each grab
--- fills it (rarer = more, night = double); when it's full the shark goes
--- for whoever in that zone is carrying the most. It calms down slowly.
-Config.Hunger = {
-	fill = { Common = 14, Uncommon = 20, Rare = 30, Epic = 45, Legendary = 70 },
-	night = 2,
-	decay = 1.2, -- per second
-	after = 15, -- where the bar drops to once the shark has gone for someone
-	grudge = 22, -- seconds that shark hunts its pick
+-- Fins follow your haul: by day, what you carry draws shark fins that
+-- circle you in the water (everyone sees them). Each creature you carry
+-- weighs `weight[rarity]`; at `attackAt` the fins close in and, `warn`
+-- seconds later, one breaks off and charges (unless you're home first).
+-- Feeding Frenzy doubles the weights. At night the sharks are out anyway.
+Config.Fins = {
+	weight = { Common = 1, Uncommon = 1, Rare = 1.5, Epic = 2, Legendary = 3 },
+	attackAt = 3,
+	warn = 4, -- seconds the fins circle in before the charge
+	grudge = 22, -- seconds that shark hunts you
+	rest = 20, -- seconds after a charge before your fins can arm again
 }
 
 -- hold time (seconds) on the grab prompt: rarer = longer = riskier

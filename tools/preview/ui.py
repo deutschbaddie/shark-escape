@@ -62,7 +62,7 @@ task = {{
 """
     for m in ("Config", "Build", "Layout"):
         s += module(m, "shared", "mod:")
-    for m in ("UI", "Sounds", "Fx", "Notify", "Guide", "Travel", "Prompts", "HUDMobile", "HUDDesktop", "HUD", "Rewards", "Shop", "Index", "Tank", "Sell", "Hub", "PlayGifts", "Reel", "Haul", "Countdown"):
+    for m in ("UI", "Sounds", "Fx", "Notify", "Guide", "Travel", "Prompts", "HUDMobile", "HUDDesktop", "HUD", "Rewards", "Shop", "Index", "Tank", "Sell", "Hub", "PlayGifts", "Reel", "Countdown"):
         s += module(m, "client", "cmod:")
     s += """
 local sig = function() return { Connect = function() end } end
@@ -465,7 +465,6 @@ MENU_SCENES = {
     "rebirth": 'require("cmod:Shop").start()\nrequire("cmod:Hub").confirmRebirth()',
     "reel": 'require("cmod:Reel").play(7, "Kraken")',
     "event": 'require("cmod:Countdown").preview()',
-    "hunger": 'local H = require("cmod:Haul")\nH.start()\nH.preview(64)',
     "daily": 'local R = require("cmod:Rewards")\nR.start()\nR.openDaily()',
 }
 

@@ -676,9 +676,9 @@ handlers.aggro = function(d)
 		Notify.takeover("Chummed", ("%s chummed you! %s coming!"):format(tostring(d.by or "Someone"), name), C.red, 1.4, "Shark")
 	else
 		-- (the one line that teaches it: the hungry shark wants the biggest haul)
-		local sub = ({ hunger = "Biggest haul! Get to the sand!",
+		local sub = ({ fins = "Your haul drew it in. Get to the sand!",
 			reel = "Reel it in fast!" } :: any)[d.why]
-		Notify.banner(d.why == "hunger" and ("The %s is coming for you"):format(name) or ("The %s noticed you"):format(name), { key = "aggro", priority = 4, time = 2.6, color = C.red,
+		Notify.banner(d.why == "fins" and ("The %s is coming for you"):format(name) or ("The %s noticed you"):format(name), { key = "aggro", priority = 4, time = 2.6, color = C.red,
 			sub = sub or "Get to the sand!" })
 	end
 	Fx.sound("sharkAlarm", 0.7)

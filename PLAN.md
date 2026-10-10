@@ -68,11 +68,11 @@ serves that, in this order. `[x]` = built (not yet playtested), `[ ]` = to do.
 - [ ] Small ad test, read the funnels, fix the biggest drop, then scale (owner)
 
 ## Phase 5: fun pass (the hook)
-**Grab creatures, and the more you carry, the hungrier the shark gets.
+**Grab creatures, and the more you carry, the more fins follow you.
 Make it back to the sand for a big payout.**
-- [x] Shark hunger bar per zone (shared; grabs fill it, rarer = more, night
-      x2). Full = its shark goes for the biggest haul there. Replaces the
-      hidden grudge dice
+- [x] Fins follow your haul (replaced the shared hunger bar, which was hard
+      to read): what you carry draws fins that circle you; a big haul makes
+      them close in and one charges
 - [x] Visible haul: the net's catches trail behind you in bubbles
 - [x] Haul bonus: the dock pays cash for a trip at once, x1.25 per extra
       creature (up to x3), counting up over your tank. Nets hold more

@@ -1,8 +1,9 @@
 -- THE HOOK on this client: carry more, earn more, but the shark wants you
 -- more.
---   Hunger  a bar over the bottom HUD while you're at sea: your zone's shark
---           (Workspace "Hunger_<zone id>", server Sharks.luau). Every grab
---           fills it; full = it goes for whoever there carries the most.
+--   Fins    what you carry draws shark fins that circle you in the water
+--           (player attribute "Fins" 0-3, server Sharks.luau finsTick).
+--           Everyone sees everyone's. When they close in ("FinsClose") they
+--           tighten and speed up, and a few seconds later one charges.
 --   Haul    the dock pays cash for a trip right away (server Game.payHaul):
 --           the number counts up over your tank.
 --   Spill   a bitten player's haul floats free: you get pointed at it.
@@ -27,70 +28,103 @@ local player = Players.LocalPlayer
 local T = UI.T
 local GREEN, ORANGE, RED = Color3.fromRGB(110, 230, 120), Color3.fromRGB(255, 170, 50), Color3.fromRGB(255, 60, 70)
 
-local panel: Frame
-local fill: Frame
-local label: TextLabel
 local spillUntil = 0
-local taught = false -- the one line that explains the bar (newer players, once a session)
+local taught, warned = false, false
 
 local function myRoot(): BasePart?
 	local char = player.Character
 	return char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
 end
 
-local function sharkName(id: string): string
-	return Config.sharkName(id)
+----------------------------------------------------------------- fins
+-- a dark dorsal fin cutting the water, with a ripple of foam at its base
+type Fin = { fin: BasePart, foam: BasePart }
+local finsOf: { [Player]: { Fin } } = {}
+local finFolder = Instance.new("Folder")
+finFolder.Name = "HaulFins"
+finFolder.Parent = Workspace
+
+local function newFin(): Fin
+	local fin = Instance.new("WedgePart")
+	fin.Anchored, fin.CanCollide, fin.CanQuery, fin.CanTouch, fin.CastShadow = true, false, false, false, false
+	fin.Color = Color3.fromRGB(70, 80, 96)
+	fin.Size = Vector3.new(0.45, 2.4, 2.6)
+	fin.Parent = finFolder
+	local foam = Instance.new("Part")
+	foam.Anchored, foam.CanCollide, foam.CanQuery, foam.CanTouch, foam.CastShadow = true, false, false, false, false
+	foam.Shape = Enum.PartType.Cylinder
+	foam.Material = Enum.Material.SmoothPlastic
+	foam.Color = Color3.new(1, 1, 1)
+	foam.Transparency = 0.45
+	foam.Size = Vector3.new(0.15, 3.4, 3.4)
+	foam.Parent = finFolder
+	return { fin = fin, foam = foam }
 end
 
-local function build()
-	local gui = Instance.new("ScreenGui")
-	gui.Name = "Hunger"
-	gui.ResetOnSpawn = false
-	gui.Parent = player:WaitForChild("PlayerGui")
-	UI.autoScale(gui)
-	panel = UI.frame(gui, { Size = UDim2.fromOffset(320, 30), Position = UDim2.new(0.5, 0, 1, -196), AnchorPoint = Vector2.new(0.5, 1),
-		BackgroundTransparency = 1, Visible = false })
-	UI.icon(panel, "Shark", { Size = UDim2.fromOffset(34, 34), Position = UDim2.new(0, 0, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5) })
-	local track = UI.frame(panel, { Size = UDim2.new(1, -42, 0, 24), Position = UDim2.new(0, 42, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5),
-		BackgroundColor3 = T.navyDark })
-	UI.corner(track, 12)
-	UI.stroke(track, T.white, 2)
-	fill = UI.frame(track, { Size = UDim2.fromScale(0, 1), BackgroundColor3 = GREEN })
-	UI.corner(fill, 12)
-	label = UI.outlined(track, "", { Size = UDim2.new(1, -12, 1, -4), Position = UDim2.fromOffset(6, 2), ZIndex = track.ZIndex + 3,
-		TextXAlignment = Enum.TextXAlignment.Left })
-end
-
-local function tick()
-	local hrp = myRoot()
-	local pos = hrp and hrp.Position
-	local zone = pos and Layout.inWater(pos) and Config.zoneAtPos(pos)
-	if not zone then
-		panel.Visible = false
-		return
+local function setFins(p: Player, n: number)
+	local list = finsOf[p] or {}
+	finsOf[p] = list
+	while #list < n do
+		local f = newFin()
+		table.insert(list, f)
+		local at = f.fin.Position
+		Fx.splash(Vector3.new(at.X, 0.5, at.Z), 0.6)
 	end
-	local v = Workspace:GetAttribute("Hunger_" .. zone.id)
-	v = typeof(v) == "number" and v or 0
+	while #list > n do
+		local f = table.remove(list) :: Fin
+		f.fin:Destroy()
+		f.foam:Destroy()
+	end
+	if n == 0 then
+		finsOf[p] = nil
+	end
+end
+
+local function finsUpdate()
+	local t = os.clock()
+	for _, p in Players:GetPlayers() do
+		local char = p.Character
+		local hrp = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+		local n = p:GetAttribute("Fins")
+		n = typeof(n) == "number" and hrp ~= nil and n or 0
+		setFins(p, n)
+		local list = finsOf[p]
+		if list and hrp then
+			local close = p:GetAttribute("FinsClose") == true
+			local center = hrp.Position
+			local r = close and 13 + math.sin(t * 3) * 1.5 or 26 - n * 2
+			local speed = close and 1.6 or 0.55
+			for i, f in list do
+				local a = t * speed + i / #list * math.pi * 2 + p.UserId % 10
+				local pos = Vector3.new(center.X + math.cos(a) * r, 0.9 + math.sin(t * 2 + i) * 0.2, center.Z + math.sin(a) * r)
+				-- travelling round the circle: face along it
+				local ahead = Vector3.new(-math.sin(a), 0, math.cos(a))
+				f.fin.CFrame = CFrame.lookAt(pos, pos + ahead)
+				f.foam.CFrame = CFrame.new(pos.X, 0.15, pos.Z) * CFrame.Angles(0, 0, math.pi / 2)
+				f.fin.Color = close and Color3.fromRGB(110, 70, 80) or Color3.fromRGB(70, 80, 96)
+			end
+		end
+	end
+	for p in finsOf do
+		if not p.Parent then
+			setFins(p, 0)
+		end
+	end
+	-- teach it once, and warn when they close in on you
 	local d = State.data
-	if d and d.tut < 5 then
-		panel.Visible = false -- (not during the first-session guide: one thing at a time)
-		return
-	end
-	panel.Visible = true
-	if not taught and d and d.tut >= 5 and (d.playtime or 0) < 3600 then
+	local mine = player:GetAttribute("Fins")
+	if not taught and typeof(mine) == "number" and mine > 0 and d and (d.playtime or 0) < 3600 then
 		taught = true
-		Notify.banner("Shark hunger", { key = "hungerTip", priority = 3, time = 4.5, color = ORANGE,
-			sub = "Grabs fill it. Full = it hunts the biggest haul" })
+		Notify.toast("Fins follow your haul. Carry a lot and one charges!", ORANGE)
 	end
-	local k = math.clamp(v / 100, 0, 1)
-	fill.Size = UDim2.fromScale(k, 1)
-	local color = k < 0.5 and GREEN:Lerp(ORANGE, k * 2) or ORANGE:Lerp(RED, (k - 0.5) * 2)
-	if k >= 0.85 then
-		color = color:Lerp(Color3.new(1, 1, 1), 0.25 + 0.25 * math.sin(os.clock() * 12))
+	local close = player:GetAttribute("FinsClose") == true
+	if close and not warned then
+		warned = true
+		Notify.banner("The fins are closing in", { key = "fins", priority = 4, time = 3, color = RED, sub = "Get your haul to the sand!" })
+		Fx.sound("sharkAlarm", 0.6, 1.15)
+	elseif not close then
+		warned = false
 	end
-	fill.BackgroundColor3 = color
-	label.Text = k >= 1 and ("The %s is after the biggest haul"):format(sharkName(zone.shark))
-		or ("%s hunger"):format(sharkName(zone.shark))
 end
 
 -- the dock's payout: a number that counts up over your tank
@@ -179,24 +213,8 @@ local function onSpill(d: any)
 	end)
 end
 
--- (the UI preview: the bar as it looks at sea)
-function Haul.preview(v: number)
-	panel.Visible = true
-	fill.Size = UDim2.fromScale(v / 100, 1)
-	fill.BackgroundColor3 = ORANGE
-	label.Text = "Great White hunger"
-end
-
 function Haul.start()
-	build()
-	local acc = 0
-	RunService.Heartbeat:Connect(function(dt)
-		acc += dt
-		if acc >= 0.1 then
-			acc = 0
-			tick()
-		end
-	end)
+	RunService.RenderStepped:Connect(finsUpdate)
 	Remotes.get("Notify").OnClientEvent:Connect(function(kind, d)
 		if typeof(d) ~= "table" then
 			return
