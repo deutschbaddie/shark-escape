@@ -160,7 +160,9 @@ local ORANGE_TEXT = UI.light(T.orange, 0.35)
 
 -- what the rides window shows that can change: next ride + what you can afford
 local function ridesKey(d: any): string
-	local key = d.ride .. "|" .. tostring(Shop.atRideShop())
+	local nn = Config.Noodles[(d.noodle or 1) + 1]
+	local key = d.ride .. "|" .. tostring(Shop.atRideShop()) .. "|n" .. tostring(d.noodle) .. tostring(nn and d.coins >= nn.price)
+		.. tostring(d.passes and d.passes.GoldenNoodle)
 	for _, ride in Config.Rides do
 		if d.rides[ride.id] then
 			key ..= ride.id
@@ -256,6 +258,48 @@ function Shop.openRides()
 		grid.CellPadding = UDim2.fromOffset(12, 12)
 		grid.SortOrder = Enum.SortOrder.LayoutOrder
 		grid.Parent = scroll
+		-- first: your bonk noodle (and the next one up)
+		do
+			local golden = d.passes and d.passes.GoldenNoodle
+			local tier = Config.Noodles[math.clamp(d.noodle or 1, 1, #Config.Noodles)]
+			local now = golden and Config.Noodles[#Config.Noodles] or tier
+			local nn = not golden and Config.Noodles[(d.noodle or 1) + 1] or nil
+			if nn and nn.pass then
+				nn = nil
+			end
+			local f = UI.card(scroll, T.pink, { LayoutOrder = -2 })
+			stage(f, Rides.noodle(now.color), { Size = UDim2.new(1, -16, 0, 92), Position = UDim2.fromOffset(8, 8) })
+			UI.chip(f, "BONK NOODLE", T.pink, { Size = UDim2.fromOffset(130, 24), Position = UDim2.fromOffset(14, 14), ZIndex = f.ZIndex + 2 })
+			UI.label(f, "body", now.name, { Size = UDim2.new(1, -20, 0, 24), Position = UDim2.fromOffset(10, 104), TextXAlignment = Enum.TextXAlignment.Left })
+			UI.label(f, "meta", nn and ("Next: reach %d · every %gs"):format(nn.reach, nn.cooldown) or ("Reach %d · every %gs"):format(now.reach, now.cooldown),
+				{ Size = UDim2.new(1, -20, 0, 20), Position = UDim2.fromOffset(10, 128), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = ORANGE_TEXT })
+			local bottom = { Size = UDim2.new(1, -16, 0, 48), Position = UDim2.new(0, 8, 1, -8), AnchorPoint = Vector2.new(0, 1) }
+			if nn then
+				UI.button(f, ("UPGRADE $%s"):format(UI.short(nn.price)), d.coins >= nn.price and T.green or T.navyLight, function()
+					State.action("buyNoodle")
+				end, bottom)
+			else
+				Shop.plate(f, "MAX", T.mute, bottom)
+			end
+			-- the Golden Noodle (game pass)
+			local gp = Config.Passes.GoldenNoodle
+			if gp and not golden then
+				local g = UI.card(scroll, T.gold, { LayoutOrder = -1 })
+				local gold = Config.Noodles[#Config.Noodles]
+				stage(g, Rides.noodle(gold.color), { Size = UDim2.new(1, -16, 0, 92), Position = UDim2.fromOffset(8, 8) })
+				UI.chip(g, "PREMIUM", T.gold, { Size = UDim2.fromOffset(100, 24), Position = UDim2.fromOffset(14, 14), ZIndex = g.ZIndex + 2 })
+				UI.label(g, "body", gold.name, { Size = UDim2.new(1, -20, 0, 24), Position = UDim2.fromOffset(10, 104), TextXAlignment = Enum.TextXAlignment.Left })
+				UI.label(g, "meta", ("Reach %d · every %gs · shiny"):format(gold.reach, gold.cooldown),
+					{ Size = UDim2.new(1, -20, 0, 20), Position = UDim2.fromOffset(10, 128), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = T.gold })
+				if gp.id ~= 0 then
+					UI.button(g, "R$ " .. gp.price, T.gold, function()
+						MarketplaceService:PromptGamePassPurchase(player, gp.id)
+					end, bottom)
+				else
+					Shop.plate(g, "SOON", T.mute, bottom)
+				end
+			end
+		end
 		for _, ride in Config.Rides do
 			local owned = d.rides[ride.id] == true
 			local equipped = d.ride == ride.id

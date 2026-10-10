@@ -83,7 +83,7 @@ local function fakeModel()
 	return { PivotTo = function() end, GetBoundingBox = function() return CFrame.new(), Vector3.new(2, 2, 2) end, ScaleTo = function() end,
 		GetExtentsSize = function() return Vector3.new(2, 2, 2) end }
 end
-MODULES["mod:Rides"] = function() return { build = fakeModel } end
+MODULES["mod:Rides"] = function() return { build = fakeModel, noodle = fakeModel } end
 MODULES["mod:Creatures"] = function() return { build = fakeModel } end
 local HUD = require("cmod:HUD")
 local Notify = require("cmod:Notify")

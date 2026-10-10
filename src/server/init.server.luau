@@ -20,6 +20,7 @@ local Raids = require(script.Raids)
 local Events = require(script.Events)
 local Quests = require(script.Quests)
 local Bonk = require(script.Bonk)
+local Invites = require(script.Invites)
 
 World.build()
 Analytics.start()
@@ -36,6 +37,7 @@ Raids.start()
 Events.start()
 Quests.start()
 Bonk.start()
+Invites.start()
 
 Players.CharacterAutoLoads = true
 for _, p in Players:GetPlayers() do

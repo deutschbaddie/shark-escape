@@ -717,7 +717,7 @@ Config.Bonk = {
 -- the noodle you swing: better ones reach further and swing sooner (coins,
 -- in the Ride Shop window; the Golden Noodle is a game pass)
 Config.Noodles = {
-	{ name = "Pool Noodle", reach = 11, cooldown = 2.6, price = 0, color = Color3.fromRGB(255, 120, 200) },
+	{ name = "Foam Noodle", reach = 11, cooldown = 2.6, price = 0, color = Color3.fromRGB(255, 120, 200) },
 	{ name = "Super Noodle", reach = 13, cooldown = 2.2, price = 5000, color = Color3.fromRGB(80, 200, 255) },
 	{ name = "Mega Noodle", reach = 15, cooldown = 1.8, price = 250000, color = Color3.fromRGB(150, 90, 255) },
 	{ name = "Golden Noodle", reach = 16, cooldown = 1.8, price = 0, pass = "GoldenNoodle", color = Color3.fromRGB(255, 200, 40) },

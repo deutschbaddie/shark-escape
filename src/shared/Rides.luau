@@ -868,4 +868,15 @@ function Rides.build(id: string): Model
 	return m
 end
 
+-- the Noodle Bonk noodle, for shop cards: a bent foam tube in its tier color
+function Rides.noodle(color: Color3): Model
+	local m = Build.model("Noodle")
+	local root = Build.part(m, Vector3.new(2.6, 0.75, 0.75), CFrame.new(-1.3, 0, 0) * CFrame.Angles(0, 0, 0.12), color,
+		{ Shape = Enum.PartType.Cylinder, Material = Enum.Material.SmoothPlastic })
+	Build.part(m, Vector3.new(2.8, 0.75, 0.75), CFrame.new(1.35, -0.25, 0) * CFrame.Angles(0, 0, -0.2), color:Lerp(Color3.new(1, 1, 1), 0.15),
+		{ Shape = Enum.PartType.Cylinder, Material = Enum.Material.SmoothPlastic })
+	m.PrimaryPart = root
+	return m
+end
+
 return Rides

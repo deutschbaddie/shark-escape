@@ -948,6 +948,18 @@ actions.buyNet = function(s)
 	end
 end
 
+-- the next Noodle Bonk noodle (coins; the Golden Noodle is a game pass)
+actions.buyNoodle = function(s)
+	local nextTier = Config.Noodles[(s.profile.noodle or 1) + 1]
+	if nextTier and not nextTier.pass and s.profile.coins >= nextTier.price then
+		s.profile.coins -= nextTier.price
+		s.profile.noodle += 1
+		Game.notify(s.player, "noodle", { name = nextTier.name, reach = nextTier.reach })
+		Game.track(s.player, "noodle", { tier = s.profile.noodle, price = nextTier.price })
+		s.dirty = true
+	end
+end
+
 actions.buySlot = function(s)
 	local price = Game.slotPrice(s)
 	if price and s.profile.coins >= price then

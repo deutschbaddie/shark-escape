@@ -331,6 +331,19 @@ function Rewards.start()
 			else
 				Notify.toast("Next daily reward in " .. UI.timeWords(data.wait or 0), C.gold)
 			end
+		elseif kind == "inviteReward" then
+			local title, sub
+			if data.kind == "invited" then
+				title, sub = "A gift from your friend", data.friend and ("%s invited you: a Rare is in your tank!"):format(tostring(data.friend))
+					or "You were invited: a Rare is in your tank!"
+			elseif (data.n or 1) > 1 then
+				title, sub = "Your friends joined!", ("+%d Rares in your tank"):format(data.n)
+			else
+				title, sub = ("%s joined!"):format(tostring(data.friend or "Your friend")), "Thanks for the invite: +1 Rare in your tank"
+			end
+			Notify.banner(title, { key = "invite", priority = 3, time = 4, color = C.gold, sub = sub })
+			Fx.sound("legendary", 0.7)
+			Fx.confetti((player.Character and player.Character:GetPivot().Position) or Vector3.zero)
 		elseif kind == "haul" then
 			local d = State.data
 			if waitForTrip and d and d.tut >= 5 then

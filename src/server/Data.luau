@@ -42,6 +42,8 @@ export type Profile = {
 	quests: { day: number, ids: { string }, n: { number }, bonus: boolean },
 	bonks: number,
 	noodle: number,
+	referredBy: number,
+	inviteRewards: number,
 	wr: number, -- rebirths in this world (sets this run's goal; `rebirths` is the total)
 	worlds: { [string]: { [string]: any } }, -- the other worlds' progress, stashed
 }
@@ -85,6 +87,8 @@ function Data.default(): Profile
 		quests = { day = 0, ids = {}, n = {}, bonus = false }, -- today's (Quests.luau)
 		bonks = 0, -- creatures knocked loose with the noodle (Top Bonkers board)
 		noodle = 1, -- Config.Noodles tier bought with coins
+		referredBy = 0, -- who invited you (Invites.luau; once)
+		inviteRewards = 0, -- Rares earned for friends you invited (capped)
 		wr = 0,
 		worlds = {},
 	}
