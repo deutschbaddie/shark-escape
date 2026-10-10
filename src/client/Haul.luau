@@ -40,23 +40,57 @@ end
 ----------------------------------------------------------------- fins
 -- real (small) sharks of the zone you're in, circling you. Only for show:
 -- client-local (SharkView.spawnLocal), they never hunt or bite and don't
--- count as "a shark is after you"; the charge comes from the server
-type Fin = { sh: any }
+-- count as "a shark is after you"; the charge comes from the server.
+-- They swim like sharks, not like satellites: each one only ever moves
+-- forward along its heading, turns at a limited rate, eases its speed up
+-- and down, and steers toward a lazy, wandering orbit around you (with its
+-- own radius, direction and drift). Move and they lag, sweep round and
+-- catch up; they keep apart and steer clear of islands and the shore.
+type Fin = { sh: any, heading: number, speed: number, side: number, seed: number }
 local finsOf: { [Player]: { Fin } } = {}
+local W = Config.LANE_WIDTH
 
-local function newFin(at: Vector3): Fin
-	local zone = Config.zoneAtPos(at) or Config.Zones[1]
-	local L = math.clamp(zone.sharkLength * 0.6, 6, 14)
-	local sh = SharkView.spawnLocal(zone.shark, L, Vector3.new(at.X, 0, at.Z + 30), 0, function() end)
-	sh.state = "circle"
-	return { sh = sh }
+local function fwdOf(yaw: number): Vector3
+	return Vector3.new(-math.sin(yaw), 0, -math.cos(yaw))
 end
 
-local function setFins(p: Player, n: number, at: Vector3?)
+local function yawOf(v: Vector3): number
+	return math.atan2(-v.X, -v.Z)
+end
+
+local function turnToward(cur: number, want: number, maxStep: number): number
+	local d = (want - cur + math.pi) % (2 * math.pi) - math.pi
+	return cur + math.clamp(d, -maxStep, maxStep)
+end
+
+-- somewhere out of the way to appear: a little behind you, in the water
+local function spawnPoint(center: Vector3, look: Vector3): Vector3
+	for _ = 1, 8 do
+		local a = math.random() * math.pi * 2
+		local p = center - look * 30 + Vector3.new(math.cos(a), 0, math.sin(a)) * math.random(25, 40)
+		p = Vector3.new(p.X, 0, math.max(p.Z, Config.SHORE_Z + 12))
+		if not Layout.islandAt(p, 6) then
+			return p
+		end
+	end
+	return Vector3.new(center.X, 0, math.max(center.Z + 40, Config.SHORE_Z + 12))
+end
+
+local function newFin(at: Vector3, look: Vector3): Fin
+	local zone = Config.zoneAtPos(at) or Config.Zones[1]
+	local L = math.clamp(zone.sharkLength * 0.6, 6, 14)
+	local p = spawnPoint(at, look)
+	local heading = yawOf(Vector3.new(at.X - p.X, 0, at.Z - p.Z))
+	local sh = SharkView.spawnLocal(zone.shark, L, p, heading, function() end)
+	sh.state = "circle"
+	return { sh = sh, heading = heading, speed = 10, side = math.random() < 0.5 and -1 or 1, seed = math.random() * 100 }
+end
+
+local function setFins(p: Player, n: number, at: Vector3?, look: Vector3?)
 	local list = finsOf[p] or {}
 	finsOf[p] = list
 	while #list < n and at do
-		table.insert(list, newFin(at))
+		table.insert(list, newFin(at, look or Vector3.new(0, 0, -1)))
 	end
 	while #list > n do
 		local f = table.remove(list) :: Fin
@@ -68,30 +102,92 @@ local function setFins(p: Player, n: number, at: Vector3?)
 	end
 end
 
-local function finsUpdate()
+local function steerFin(f: Fin, list: { Fin }, center: Vector3, vel: Vector3, close: boolean, n: number, t: number, dt: number)
+	local sh = f.sh
+	local pos = Vector3.new(sh.pos.X, 0, sh.pos.Z)
+	local toP = Vector3.new(center.X - pos.X, 0, center.Z - pos.Z)
+	local dist = toP.Magnitude
+	if dist > 160 then
+		-- left far behind (you outran it): it slips back in out of sight
+		local look = vel.Magnitude > 1 and Vector3.new(vel.X, 0, vel.Z).Unit or Vector3.new(0, 0, -1)
+		pos = spawnPoint(center, look)
+		f.heading, f.speed = yawOf(Vector3.new(center.X - pos.X, 0, center.Z - pos.Z)), 12
+		sh.pos, sh.yaw = pos, f.heading
+		return
+	end
+	local radial = dist > 0.01 and toP / dist or Vector3.new(0, 0, 1)
+	local tangent = Vector3.new(-radial.Z, 0, radial.X) * f.side
+	-- each shark keeps its own orbit, breathing in and out
+	local rWant = (close and 13 or 26 - n * 2) + math.sin(t * 0.35 + f.seed) * (close and 1.5 or 5)
+	local err = (dist - rWant) / rWant
+	local desired = tangent + radial * math.clamp(err * 2.2, -1.2, 1.6)
+	-- lazy wander so the orbit is never a perfect circle
+	local wander = (math.sin(t * 0.7 + f.seed) * 0.6 + math.sin(t * 0.23 + f.seed * 2) * 0.4) * (close and 0.25 or 0.55)
+	local c, sn = math.cos(wander), math.sin(wander)
+	desired = Vector3.new(desired.X * c - desired.Z * sn, 0, desired.X * sn + desired.Z * c)
+	-- you're on the move: they swim along with you, like sharks trailing a boat
+	local flatVel = Vector3.new(vel.X, 0, vel.Z)
+	local sp = flatVel.Magnitude
+	if sp > 1 then
+		desired += flatVel / sp * math.min(1.5, sp / 20)
+	end
+	-- keep apart from the others
+	for _, o in list do
+		if o ~= f then
+			local d = Vector3.new(pos.X - o.sh.pos.X, 0, pos.Z - o.sh.pos.Z)
+			local m = d.Magnitude
+			if m > 0.01 and m < 12 then
+				desired += d / m * (12 - m) / 12 * 1.5
+			end
+		end
+	end
+	-- look ahead: steer round islands, back from the shore and the lane edges
+	local ahead = pos + fwdOf(f.heading) * 10
+	local isl = Layout.islandAt(ahead, 5)
+	if isl then
+		local away = Vector3.new(ahead.X - isl.pos.X, 0, ahead.Z - isl.pos.Z)
+		desired += (away.Magnitude > 0.01 and away.Unit or tangent) * 2
+	end
+	if ahead.Z < Config.SHORE_Z + 10 then
+		desired += Vector3.new(0, 0, 2)
+	end
+	local ox = Config.originX(Config.worldAt(center))
+	if math.abs(ahead.X - ox) > W / 2 - 8 then
+		desired += Vector3.new(ahead.X > ox and -2 or 2, 0, 0)
+	end
+	-- turn (limited rate), then swim forward at an eased speed
+	if desired.Magnitude > 0.01 then
+		f.heading = turnToward(f.heading, yawOf(desired), ((close and 2.4 or 1.4) + math.min(1.2, sp / 100)) * dt)
+	end
+	local base = close and 30 or 15
+	local catchUp = math.max(0, dist - rWant * 1.4)
+	local want = math.min(base + catchUp + sp * 0.9, sp * 1.3 + 40)
+	local accel = ((want > f.speed) and 18 or 12) + sp * 0.5
+	f.speed += math.clamp(want - f.speed, -accel * dt, accel * dt)
+	pos += fwdOf(f.heading) * f.speed * dt
+	-- bank into the turn, like the hunting sharks do
+	local yawRate = ((f.heading - sh.yaw + math.pi) % (2 * math.pi) - math.pi) / math.max(dt, 1e-3)
+	sh.roll += (math.clamp(-yawRate * 0.12, -0.4, 0.4) - sh.roll) * math.min(dt * 6, 1)
+	sh.pos, sh.yaw = pos, f.heading
+	sh.state = "circle"
+end
+
+local function finsUpdate(dt: number)
+	dt = math.min(dt, 0.1)
 	local t = os.clock()
 	for _, p in Players:GetPlayers() do
 		local char = p.Character
 		local hrp = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
 		local n = p:GetAttribute("Fins")
 		n = typeof(n) == "number" and hrp ~= nil and n or 0
-		setFins(p, n, hrp and hrp.Position)
+		local vel = hrp and hrp.AssemblyLinearVelocity or Vector3.zero
+		local look = vel.Magnitude > 1 and Vector3.new(vel.X, 0, vel.Z).Unit or Vector3.new(0, 0, -1)
+		setFins(p, n, hrp and hrp.Position, look)
 		local list = finsOf[p]
 		if list and hrp then
 			local close = p:GetAttribute("FinsClose") == true
-			local center = hrp.Position
-			local r = close and 13 + math.sin(t * 3) * 1.5 or 26 - n * 2
-			local speed = close and 1.6 or 0.55
-			for i, f in list do
-				local a = t * speed + i / #list * math.pi * 2 + p.UserId % 10
-				local goal = Vector3.new(center.X + math.cos(a) * r, 0, center.Z + math.sin(a) * r)
-				-- swim toward its spot on the circle (smoothly, so it glides in)
-				local sh = f.sh
-				sh.pos = sh.pos:Lerp(goal, math.min(1, 0.08 + (close and 0.06 or 0)))
-				-- travelling round the circle: face along it
-				local ahead = Vector3.new(-math.sin(a), 0, math.cos(a))
-				sh.yaw = math.atan2(-ahead.X, -ahead.Z)
-				sh.state = "circle"
+			for _, f in list do
+				steerFin(f, list, hrp.Position, vel, close, n, t, dt)
 			end
 		end
 	end
