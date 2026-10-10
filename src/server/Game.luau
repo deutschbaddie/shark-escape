@@ -954,8 +954,7 @@ actions.buyNoodle = function(s)
 	if nextTier and not nextTier.pass and s.profile.coins >= nextTier.price then
 		s.profile.coins -= nextTier.price
 		s.profile.noodle += 1
-		Game.notify(s.player, "noodle", { name = nextTier.name, reach = nextTier.reach })
-		Game.track(s.player, "noodle", { tier = s.profile.noodle, price = nextTier.price })
+		Game.notify(s.player, "noodle", { name = nextTier.name, reach = nextTier.reach, tier = s.profile.noodle, price = nextTier.price })
 		s.dirty = true
 	end
 end

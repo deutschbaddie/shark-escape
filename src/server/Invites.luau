@@ -46,6 +46,9 @@ end
 
 local function onJoin(s: Game.Session)
 	local player, p = s.player, s.profile
+	if not s.canSave then
+		return -- (this session won't save: rewards would be lost or paid twice)
+	end
 	-- 1) were they invited?
 	local ok, jd = pcall(player.GetJoinData, player)
 	local ref = ok and typeof(jd) == "table" and tonumber(jd.ReferredByPlayerId) or 0

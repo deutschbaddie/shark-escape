@@ -426,6 +426,8 @@ local function update(dt: number)
 			if h.timer > Config.Bonk.daze then
 				if alive and Game.huntable(s :: Game.Session) and hunting(h) then
 					restalk(h, (hrp :: BasePart).Position, cfg.recircle / h.aggro)
+				elseif alive and hunting(h) then
+					lostTarget(h, hrp) -- (on an island: it circles it, like any other shark)
 				else
 					h.state, h.timer = "leave", 0
 				end

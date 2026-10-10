@@ -704,6 +704,11 @@ handlers.net = function(d)
 	Fx.sound("buy", 0.8)
 end
 
+handlers.noodle = function(d)
+	Notify.takeover(d.name, ("Bonk reach %d!"):format(d.reach or 0), C.pink, 1.8)
+	Fx.sound("buy", 0.8)
+end
+
 handlers.slot = function(d)
 	Notify.toast(("Your tank now holds %d!"):format(d.slots), C.green)
 end

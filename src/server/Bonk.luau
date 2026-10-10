@@ -21,6 +21,7 @@ local Bonk = {}
 local swungAt: { [Player]: number } = {}
 local sharkAt: { [Player]: number } = {}
 local bonkedAt: { [Player]: number } = {}
+local scored: { [string]: number } = {} -- bonker>victim: last time it counted for Top Bonkers
 
 -- the noodle this player swings (and its tier, for its color)
 function Bonk.noodle(s: Game.Session): (any, number)
@@ -120,7 +121,7 @@ local function swing(s: Game.Session)
 	end
 	bonkedAt[t.player] = now
 	local at = troot.Position
-	if t.profile.shields > 0 then
+	if t.profile.shields > 0 and Game.carryCount(t) > 0 then -- (only spent when there's loot to save)
 		t.profile.shields -= 1
 		t.dirty = true
 		Game.notifyAll("bonkHit", { x = at.X, y = at.Y, z = at.Z, by = s.player.UserId, target = t.player.UserId, shield = true })
@@ -134,7 +135,12 @@ local function swing(s: Game.Session)
 	if c then
 		-- it pops out a little way off, toward the bonker (a scramble)
 		Bubbles.spill(at, { c }, t.player, "bonk")
-		s.profile.bonks += 1
+		-- the board counts each rider once a minute (no two friends farming it)
+		local key = s.player.UserId .. ">" .. t.player.UserId
+		if now - (scored[key] or -1e9) >= 60 then
+			scored[key] = now
+			s.profile.bonks += 1
+		end
 		s.dirty = true
 		Game.notify(s.player, "bonkedLoot", { name = Config.fullName(c.z, c.r, c.m, c.s), target = t.player.DisplayName })
 	end

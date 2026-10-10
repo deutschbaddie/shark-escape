@@ -46,6 +46,7 @@ local cover: Frame
 local readyAt, sharkReadyAt = 0, 0
 local stopPulse: (() -> ())? = nil
 local taught = false
+local pressedAt = -10
 
 ----------------------------------------------------------------- the move
 local function lerp(a: number, b: number, k: number): number
@@ -58,11 +59,11 @@ end
 
 -- the pose of the swing at fraction u: shoulder / elbow / waist / off-arm
 -- angles, and how far the noodle tip bends (+ = trailing back)
-type Frame = { sh: number, shOut: number, el: number, wPitch: number, wYaw: number, off: number, bend: number }
-local WOUND: Frame = { sh = 2.75, shOut = -0.3, el = 1.15, wPitch = 0.2, wYaw = -0.45, off = 0.6, bend = 0.55 }
-local STRUCK: Frame = { sh = 1.3, shOut = 0.05, el = 0.12, wPitch = -0.34, wYaw = 0.38, off = -0.2, bend = -0.95 }
+type Pose = { sh: number, shOut: number, el: number, wPitch: number, wYaw: number, off: number, bend: number }
+local WOUND: Pose = { sh = 2.75, shOut = -0.3, el = 1.15, wPitch = 0.2, wYaw = -0.45, off = 0.6, bend = 0.55 }
+local STRUCK: Pose = { sh = 1.3, shOut = 0.05, el = 0.12, wPitch = -0.34, wYaw = 0.38, off = -0.2, bend = -0.95 }
 
-local function pose(u: number): Frame
+local function pose(u: number): Pose
 	if u < WIND then
 		local k = outCubic(u / WIND)
 		return { sh = WOUND.sh * k, shOut = WOUND.shOut * k, el = WOUND.el * k, wPitch = WOUND.wPitch * k,
@@ -262,6 +263,7 @@ local function press()
 		return
 	end
 	readyAt = os.clock() + myNoodle().cooldown
+	pressedAt = os.clock()
 	local char = player.Character
 	if char then
 		play(char) -- (right away: the server's "BonkAt" for us is skipped)
@@ -325,10 +327,8 @@ end
 ----------------------------------------------------------------- start
 local function watch(char: Model)
 	char:GetAttributeChangedSignal("BonkAt"):Connect(function()
-		local mine = char == player.Character
-		local sw = swings[char]
-		if mine and sw and os.clock() - sw.start < 0.6 then
-			return -- (we already played it on the press)
+		if char == player.Character and os.clock() - pressedAt < 1.5 then
+			return -- (we already played it on the press; laggy echoes too)
 		end
 		play(char)
 	end)

@@ -808,6 +808,11 @@ local function lungeArc(sh: Shark, from: Vector3, to: Vector3, dur: number)
 	Fx.sound("splash", 0.8, 0.75, Vector3.new(from.X, 1, from.Z))
 	sh.extra = {
 		airborne = true,
+		-- (dazed mid-leap: the spray mustn't stay hanging in the air)
+		cleanup = function()
+			emitter.Enabled = false
+			task.delay(1, spray.Destroy, spray)
+		end,
 		update = function(s: Shark, dt: number, now: number)
 			local e = s.extra :: any
 			local t = now - t0
@@ -1042,12 +1047,13 @@ Remotes.get("SharkEvent").OnClientEvent:Connect(function(kind, data)
 		if not sh then
 			return
 		end
-		if sh.extra and not sh.extra.airborne then
-			sh.extra = nil
-		elseif sh.extra then
-			sh.extra = nil -- (knocked out of a leap: it flops down)
-			sh.dived = false
+		if sh.extra and sh.extra.cleanup then
+			sh.extra.cleanup()
 		end
+		if sh.extra and sh.extra.airborne then
+			sh.dived = false -- (knocked out of a leap: it flops down)
+		end
+		sh.extra = nil
 		sh.dazedAt = os.clock()
 		local head = sh.pos + Vector3.new(-math.sin(sh.yaw), 0, -math.cos(sh.yaw)) * sh.L * 0.38
 		Fx.splash(Vector3.new(head.X, 0.5, head.Z), math.clamp(sh.L / 10, 0.8, 2.5))
