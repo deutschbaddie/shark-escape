@@ -3,7 +3,7 @@ import math, os, sys
 from PIL import Image, ImageDraw, ImageFont
 
 HERE = os.path.dirname(__file__)
-CELL = 260
+CELL = int(os.environ.get("CELL", "260"))
 
 def load():
     out, cur = [], None
@@ -60,7 +60,7 @@ def draw(sp, img, ox, oy, eye):
         pts = []
         for p in world:
             v = sub(p, eye); z = dot(v, fwd)
-            sx = dot(v, right) / z * 520; sy = -dot(v, up) / z * 520
+            sx = dot(v, right) / z * 2 * CELL; sy = -dot(v, up) / z * 2 * CELL
             pts.append((ox + CELL/2 + sx, oy + CELL/2 + 10 + sy))
         a = int(255 * (1 - t))
         d.polygon(pts, fill=col + (a,), outline=(20, 20, 30, 255))
@@ -68,7 +68,7 @@ def draw(sp, img, ox, oy, eye):
 
 def main():
     sps = load()
-    cols = 5
+    cols = int(os.environ.get("COLS", "6"))
     rows = math.ceil(len(sps) / cols)
     img = Image.new("RGBA", (cols * CELL, rows * CELL), (58, 63, 82, 255))
     d = ImageDraw.Draw(img)
@@ -76,7 +76,8 @@ def main():
         font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 15)
     except Exception:
         font = None
-    eye = [3.4, 2.4, -5.2]
+    k = float(os.environ.get("DIST", "1"))
+    eye = [3.4 * k, 2.4 * k, -5.2 * k]
     for i, sp in enumerate(sps):
         ox, oy = (i % cols) * CELL, (i // cols) * CELL
         d.rectangle([ox + 2, oy + 2, ox + CELL - 3, oy + CELL - 3], outline=(90, 96, 120))

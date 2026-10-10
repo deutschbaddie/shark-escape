@@ -23,12 +23,40 @@ end
 """
 for m in ("Config", "Build", "Creatures"):
     harness += module(m)
+# optional: ZONES=Lagoon,Reef RARITIES=Mythic T=0.7 (pose every animated bit
+# the way Animals.luau does at that time, to check nothing comes loose)
+want_z = [z for z in os.environ.get("ZONES", "").split(",") if z]
+want_r = [r for r in os.environ.get("RARITIES", "").split(",") if r]
+anim = open(os.path.join(ROOT, "..", "client", "Animals.luau")).read()
+moves = anim[anim.index("local A = CFrame.Angles"):anim.index("\n}\n", anim.index("local MOVES")) + 3]
+moves = re.sub(r"local MOVES: [^=]*=", "local MOVES =", moves)
+harness += moves
+harness += f"""
+local WANTZ = {{ {", ".join(repr(z) for z in want_z)} }}
+local WANTR = {{ {", ".join(repr(r) for r in want_r)} }}
+local T = {os.environ.get("T", "nil")}
+"""
 harness += """
 local Config = require("mod:Config")
 local Creatures = require("mod:Creatures")
 for _, zone in Config.Zones do
 	for _, r in Config.Rarities do
+		if (#WANTZ > 0 and not table.find(WANTZ, zone.id)) or (#WANTR > 0 and not table.find(WANTR, r.id)) then
+			continue
+		end
 		local m = Creatures.build(r.id, nil, 1, zone.id)
+		if T then
+			for _, p in m:GetDescendants() do
+				local kind, rest = p:GetAttribute("Anim"), p:GetAttribute("Rest")
+				local move = kind and MOVES[kind]
+				if move and rest then
+					local hinge = p:GetAttribute("Hinge") or Vector3.new(0, 0, 0)
+					p.CFrame = CFrame.new(hinge) * move(T, p:GetAttribute("Side") or 1, p:GetAttribute("Phase") or 0) * CFrame.new(-hinge) * (rest.Rotation + rest.Position)
+				elseif kind and not move then
+					error("no move for " .. kind)
+				end
+			end
+		end
 		print("C", zone.id, r.id, m.Name)
 		for _, p in m:GetDescendants() do
 			if p.ClassName == "Part" and p.Transparency < 1 then

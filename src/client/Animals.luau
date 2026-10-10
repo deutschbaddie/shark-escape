@@ -51,6 +51,21 @@ local MOVES: { [string]: (number, number, number) -> CFrame } = {
 	head = function(t, side, ph) return A(math.sin(t * 1.5) * 0.08, math.sin(t * 0.9) * 0.25, 0) end,
 	jaw = function(t, side, ph) return A(math.max(0, math.sin(t * 2)) * 0.35, 0, 0) end,
 	bell = function(t, side, ph) return CFrame.new(0, math.sin(t * 3) * 0.08, 0) end,
+	-- Mythics
+	palm = function(t, side, ph) return A(math.sin(t * 1.6 + ph) * 0.1, 0, math.cos(t * 1.3 + ph) * 0.12) end,
+	lid = function(t, side, ph) return A(math.max(0, math.sin(t * 1.1)) * 0.7, 0, 0) end, -- (peeks at the gold)
+	gill = function(t, side, ph) return A(0, 0, side * math.sin(t * 5 + ph) * 0.22) end,
+	stalk = function(t, side, ph) return A(math.sin(t * 2 + ph) * 0.15, 0, math.cos(t * 1.7 + ph) * 0.2) end,
+	punch = function(t, side, ph)
+		local k = (t * 0.45 + ph) % 1 -- a snap every ~2 s
+		return A(k < 0.12 and math.sin(k / 0.12 * math.pi) * 1.1 or 0, 0, 0)
+	end,
+	neck = function(t, side, ph) return A(math.sin(t * 1.8 + ph) * 0.12, math.sin(t * 1.2 + ph) * 0.16, 0) end,
+	orbit = function(t, side, ph) return A(0, t * 0.9 * side, 0) end,
+	flap = function(t, side, ph) return A(0, 0, side * math.sin(t * 3 + ph) * 0.6) end,
+	crest = function(t, side, ph) return A(math.sin(t * 3 + ph) * 0.12, 0, 0) end,
+	gallop = function(t, side, ph) return A(math.sin(t * 4 + ph) * 0.55, 0, 0) end,
+	mane = function(t, side, ph) return A(0, math.sin(t * 3 - ph) * 0.18, 0) end,
 }
 
 local function animate(e: Entry, t: number)
@@ -68,6 +83,49 @@ local function animate(e: Entry, t: number)
 			local rest = b.rest.Rotation + b.rest.Position * sc
 			b.part.CFrame = rootCF * CFrame.new(hinge) * move(tt, b.side, b.phase) * CFrame.new(-hinge) * rest
 		end
+	end
+end
+
+----------------------------------------------------------------- auras
+-- Mythics sparkle and glow; deep-biome creatures carry a little of their
+-- biome with them (Creatures.luau sets the model's Aura attribute)
+local SPARKLE = "rbxasset://textures/particles/sparkles_main.dds"
+local MYTHIC = Color3.fromRGB(255, 60, 110)
+local AURAS: { [string]: { [string]: any } } = {
+	mythic = { Color = ColorSequence.new(MYTHIC, Color3.fromRGB(255, 220, 120)), Rate = 7, Size = NumberSequence.new(0.55, 0),
+		Lifetime = NumberRange.new(0.9, 1.5), Speed = NumberRange.new(1, 2.5), Acceleration = Vector3.new(0, 0.8, 0) },
+	snow = { Color = ColorSequence.new(Color3.fromRGB(240, 250, 255)), Rate = 3, Size = NumberSequence.new(0.22, 0.1),
+		Lifetime = NumberRange.new(1.4, 2), Speed = NumberRange.new(0.4, 1), Acceleration = Vector3.new(0, -0.8, 0) },
+	embers = { Color = ColorSequence.new(Color3.fromRGB(255, 200, 80), Color3.fromRGB(255, 80, 20)), Rate = 4, Size = NumberSequence.new(0.25, 0),
+		Lifetime = NumberRange.new(0.8, 1.3), Speed = NumberRange.new(0.5, 1.2), Acceleration = Vector3.new(0, 2.5, 0) },
+	fizz = { Color = ColorSequence.new(Color3.fromRGB(230, 250, 255)), Rate = 4, Size = NumberSequence.new(0.18, 0.28),
+		Lifetime = NumberRange.new(0.8, 1.2), Speed = NumberRange.new(0.3, 0.8), Acceleration = Vector3.new(0, 3, 0) },
+	sugar = { Color = ColorSequence.new(Color3.fromRGB(255, 140, 230), Color3.fromRGB(140, 255, 240)), Rate = 4, Size = NumberSequence.new(0.3, 0),
+		Lifetime = NumberRange.new(0.8, 1.3), Speed = NumberRange.new(0.5, 1.5), Acceleration = Vector3.zero },
+}
+
+local function addAura(m: Model)
+	local def = AURAS[m:GetAttribute("Aura") :: any]
+	local root = m.PrimaryPart
+	if not def or not root or root:FindFirstChild("Aura") or not m:IsDescendantOf(Workspace) then
+		return -- (viewports don't draw particles)
+	end
+	local e = Instance.new("ParticleEmitter")
+	e.Name = "Aura"
+	e.Texture = SPARKLE
+	e.LightEmission = 1
+	e.SpreadAngle = Vector2.new(180, 180)
+	e.Transparency = NumberSequence.new(0.2, 1)
+	for k, v in def do
+		(e :: any)[k] = v
+	end
+	e.Parent = root
+	if m:GetAttribute("Aura") == "mythic" then
+		local light = Instance.new("PointLight")
+		light.Color = MYTHIC
+		light.Range = 9
+		light.Brightness = 1.4
+		light.Parent = root
 	end
 end
 
@@ -114,6 +172,7 @@ function Animals.start()
 	local function add(m: Instance)
 		if m:IsA("Model") and not entries[m] then
 			entries[m] = scan(m)
+			addAura(m :: Model)
 		end
 	end
 	for _, m in CollectionService:GetTagged("Creature") do

@@ -321,6 +321,8 @@ Config.Rarities = {
 	{ id = "Rare", weight = 10, mult = 6, color = Color3.fromRGB(64, 156, 255), species = "Octopus", icon = "" },
 	{ id = "Epic", weight = 4, mult = 25, color = Color3.fromRGB(190, 92, 255), species = "Sea Turtle", icon = "" },
 	{ id = "Legendary", weight = 1, mult = 120, color = Color3.fromRGB(255, 196, 40), species = "Narwhal", icon = "" },
+	-- about 1 bubble in 700: each zone's showpiece (luck never bumps up into it)
+	{ id = "Mythic", weight = 0.15, mult = 600, color = Color3.fromRGB(255, 60, 110), species = "Island Turtle", icon = "" },
 } :: { Rarity }
 for i, r in Config.Rarities do
 	r.index = i
@@ -332,7 +334,7 @@ end
 export type Species = {
 	name: string, kind: string, icon: string, c1: Color3, c2: Color3, c3: Color3?,
 	glow: boolean?, bill: boolean?, lure: boolean?, horn: boolean?, shell: boolean?, long: boolean?,
-	ghost: boolean?, horns: boolean?, size: number?,
+	ghost: boolean?, horns: boolean?, size: number?, prop: string?, fin: boolean?,
 }
 local RGB = Color3.fromRGB
 Config.Species = {
@@ -342,6 +344,7 @@ Config.Species = {
 		Rare = { name = "Pufferfish", kind = "puffer", icon = "", c1 = RGB(255, 214, 64), c2 = RGB(255, 245, 210) },
 		Epic = { name = "Sea Turtle", kind = "turtle", icon = "", c1 = RGB(70, 170, 90), c2 = RGB(150, 110, 60) },
 		Legendary = { name = "Narwhal", kind = "whale", icon = "", c1 = RGB(150, 190, 230), c2 = RGB(240, 248, 255), horn = true },
+		Mythic = { name = "Island Turtle", kind = "isle", icon = "", c1 = RGB(60, 180, 110), c2 = RGB(240, 215, 150), prop = "palm" },
 	},
 	Reef = {
 		Common = { name = "Blue Tang", kind = "fish", icon = "", c1 = RGB(40, 110, 230), c2 = RGB(25, 30, 60), c3 = RGB(255, 220, 40) },
@@ -349,6 +352,7 @@ Config.Species = {
 		Rare = { name = "Octopus", kind = "ceph", icon = "", c1 = RGB(235, 80, 120), c2 = RGB(255, 170, 190) },
 		Epic = { name = "Manta Ray", kind = "ray", icon = "", c1 = RGB(40, 60, 100), c2 = RGB(235, 240, 250) },
 		Legendary = { name = "Coral Dragon", kind = "serpent", icon = "", c1 = RGB(255, 110, 150), c2 = RGB(255, 220, 120), horns = true },
+		Mythic = { name = "Rainbow Axolotl", kind = "axolotl", icon = "", c1 = RGB(255, 175, 205), c2 = RGB(255, 90, 160) },
 	},
 	Kelp = {
 		Common = { name = "Parrotfish", kind = "fish", icon = "", c1 = RGB(70, 210, 150), c2 = RGB(255, 120, 200), c3 = RGB(255, 230, 90) },
@@ -356,6 +360,7 @@ Config.Species = {
 		Rare = { name = "Jellyfish", kind = "jelly", icon = "", c1 = RGB(255, 140, 220), c2 = RGB(255, 220, 245), glow = true },
 		Epic = { name = "Squid", kind = "ceph", icon = "", c1 = RGB(240, 150, 120), c2 = RGB(255, 210, 190), long = true },
 		Legendary = { name = "Sea Dragon", kind = "serpent", icon = "", c1 = RGB(90, 180, 70), c2 = RGB(220, 240, 120) },
+		Mythic = { name = "Mantis Shrimp", kind = "mantis", icon = "", c1 = RGB(60, 200, 120), c2 = RGB(255, 110, 60), c3 = RGB(70, 140, 255), size = 1.2 },
 	},
 	Shipwreck = {
 		Common = { name = "Moray Eel", kind = "serpent", icon = "", c1 = RGB(120, 140, 60), c2 = RGB(220, 210, 120), size = 0.8 },
@@ -363,6 +368,7 @@ Config.Species = {
 		Rare = { name = "Swordfish", kind = "fish", icon = "", c1 = RGB(70, 90, 150), c2 = RGB(220, 230, 245), c3 = RGB(30, 40, 70), bill = true },
 		Epic = { name = "Ghost Octopus", kind = "ceph", icon = "", c1 = RGB(210, 240, 255), c2 = RGB(150, 220, 255), ghost = true },
 		Legendary = { name = "Orca", kind = "whale", icon = "", c1 = RGB(25, 28, 40), c2 = RGB(255, 255, 255), size = 1.05 },
+		Mythic = { name = "Treasure Turtle", kind = "isle", icon = "", c1 = RGB(90, 120, 90), c2 = RGB(215, 195, 145), prop = "chest" },
 	},
 	Deep = {
 		Common = { name = "Lanternfish", kind = "fish", icon = "", c1 = RGB(40, 50, 90), c2 = RGB(80, 230, 255), c3 = RGB(20, 20, 40), glow = true },
@@ -370,6 +376,7 @@ Config.Species = {
 		Rare = { name = "Giant Squid", kind = "ceph", icon = "", c1 = RGB(180, 40, 50), c2 = RGB(255, 120, 110), long = true },
 		Epic = { name = "Moon Ray", kind = "ray", icon = "", c1 = RGB(60, 70, 140), c2 = RGB(160, 220, 255), glow = true },
 		Legendary = { name = "Leviathan", kind = "serpent", icon = "", c1 = RGB(30, 90, 140), c2 = RGB(90, 230, 255), horns = true, glow = true, size = 1.2 },
+		Mythic = { name = "Star Whale", kind = "cosmic", icon = "", c1 = RGB(30, 40, 95), c2 = RGB(255, 240, 170), c3 = RGB(120, 200, 255), size = 1.1 },
 	},
 	Abyss = {
 		Common = { name = "Glowfish", kind = "fish", icon = "", c1 = RGB(90, 255, 200), c2 = RGB(20, 40, 60), c3 = RGB(20, 20, 30), glow = true },
@@ -377,6 +384,7 @@ Config.Species = {
 		Rare = { name = "Vampire Squid", kind = "ceph", icon = "", c1 = RGB(90, 20, 40), c2 = RGB(255, 60, 90), glow = true },
 		Epic = { name = "Megalodon Pup", kind = "whale", icon = "", c1 = RGB(110, 130, 160), c2 = RGB(235, 240, 250), fin = true },
 		Legendary = { name = "Kraken", kind = "ceph", icon = "", c1 = RGB(60, 20, 70), c2 = RGB(255, 80, 200), glow = true, size = 1.12 },
+		Mythic = { name = "Abyss Hydra", kind = "hydra", icon = "", c1 = RGB(45, 30, 80), c2 = RGB(190, 90, 255), glow = true, size = 1.1 },
 	},
 	Frozen = {
 		Common = { name = "Ice Cod", kind = "fish", icon = "", c1 = RGB(170, 210, 240), c2 = RGB(245, 250, 255), c3 = RGB(60, 90, 130) },
@@ -384,6 +392,7 @@ Config.Species = {
 		Rare = { name = "Frost Jelly", kind = "jelly", icon = "", c1 = RGB(150, 230, 255), c2 = RGB(235, 250, 255), glow = true },
 		Epic = { name = "Walrus Ray", kind = "ray", icon = "", c1 = RGB(110, 150, 190), c2 = RGB(240, 248, 255) },
 		Legendary = { name = "Ice Narwhal", kind = "whale", icon = "", c1 = RGB(200, 235, 255), c2 = RGB(255, 255, 255), horn = true, glow = true, size = 1.1 },
+		Mythic = { name = "Frost Hippocampus", kind = "hippo", icon = "", c1 = RGB(190, 230, 255), c2 = RGB(110, 200, 255), horn = true },
 	},
 	Volcano = {
 		Common = { name = "Ember Fish", kind = "fish", icon = "", c1 = RGB(255, 90, 30), c2 = RGB(255, 210, 60), c3 = RGB(40, 20, 20) },
@@ -391,6 +400,7 @@ Config.Species = {
 		Rare = { name = "Magma Puffer", kind = "puffer", icon = "", c1 = RGB(255, 110, 40), c2 = RGB(255, 220, 120), glow = true },
 		Epic = { name = "Cinder Squid", kind = "ceph", icon = "", c1 = RGB(50, 30, 35), c2 = RGB(255, 100, 40), glow = true, long = true },
 		Legendary = { name = "Fire Serpent", kind = "serpent", icon = "", c1 = RGB(255, 70, 20), c2 = RGB(255, 210, 60), horns = true, glow = true, size = 1.2 },
+		Mythic = { name = "Lava Phoenix", kind = "phoenix", icon = "", c1 = RGB(255, 90, 30), c2 = RGB(255, 170, 40), c3 = RGB(255, 230, 90), glow = true },
 	},
 	Atlantis = {
 		Common = { name = "Gold Tetra", kind = "fish", icon = "", c1 = RGB(255, 205, 60), c2 = RGB(255, 245, 200), c3 = RGB(40, 120, 120) },
@@ -398,6 +408,7 @@ Config.Species = {
 		Rare = { name = "Pearl Turtle", kind = "turtle", icon = "", c1 = RGB(235, 240, 245), c2 = RGB(200, 170, 220) },
 		Epic = { name = "Temple Ray", kind = "ray", icon = "", c1 = RGB(30, 140, 130), c2 = RGB(255, 215, 90), glow = true },
 		Legendary = { name = "Poseidon Whale", kind = "whale", icon = "", c1 = RGB(40, 170, 160), c2 = RGB(255, 225, 120), horn = true, glow = true, size = 1.25 },
+		Mythic = { name = "Golden Hippocampus", kind = "hippo", icon = "", c1 = RGB(50, 185, 175), c2 = RGB(255, 215, 90), horn = true, glow = true },
 	},
 	-- Candy Bay (World 2)
 	Soda = {
@@ -406,6 +417,7 @@ Config.Species = {
 		Rare = { name = "Bubblegum Puffer", kind = "puffer", icon = "", c1 = RGB(255, 130, 200), c2 = RGB(255, 225, 240) },
 		Epic = { name = "Mint Turtle", kind = "turtle", icon = "", c1 = RGB(120, 230, 180), c2 = RGB(255, 255, 255) },
 		Legendary = { name = "Cotton Candy Whale", kind = "whale", icon = "", c1 = RGB(255, 170, 225), c2 = RGB(170, 220, 255), horn = true },
+		Mythic = { name = "Cotton Candy Axolotl", kind = "axolotl", icon = "", c1 = RGB(175, 220, 255), c2 = RGB(255, 160, 220) },
 	},
 	Gumdrop = {
 		Common = { name = "Gummy Fish", kind = "fish", icon = "", c1 = RGB(255, 80, 80), c2 = RGB(255, 200, 60), c3 = RGB(80, 200, 90) },
@@ -413,6 +425,7 @@ Config.Species = {
 		Rare = { name = "Gumdrop Octopus", kind = "ceph", icon = "", c1 = RGB(80, 220, 120), c2 = RGB(200, 255, 200) },
 		Epic = { name = "Sour Ray", kind = "ray", icon = "", c1 = RGB(255, 230, 60), c2 = RGB(120, 255, 120), glow = true },
 		Legendary = { name = "Gummy Dragon", kind = "serpent", icon = "", c1 = RGB(255, 80, 120), c2 = RGB(255, 220, 90), horns = true },
+		Mythic = { name = "Gummy Hydra", kind = "hydra", icon = "", c1 = RGB(110, 220, 90), c2 = RGB(255, 90, 140), size = 1.1 },
 	},
 	Lolly = {
 		Common = { name = "Swirl Fish", kind = "fish", icon = "", c1 = RGB(255, 120, 220), c2 = RGB(255, 255, 255), c3 = RGB(120, 90, 255) },
@@ -420,6 +433,7 @@ Config.Species = {
 		Rare = { name = "Jelly Jelly", kind = "jelly", icon = "", c1 = RGB(255, 160, 80), c2 = RGB(255, 230, 190), glow = true },
 		Epic = { name = "Lollipop Squid", kind = "ceph", icon = "", c1 = RGB(255, 80, 160), c2 = RGB(255, 210, 240), long = true },
 		Legendary = { name = "Rainbow Serpent", kind = "serpent", icon = "", c1 = RGB(120, 120, 255), c2 = RGB(255, 140, 220), glow = true },
+		Mythic = { name = "Lollipop Phoenix", kind = "phoenix", icon = "", c1 = RGB(255, 110, 200), c2 = RGB(130, 110, 255), c3 = RGB(255, 255, 255), glow = true },
 	},
 	Cane = {
 		Common = { name = "Peppermint Eel", kind = "serpent", icon = "", c1 = RGB(240, 40, 60), c2 = RGB(255, 255, 255), size = 0.8 },
@@ -427,6 +441,7 @@ Config.Species = {
 		Rare = { name = "Cane Swordfish", kind = "fish", icon = "", c1 = RGB(255, 255, 255), c2 = RGB(240, 40, 60), c3 = RGB(60, 160, 80), bill = true },
 		Epic = { name = "Frosting Octopus", kind = "ceph", icon = "", c1 = RGB(255, 245, 250), c2 = RGB(255, 170, 200), ghost = true },
 		Legendary = { name = "Candy Orca", kind = "whale", icon = "", c1 = RGB(220, 30, 60), c2 = RGB(255, 255, 255), size = 1.05 },
+		Mythic = { name = "Candy Cane Mantis", kind = "mantis", icon = "", c1 = RGB(240, 245, 250), c2 = RGB(235, 40, 60), c3 = RGB(60, 170, 90), size = 1.2 },
 	},
 	Choco = {
 		Common = { name = "Cocoa Fish", kind = "fish", icon = "", c1 = RGB(110, 65, 40), c2 = RGB(255, 225, 180), c3 = RGB(60, 35, 20) },
@@ -434,6 +449,7 @@ Config.Species = {
 		Rare = { name = "Fudge Squid", kind = "ceph", icon = "", c1 = RGB(130, 75, 45), c2 = RGB(230, 170, 120), long = true },
 		Epic = { name = "Caramel Ray", kind = "ray", icon = "", c1 = RGB(200, 120, 50), c2 = RGB(255, 220, 150), glow = true },
 		Legendary = { name = "Chocolate Leviathan", kind = "serpent", icon = "", c1 = RGB(90, 50, 30), c2 = RGB(255, 200, 120), horns = true, size = 1.2 },
+		Mythic = { name = "Fudge Island Turtle", kind = "isle", icon = "", c1 = RGB(110, 65, 40), c2 = RGB(255, 205, 225), c3 = RGB(255, 90, 160), prop = "lolly" },
 	},
 	Sugar = {
 		Common = { name = "Sprinkle Fish", kind = "fish", icon = "", c1 = RGB(255, 120, 230), c2 = RGB(60, 30, 90), c3 = RGB(120, 255, 230), glow = true },
@@ -441,8 +457,15 @@ Config.Species = {
 		Rare = { name = "Candy Vampire Squid", kind = "ceph", icon = "", c1 = RGB(120, 20, 80), c2 = RGB(255, 90, 200), glow = true },
 		Epic = { name = "Gummy Megalodon", kind = "whale", icon = "", c1 = RGB(255, 100, 180), c2 = RGB(255, 230, 245), fin = true },
 		Legendary = { name = "Sugar Kraken", kind = "ceph", icon = "", c1 = RGB(255, 60, 200), c2 = RGB(120, 255, 240), glow = true, size = 1.15 },
+		Mythic = { name = "Sugar Star Whale", kind = "cosmic", icon = "", c1 = RGB(120, 45, 140), c2 = RGB(255, 240, 255), c3 = RGB(255, 120, 230), size = 1.1 },
 	},
 } :: any
+
+-- each deep biome's creatures wear its look (Creatures.luau THEMES)
+Config.SpeciesTheme = {
+	Frozen = "frost", Volcano = "ember", Atlantis = "royal",
+	Soda = "fizz", Gumdrop = "sugar", Lolly = "swirl", Cane = "stripes", Choco = "drip", Sugar = "sprinkles",
+} :: { [string]: string }
 
 function Config.species(zoneId: string?, rarityId: string): Species
 	local z = Config.Species[zoneId or "Lagoon"] or Config.Species.Lagoon
@@ -520,6 +543,7 @@ end
 Config.KIND_KG = {
 	fish = 2, puffer = 1.6, crab = 3, turtle = 48, whale = 900, seahorse = 0.4,
 	ceph = 14, ray = 36, serpent = 180, jelly = 0.8,
+	isle = 260, axolotl = 5, mantis = 3, hydra = 420, cosmic = 1500, phoenix = 22, hippo = 320,
 }
 
 function Config.rollSize(rng: Random): number
@@ -762,7 +786,7 @@ end
 -- seconds later, one breaks off and charges (unless you're home first).
 -- Feeding Frenzy doubles the weights. At night the sharks are out anyway.
 Config.Fins = {
-	weight = { Common = 1, Uncommon = 1, Rare = 1.5, Epic = 2, Legendary = 3 },
+	weight = { Common = 1, Uncommon = 1, Rare = 1.5, Epic = 2, Legendary = 3, Mythic = 3 },
 	attackAt = 3,
 	warn = 4, -- seconds the fins circle in before the charge
 	grudge = 22, -- seconds that shark hunts you
@@ -770,7 +794,7 @@ Config.Fins = {
 }
 
 -- hold time (seconds) on the grab prompt: rarer = longer = riskier
-Config.GrabHold = { Common = 0.35, Uncommon = 0.55, Rare = 0.8, Epic = 1.1, Legendary = 1.5 }
+Config.GrabHold = { Common = 0.35, Uncommon = 0.55, Rare = 0.8, Epic = 1.1, Legendary = 1.5, Mythic = 1.5 }
 
 -- +10% coins per friend in your server (max +50%)
 Config.FriendBoost = { per = 0.1, max = 0.5 }

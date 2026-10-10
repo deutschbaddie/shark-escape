@@ -23,7 +23,8 @@ local C = UI.C
 local T = UI.T
 
 -- rarity accents (same as the menus): Common plain, then green, blue, purple, gold
-local RARITY = { Common = T.mute, Uncommon = T.green, Rare = T.blue, Epic = T.purple, Legendary = T.gold }
+local RARITY = { Common = T.mute, Uncommon = T.green, Rare = T.blue, Epic = T.purple, Legendary = T.gold,
+	Mythic = Config.rarity("Mythic").color }
 local function rarityColor(id: string): Color3
 	return RARITY[id] or T.mute
 end

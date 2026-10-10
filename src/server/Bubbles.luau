@@ -137,8 +137,8 @@ local function spawnBubble(zone: Config.Zone, fixed: Fixed?): Bubble
 	prompt.Triggered:Connect(function(player)
 		tryGrab(player, entry)
 	end)
-	if r == "Legendary" and not fixed then
-		Game.notifyAll("announce", { text = ("A Legendary %s appeared in %s"):format(Config.fullName(zone.id, r, m, size), zone.name), color = rarity.color })
+	if (r == "Legendary" or r == "Mythic") and not fixed then
+		Game.notifyAll("announce", { text = ("A %s %s appeared in %s"):format(r, Config.fullName(zone.id, r, m, size), zone.name), color = rarity.color })
 	end
 	if fixed and fixed.rain then
 		model:SetAttribute("DropAt", Workspace:GetServerTimeNow()) -- (clients drop it in from the sky)
@@ -243,7 +243,7 @@ local function grab(s: Game.Session, b: Bubble)
 		Game.notify(s.player, "grab", { r = r, m = b.m, z = b.z, s = b.s, v = Config.creatureValue(r, b.z, b.m, b.s) * Game.coinMult(s) })
 		return
 	end
-	if idx < #Config.Rarities and rng:NextNumber() < Game.luck(s) then
+	if idx < Config.rarity("Legendary").index and rng:NextNumber() < Game.luck(s) then -- (Mythics are never luck)
 		r = Config.Rarities[idx + 1].id
 		lucky = true
 	end

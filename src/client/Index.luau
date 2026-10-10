@@ -51,7 +51,7 @@ local function card(parent: Instance, d: any, r: any)
 	local claimed = d.claimed[key] == true
 	local color = Shop.rarityColor(r.id)
 	local accent = found and r.id ~= "Common" and color or nil
-	local f = UI.card(parent, accent, { Size = UDim2.new(0.2, -10, 1, 0), LayoutOrder = r.index,
+	local f = UI.card(parent, accent, { Size = UDim2.new(1 / #Config.Rarities, -10, 1, 0), LayoutOrder = r.index,
 		BackgroundColor3 = found and T.navyLight or UI.dark(T.navyLight, 0.25) })
 	UI.chip(f, r.id:upper(), found and color or UI.dark(color, 0.45), { Size = UDim2.new(1, -16, 0, 24), Position = UDim2.fromOffset(8, 8) })
 	local tile = UI.inset(f, { Size = UDim2.new(1, -16, 0, 84), Position = UDim2.fromOffset(8, 40) })

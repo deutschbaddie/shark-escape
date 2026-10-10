@@ -55,7 +55,8 @@ end
 
 ----------------------------------------------------------------- menu kit
 -- rarity accents: Common plain, Uncommon green, Rare blue, Epic purple, Legendary gold
-local RARITY = { Common = T.mute, Uncommon = T.green, Rare = T.blue, Epic = T.purple, Legendary = T.gold }
+local RARITY = { Common = T.mute, Uncommon = T.green, Rare = T.blue, Epic = T.purple, Legendary = T.gold,
+	Mythic = Config.rarity("Mythic").color }
 function Shop.rarityColor(id: string?): Color3
 	return RARITY[id or ""] or T.mute
 end
