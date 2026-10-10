@@ -267,8 +267,13 @@ local function grab(s: Game.Session, b: Bubble)
 	if Game.sharkOnGrab then
 		Game.sharkOnGrab(s, r) -- the shark may notice
 	end
+	-- taken from water too deep for you: every shark on the way home wants it
+	local where = b.zone
+	if not b.spilled and (where.gate > s.profile.speed or (where.evolve or 0) > s.profile.rebirths) then
+		s.stolen = true
+		Game.notify(s.player, "stolen", {})
 	-- a Legendary or a Mythic: its zone's shark wants it, so run it home
-	if Config.rarity(r).index >= 5 and s.profile.tut >= 5 and Game.sharkAggro then
+	elseif Config.rarity(r).index >= 5 and s.profile.tut >= 5 and Game.sharkAggro then
 		Game.sharkAggro(s, Config.Shark.prizeGrudge, "prize")
 	end
 	-- the whole server hears about the big ones

@@ -50,6 +50,7 @@ export type Session = {
 	portalAt: number?, -- last portal use
 	gifts: number?, -- playtime gifts claimed this session
 	bag: { Data.Creature }?, -- extra catches in your net (s.carrying is the one in your hands)
+	stolen: boolean?, -- carrying a catch from water too deep for you: every shark you pass wants it
 }
 
 Game.sessions = {} :: { [Player]: Session }

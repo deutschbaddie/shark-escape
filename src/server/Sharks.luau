@@ -557,6 +557,9 @@ end
 
 -- Game.huntable asks this for a player standing on an island
 local function islandExposed(s: Game.Session, island: Layout.Island): boolean
+	if s.stolen then
+		return true -- (a stolen catch: no island will hide you)
+	end
 	-- an island in a biome you can't fish yet never shelters you
 	local zone = Config.zoneById(island.zone)
 	if zone and (zone.gate > s.profile.speed or (zone.evolve or 0) > s.profile.rebirths) then
@@ -655,8 +658,51 @@ end
 -- hunts you the whole time you're there (day or night). You can go; you
 -- just won't make it back. Renewed every sweep while you stay too deep.
 local deepWarned: { [Player]: string } = {}
+-- a catch stolen from water too deep for you (Bubbles sets s.stolen): the
+-- shark of every zone you swim through on the way home joins the chase (up
+-- to Config.Shark.stolenMax at once), they close in fast, and islands
+-- don't help. It ends when the catch is home, lost or eaten.
+local function stolenSweep(now: number)
+	local cfg = Config.Shark
+	for player, s in Game.sessions do
+		if not s.stolen then
+			continue
+		end
+		if Game.carryCount(s) == 0 then
+			s.stolen = nil
+			continue
+		end
+		local hrp = Game.root(player)
+		local zone = hrp and Layout.inWater(hrp.Position) and Config.zoneAtPos(hrp.Position)
+		if not (zone and Game.huntable(s)) then
+			continue
+		end
+		local mine, haveZone = 0, false
+		for _, h in hunters do
+			if h.target == s and h.state ~= "leave" and h.state ~= "bite" then
+				h.aggroUntil = math.max(h.aggroUntil or 0, now + 4)
+				mine += 1
+				if h.variant == zone.shark then
+					haveZone = true
+				end
+			end
+		end
+		if not haveZone and mine < cfg.stolenMax then
+			local before = #hunters
+			spawnHunter(s, mine > 0)
+			if #hunters > before then
+				local h = hunters[#hunters]
+				h.aggroUntil = now + 4
+				h.stalkTime *= cfg.stolenStalk -- (no patient circling: it wants it now)
+				Game.notify(player, "aggro", { shark = zone.shark, why = "stolen" })
+			end
+		end
+	end
+end
+
 local function deepSweep()
 	local now = os.clock()
+	stolenSweep(now)
 	for player, s in Game.sessions do
 		local hrp = Game.root(player)
 		local zone = hrp and Layout.inWater(hrp.Position) and Config.zoneAtPos(hrp.Position)

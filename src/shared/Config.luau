@@ -840,6 +840,8 @@ Config.Codes = {
 -- Dawn sends every shark home: a clean slate.
 Config.Shark = {
 	prizeGrudge = 14, -- grab a Legendary or Mythic: its shark hunts you this long
+	stolenMax = 4, -- a catch from too deep: up to this many sharks after you at once
+	stolenStalk = 0.35, -- ...and they circle this much shorter before charging
 	cycle = 130, -- average day (HUD fallback; real days are random)
 	firstAttack = 150, -- the first night falls this long after the server starts
 	warning = 6, -- dusk: time to get to sand

@@ -677,8 +677,9 @@ handlers.aggro = function(d)
 	else
 		-- (the one line that teaches it: the hungry shark wants the biggest haul)
 		local sub = ({ fins = "Your haul drew it in. Get to the sand!",
-			prize = "It wants your catch. Get it home!" } :: any)[d.why]
-		Notify.banner((d.why == "fins" or d.why == "prize") and ("The %s is coming for you"):format(name) or ("The %s noticed you"):format(name), { key = "aggro", priority = 4, time = 2.6, color = C.red,
+			prize = "It wants your catch. Get it home!",
+			stolen = "Every shark wants your stolen catch!" } :: any)[d.why]
+		Notify.banner((d.why == "fins" or d.why == "prize" or d.why == "stolen") and ("The %s is coming for you"):format(name) or ("The %s noticed you"):format(name), { key = "aggro", priority = 4, time = 2.6, color = C.red,
 			sub = sub or "Get to the sand!" })
 	end
 	Fx.sound("sharkAlarm", 0.7)
@@ -725,6 +726,12 @@ handlers.unlock = function(d)
 		-- the zone line lights up across the water
 		Fx.gateWave(zone.zStart, Config.originX(zone.world), Config.LANE_WIDTH, Color3.fromRGB(110, 255, 140))
 	end
+end
+
+handlers.stolen = function()
+	Notify.banner("You took it from too deep!", { key = "stolen", priority = 5, time = 3, color = C.red,
+		sub = "Every shark on the way home will chase you" })
+	Fx.sound("sharkAlarm", 0.7, 0.9)
 end
 
 handlers.tooDeep = function(d)
