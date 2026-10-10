@@ -51,6 +51,7 @@ export type Session = {
 	gifts: number?, -- playtime gifts claimed this session
 	bag: { Data.Creature }?, -- extra catches in your net (s.carrying is the one in your hands)
 	stolen: boolean?, -- carrying a catch from water too deep for you: every shark you pass wants it
+	awaySince: number?, -- lastSeen at join, until Game.welcomeBack pays the offline coins
 	raidLoot: Data.Creature?, -- a creature you won in a raid, carried home in forced slow mode (anyone can bonk it loose)
 }
 
@@ -724,6 +725,20 @@ function Game.addCreature(s: Session, c: Data.Creature, quiet: boolean?)
 	local mult = Game.coinMult(s)
 	local info: { [string]: any } = { r = c.r, m = c.m, z = c.z, s = c.s, v = value * mult }
 	c.e = Game.activeCount(s) < tankSlots(s)
+	if not c.e then
+		-- tank full: a better catch swaps in for the weakest swimmer (so a
+		-- new Mythic never sits unequipped where Sell All could take it)
+		local weakest, wv = nil, math.huge
+		for _, o in p.creatures do
+			if o.e and baseValue(o) < wv then
+				weakest, wv = o, baseValue(o)
+			end
+		end
+		if weakest and value > wv then
+			weakest.e = false
+			c.e = true
+		end
+	end
 	info.active = c.e
 	table.insert(p.creatures, c)
 	if not quiet then
@@ -941,9 +956,10 @@ actions.sell = function(s, id)
 	end)
 end
 
+-- Sell All leaves Epics and up alone (those you sell one by one, on purpose)
 actions.sellAll = function(s)
-	sell(s, function()
-		return true
+	sell(s, function(c)
+		return Config.rarity(c.r).index < Config.rarity("Epic").index
 	end)
 end
 
@@ -1278,15 +1294,7 @@ function Game.join(player: Player)
 		slow = false,
 	}
 	Game.sessions[player] = s
-	-- welcome back: the tank kept earning (slower) while you were away
-	local away = profile.lastSeen > 0 and os.time() - profile.lastSeen or 0
-	if away >= Config.Offline.minSeconds then
-		local secs = math.min(away, Config.Offline.maxHours * 3600)
-		s.offline = math.floor(Game.income(s) * secs * Config.Offline.rate)
-		if s.offline > 0 then
-			Game.notify(player, "offline", { amount = s.offline, seconds = secs })
-		end
-	end
+	s.awaySince = profile.lastSeen -- (Game.welcomeBack, once their passes are known)
 	claimPlot(s)
 
 	-- player list columns, like the big simulators: Money/s and Speed
@@ -1324,6 +1332,33 @@ function Game.join(player: Player)
 	end
 end
 
+-- welcome back: the tank kept earning (slower) while you were away. Runs
+-- once the player's passes are loaded (Market), so 2x Coins / VIP count.
+function Game.welcomeBack(s: Session)
+	local last = s.awaySince or 0
+	s.awaySince = nil
+	if Game.sessions[s.player] ~= s then
+		return
+	end
+	local away = last > 0 and os.time() - last or 0
+	if away >= Config.Offline.minSeconds then
+		local secs = math.min(away, Config.Offline.maxHours * 3600)
+		s.offline = math.floor(Game.income(s) * secs * Config.Offline.rate)
+		if s.offline > 0 then
+			Game.notify(s.player, "offline", { amount = s.offline, seconds = secs })
+		end
+	end
+end
+
+-- saves still running (leaves, autosaves): shutdown waits for them
+local inflight = 0
+local function trackedSave(userId: number, profile: any, release: boolean?, stillOwned: (() -> boolean)?)
+	inflight += 1
+	local ok = pcall(Data.save, userId, profile, release, stillOwned)
+	inflight -= 1
+	return ok
+end
+
 function Game.leave(player: Player)
 	local s = Game.sessions[player]
 	if not s then
@@ -1332,6 +1367,16 @@ function Game.leave(player: Player)
 	Game.sessions[player] = nil
 	Game.track(player, "_leave", { minutes = (os.clock() - s.joinedAt) / 60, rebirths = s.profile.rebirths })
 	s.profile.coins += s.pending + s.offline
+	-- raid loot still being walked home: it's yours, into your tank (never
+	-- deleted from the game by leaving mid-walk)
+	local loot = s.raidLoot
+	if loot then
+		loot.id = s.profile.nextId
+		s.profile.nextId += 1
+		loot.e = false
+		table.insert(s.profile.creatures, loot)
+		s.raidLoot = nil
+	end
 	if s.plot then
 		emptyPlot(s.plot)
 		for _, list in World.WorldPlots do
@@ -1339,7 +1384,7 @@ function Game.leave(player: Player)
 		end
 	end
 	if s.canSave then
-		Data.save(player.UserId, s.profile, true)
+		trackedSave(player.UserId, s.profile, true)
 	end
 	for _, other in Game.sessions do
 		task.spawn(Game.updateFriendBoost, other)
@@ -1378,7 +1423,7 @@ function Game.saveAll()
 	for player, s in Game.sessions do
 		if s.canSave then
 			-- (stops if they leave mid-save, so it can't re-lock a released save)
-			task.spawn(Data.save, player.UserId, s.profile, false, function()
+			task.spawn(trackedSave, player.UserId, s.profile, false, function()
 				return Game.sessions[player] == s
 			end)
 		end
@@ -1558,12 +1603,27 @@ function Game.start()
 		end
 	end)
 	game:BindToClose(function()
+		-- everyone still here saves at once (not one by one), then wait for
+		-- those and any leave saves already running (Roblox gives ~30 s)
 		for player, s in Game.sessions do
 			s.profile.coins += s.pending + s.offline
 			s.pending, s.offline = 0, 0
-			if s.canSave then
-				Data.save(player.UserId, s.profile, true)
+			local loot = s.raidLoot
+			if loot then
+				loot.id = s.profile.nextId
+				s.profile.nextId += 1
+				loot.e = false
+				table.insert(s.profile.creatures, loot)
+				s.raidLoot = nil
 			end
+			if s.canSave then
+				task.spawn(trackedSave, player.UserId, s.profile, true)
+			end
+		end
+		task.wait()
+		local deadline = os.clock() + 25
+		while inflight > 0 and os.clock() < deadline do
+			task.wait(0.2)
 		end
 	end)
 end

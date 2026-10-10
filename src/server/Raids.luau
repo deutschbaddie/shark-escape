@@ -251,11 +251,15 @@ local function finish(r: Raid)
 	-- now get it home: in your hands, in forced slow mode, and anyone can
 	-- bonk it loose (the owner too: their way to win it back)
 	local loot = { r = c.r, z = c.z, m = c.m, s = c.s }
-	if Game.handsFull(s) or s.carrying then
-		Game.addCreature(s, loot, true) -- (hands busy: it goes straight in)
+	if Game.handsFull(s) then
+		Game.addCreature(s, loot, true) -- (net full: it goes straight in)
 	else
-		Game.setCarry(s, loot)
-		s.carryUntil = nil -- (no wriggling free: the danger is other players)
+		-- in your hands, or your net if your hands are busy: walked home either way
+		local inHands = not s.carrying
+		Game.takeCatch(s, loot)
+		if inHands then
+			s.carryUntil = nil -- (no wriggling free: the danger is other players)
+		end
 		Game.setRaidLoot(s, loot)
 	end
 	s.dirty = true

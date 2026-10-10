@@ -30,10 +30,11 @@ local function productKeyById(id: number): string?
 	return nil
 end
 
-local function grantPass(s: Game.Session, key: string)
+-- fresh = just bought (rides: hop on it). Rejoining keeps the ride you chose.
+local function grantPass(s: Game.Session, key: string, fresh: boolean?)
 	s.passes[key] = true
 	local ride = Config.ride(key)
-	if ride and ride.robux then
+	if ride and ride.robux and fresh then
 		s.profile.ride = ride.id
 		Game.attachRide(s)
 	end
@@ -46,7 +47,14 @@ end
 local function loadPasses(s: Game.Session)
 	for key, pass in Config.Passes do
 		if pass.id ~= 0 then
-			local ok, owns = pcall(MarketplaceService.UserOwnsGamePassAsync, MarketplaceService, s.player.UserId, pass.id)
+			local ok, owns
+			for attempt = 1, 3 do -- (a hiccup shouldn't cost a paying player their perks)
+				ok, owns = pcall(MarketplaceService.UserOwnsGamePassAsync, MarketplaceService, s.player.UserId, pass.id)
+				if ok then
+					break
+				end
+				task.wait(attempt)
+			end
 			if ok and owns then
 				grantPass(s, key)
 			end
@@ -87,8 +95,10 @@ local grants: { [string]: (Game.Session) -> boolean } = {
 		return true
 	end,
 	DoubleOffline = function(s)
-		s.profile.coins += s.offline * 2
-		Game.notify(s.player, "collect", { amount = s.offline * 2 })
+		-- (already claimed while the prompt was up: still worth it, 10 minutes of income)
+		local amount = s.offline > 0 and s.offline * 2 or math.floor(Game.income(s) * 600)
+		s.profile.coins += amount
+		Game.notify(s.player, "collect", { amount = amount })
 		s.offline = 0
 		return true
 	end,
@@ -101,9 +111,11 @@ local grants: { [string]: (Game.Session) -> boolean } = {
 		-- the creature the shark ate goes straight into your tank
 		local c = s.lastLost
 		s.lastLost = nil
-		Bubbles.unspill(s.lastLostSpill) -- (no copy left floating for anyone to grab)
+		-- only if it's still out there (no copy left floating; and if someone,
+		-- you included, already grabbed it back, a rescue would duplicate it)
+		local live = Bubbles.unspill(s.lastLostSpill)
 		s.lastLostSpill = nil
-		if c then
+		if c and live then
 			Game.addCreature(s, { r = c.r, z = c.z, m = c.m, s = c.s })
 		else
 			Bubbles.give(s, "Rare") -- paid with nothing to rescue: still deliver something good
@@ -171,6 +183,9 @@ MarketplaceService.ProcessReceipt = function(receipt)
 	if table.find(s.profile.receipts, rid) then
 		return Enum.ProductPurchaseDecision.PurchaseGranted
 	end
+	if not s.canSave then
+		return Enum.ProductPurchaseDecision.NotProcessedYet -- (granted on a session that can save)
+	end
 	local key = productKeyById(receipt.ProductId)
 	local grant = key and grants[key]
 	if not grant then
@@ -183,7 +198,10 @@ MarketplaceService.ProcessReceipt = function(receipt)
 		table.remove(s.profile.receipts, 1)
 	end
 	-- save now so the grant survives a crash before the next autosave
-	if s.canSave and not Data.save(s.player.UserId, s.profile) then
+	-- (a session that can't save would grant into thin air: Roblox retries later)
+	if not Data.save(s.player.UserId, s.profile, false, function()
+		return Game.sessions[s.player] == s
+	end) then
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
 	Game.notify(s.player, "purchase", { name = Config.Products[key].name })
@@ -195,14 +213,17 @@ MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, passI
 	local s = Game.sessions[player]
 	local key = passKeyById(passId)
 	if s and key and purchased then
-		grantPass(s, key)
+		grantPass(s, key, true)
 		Game.notify(player, "purchase", { name = Config.Passes[key].name })
 	end
 end)
 
 function Market.start()
 	Game.onJoin = function(s)
-		task.spawn(loadPasses, s)
+		task.spawn(function()
+			loadPasses(s)
+			Game.welcomeBack(s) -- (after the passes: 2x Coins / VIP count offline too)
+		end)
 	end
 	for _, s in Game.sessions do
 		task.spawn(loadPasses, s)

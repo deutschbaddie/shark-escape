@@ -73,8 +73,11 @@ local function render()
 
 	local scroll = Shop.list(body, { Size = UDim2.new(1, 8, 1, -148), Position = UDim2.fromOffset(-4, 76) }, 8)
 	local total = 0
+	local epic = Config.rarity("Epic").index
 	for i, c in list do
-		total += price(c)
+		if Config.rarity(c.r).index < epic then
+			total += price(c) -- (Sell All leaves Epics and up: those go one by one)
+		end
 		local row = UI.card(scroll, nil, { Size = UDim2.new(1, 0, 0, 80), LayoutOrder = i })
 		Shop.thumb(row, c, { Size = UDim2.fromOffset(64, 64), Position = UDim2.fromOffset(8, 8) })
 		UI.label(row, "body", Config.fullName(c.z, c.r, c.m, c.s), { Size = UDim2.new(1, -250, 0, 26), Position = UDim2.fromOffset(84, 10),
@@ -91,8 +94,10 @@ local function render()
 		local empty = UI.inset(scroll, { Size = UDim2.new(1, 0, 0, 80) })
 		UI.label(empty, "body", "No dead fish. Your tank is all swimmers!", { Size = UDim2.new(1, -32, 0, 26), Position = UDim2.fromOffset(16, 27) })
 		Shop.plate(body, "NOTHING TO SELL", T.mute, footer)
+	elseif total <= 0 then
+		Shop.plate(body, "SELL RARE ONES ONE BY ONE", T.mute, footer)
 	else
-		UI.button(body, ("SELL ALL  +$%s"):format(UI.short(total)), T.green, function()
+		UI.button(body, ("SELL ALL UP TO RARE  +$%s"):format(UI.short(total)), T.green, function()
 			State.action("sellAll")
 		end, footer)
 	end

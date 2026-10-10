@@ -193,13 +193,16 @@ function Bubbles.rain(w: number, n: number, life: number)
 end
 
 -- take a spilled bubble back out of the water (it was rescued with Robux)
-function Bubbles.unspill(entry: any)
+-- (true = it was still floating, and now it's gone)
+function Bubbles.unspill(entry: any): boolean
 	local i = entry and table.find(live, entry)
 	if i and not entry.taken then
 		entry.taken = true
 		table.remove(live, i)
 		entry.model:Destroy()
+		return true
 	end
+	return false
 end
 
 local function count(zone: Config.Zone): number
@@ -314,17 +317,15 @@ tryGrab = function(player: Player, b: Bubble): boolean
 	return true
 end
 
--- Golden Bubble / Starter Pack: straight into your hands (or your tank)
+-- Golden Bubble / packs / rewards: straight into your tank (a paid or won
+-- creature must never be able to wriggle free, get eaten or vanish on leave)
+-- with the catch moment shown on top
 function Bubbles.give(s: Game.Session, r: string, zoneId: string?, size: number?)
 	local zone = Config.zoneForSpeed(s.profile.speed, s.profile.world, s.profile.rebirths)
 	local c = { r = r, z = zoneId or zone.id, m = Bubbles.rollMutation(), s = size or Config.rollSize(rng) }
 	Game.discover(s, c)
-	if s.carrying then
-		Game.addCreature(s, c)
-	else
-		Game.setCarry(s, c)
-		Game.notify(s.player, "grab", { r = c.r, m = c.m, z = c.z, s = c.s, gift = true, v = Config.creatureValue(c.r, c.z, c.m, c.s) * Game.coinMult(s) })
-	end
+	Game.notify(s.player, "grab", { r = c.r, m = c.m, z = c.z, s = c.s, gift = true, v = Config.creatureValue(c.r, c.z, c.m, c.s) * Game.coinMult(s) })
+	Game.addCreature(s, c)
 end
 
 -- touch screens grab through this action (Prompts.luau runs the hold on
