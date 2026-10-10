@@ -20,13 +20,21 @@ ZONES = [  # id, gate, length, value, shark aggro
     ("Lagoon", 0, 260, 1, 0.85), ("Coral Reef", 100, 400, 5, 1.3), ("Kelp Forest", 350, 560, 25, 1.25),
     ("Shipwreck Bay", 1000, 720, 120, 1), ("Deep Blue", 3000, 1000, 600, 1), ("The Abyss", 25000, 1400, 3000, 1),
     ("Frozen Sea", 60000, 1500, 15000, 1.1), ("Volcano Vents", 150000, 1600, 75000, 1.15), ("Lost City", 350000, 1800, 375000, 1.2),
+    # the candy sea (one more evolve each)
+    ("Soda Shallows", 700000, 1000, 1875000, 1.2), ("Gumdrop Reef", 1400000, 1100, 9375000, 1.25),
+    ("Lollipop Lagoon", 2800000, 1200, 46875000, 1.25), ("Candy Cane Cove", 5600000, 1300, 234375000, 1.3),
+    ("Chocolate Deep", 11200000, 1400, 1171875000, 1.3), ("Sugar Abyss", 22400000, 1600, 5859375000, 1.35),
 ]
+EVOLVE = [max(0, i - 4) for i in range(len(ZONES))]  # evolves needed per zone (Config: index - 5)
+CANDY_RIDES = [(100e9, 120), (600e9, 145), (4e12, 175), (25e12, 210), (150e12, 250)]  # (price, gain)
 RIDES = [(0, 1), (30, 2), (300, 3), (2500, 4), (10000, 5), (40000, 7), (160000, 9), (600000, 12),
          (2400000, 16), (9000000, 22), (70000000, 30), (200000000, 40),
-         (900000000, 55), (4000000000, 75), (18000000000, 100)]
+         (900000000, 55), (4000000000, 75), (18000000000, 100)
+         ] + CANDY_RIDES
+CANDY_NAMES = ["Cotton Candy Cloud", "Gummy Shark", "Lollipop Jet", "Candy Cane Board", "Sugar Rocket"]
 RIDE_NAMES = ["Pool Noodle", "Rubber Duck", "Inner Tube", "Boogie Board", "Surfboard", "Bathtub",
               "Banana Boat", "Jet Ski", "Speedboat", "Dolphin", "Giant Donut", "Rocket Surfboard",
-              "Hover Board", "Lava Jet", "Golden Comet"]
+              "Hover Board", "Lava Jet", "Golden Comet"] + CANDY_NAMES
 REBIRTH_STEPS = [3000, 25000, 60000, 150000, 350000]
 
 
@@ -141,7 +149,7 @@ def simulate(profile, seed, minutes, sessions=None):
             _, gap = session_ends.pop(0)
             coins += income() * OFFLINE_RATE * min(gap, OFFLINE_HOURS) * 3600
             mark("came back (offline cash)")
-        zi = max(i for i, z in enumerate(ZONES) if speed >= z[1])
+        zi = max(i for i, z in enumerate(ZONES) if speed >= z[1] and EVOLVE[i] <= rebirths)
         if rebirths > 0 and rng.random() < P.get("hunt_index", 0.35):
             missing = [i for i in range(zi + 1) if any((i, r) not in index for r in range(5))]
             if missing:
@@ -207,11 +215,11 @@ def simulate(profile, seed, minutes, sessions=None):
             slots += 1
             mark(f"tank slot {slots}")
         for i, zz in enumerate(ZONES):
-            if speed >= zz[1] and i > 0:
+            if speed >= zz[1] and i > 0 and EVOLVE[i] <= rebirths:
                 mark(f"zone: {zz[0]}")
         if speed >= rebirth_speed(rebirths):
             mark("rebirth ready" if rebirths == 0 else f"rebirth {rebirths + 1} ready")
-            if rebirths < 6:
+            if rebirths < 10:
                 rebirths += 1
                 mark(f"rebirth {rebirths}")
                 speed, coins, ride = 0.0, 0.0, 0

@@ -841,6 +841,172 @@ builders.Dolphin = function(m)
 	grips(m, saddle, 0.3)
 end
 
+----------------------------------------------------------------- the candy sea
+-- five late rides for the candy biomes, in the same glossy toy look
+
+local CANDY_PINK, CANDY_BLUE = C(255, 150, 205), C(150, 215, 255)
+
+-- Cotton Candy Cloud: a ring of fluffy pink and blue puffs you sit in, a
+-- few puffs piled on the back and sides, a paper cone handle behind you
+local CLOUD_TOP = -0.05 + 1.3 / 2
+builders.Cloud = function(m)
+	local c = Vector3.new(RING_C.X, -0.05, RING_C.Z)
+	local n = 14
+	for i = 0, n - 1 do
+		local a = i / n * math.pi * 2
+		local p = c + Vector3.new(math.cos(a) * RING_RX, 0, math.sin(a) * RING_RZ)
+		local d = 1.3 + ((i % 3 == 0) and 0.12 or 0)
+		ell(m, Vector3.new(d, 1.3, d), CFrame.new(p), (i % 2 == 0) and CANDY_PINK or CANDY_BLUE, { Material = Enum.Material.SmoothPlastic, Reflectance = 0 })
+	end
+	-- fluff piled up behind and beside you (outside the knees and hips)
+	for i, spec in {
+		{ 0.5, 0.0, 1.05 }, { 0.62, -0.6, 0.9 }, { 0.62, 0.6, 0.9 }, { 0.38, 0.0, 1.6 },
+		{ 0.15, -1.0, 0.7 }, { 0.15, 1.0, 0.7 },
+	} do
+		local a = math.pi / 2 + spec[2] -- (+Z = behind)
+		local p = c + Vector3.new(math.cos(a) * (RING_RX + 0.15), spec[1] + 0.25, math.sin(a) * (RING_RZ + 0.15))
+		ell(m, Vector3.new(spec[3], spec[3] * 0.85, spec[3]), CFrame.new(p), (i % 2 == 0) and lighter(CANDY_BLUE, 0.2) or lighter(CANDY_PINK, 0.2),
+			{ Material = Enum.Material.SmoothPlastic, Reflectance = 0 })
+	end
+	-- the paper cone it came on, poking out the back
+	local base = c + Vector3.new(0, 0.1, RING_RZ + 0.7)
+	local tip = base + Vector3.new(0, -0.45, 1.6)
+	for k = 0, 3 do
+		local a, b = base:Lerp(tip, k / 4), base:Lerp(tip, (k + 1) / 4)
+		rod(m, a, b, 0.5 - k * 0.09, (k % 2 == 0) and WHITE or C(255, 90, 150))
+	end
+	-- sugar sparkles
+	local sp = Instance.new("Sparkles")
+	sp.SparkleColor = C(255, 220, 245)
+	sp.Parent = m:FindFirstChildWhichIsA("BasePart")
+end
+
+-- Gummy Shark: a squishy see-through gummy shark you ride astride, with a
+-- sugary belly, a big smile and reins
+builders.GummyShark = function(m)
+	local gum, belly, sugar, rein = C(90, 210, 90), C(200, 255, 170), C(255, 255, 255), C(255, 90, 140)
+	local G = { Material = Enum.Material.Glass, Transparency = 0.2, Reflectance = 0.15 }
+	local BODY = Vector3.new(1.3, 1.45, 4.4)
+	local body = CFrame.new(0, 0.2, 0.5)
+	ell(m, BODY, body, gum, G)
+	ell(m, Vector3.new(1.32, 1.1, 4.0), CFrame.new(0, 0.0, 0.4), belly, G)
+	-- tail stock and a tall crescent tail
+	ell(m, Vector3.new(0.75, 0.85, 2.4), CFrame.new(0, 0.45, 3.0) * CFrame.Angles(-0.25, 0, 0), gum, G)
+	ell(m, Vector3.new(0.18, 1.7, 0.7), CFrame.new(0, 1.35, 4.15) * CFrame.Angles(-0.45, 0, 0), gum, G)
+	ell(m, Vector3.new(0.18, 1.0, 0.6), CFrame.new(0, -0.05, 4.05) * CFrame.Angles(0.55, 0, 0), gum, G)
+	-- head: rounded snout, a wide happy mouth with gummy teeth
+	local HEAD = Vector3.new(1.45, 1.3, 2.0)
+	local head = CFrame.new(0, 0.5, -2.0) * CFrame.Angles(0.1, 0, 0)
+	ell(m, HEAD, head, gum, G)
+	ell(m, Vector3.new(1.2, 0.8, 1.6), head * CFrame.new(0, -0.3, -0.15), belly, G)
+	keep(ell(m, Vector3.new(0.95, 0.12, 0.6), head * CFrame.new(0, -0.32, -0.75), C(200, 40, 80), { Name = "Smile" }))
+	for i = -2, 2 do
+		keep(blk(m, Vector3.new(0.12, 0.12, 0.08), head * CFrame.new(i * 0.16, -0.24, -0.98 + math.abs(i) * 0.05), WHITE))
+	end
+	for _, sd in { -1, 1 } do
+		eye(m, surf(head, HEAD, Vector3.new(sd * 0.85, 0.4, -0.7), 0.04), Vector3.new(0.3, 0.36, 0.16))
+		-- gills
+		for k = 0, 1 do
+			keep(ell(m, Vector3.new(0.05, 0.4, 0.08), surf(body, BODY, Vector3.new(sd, 0.1, -0.75 + k * 0.1), 0.02), darker(gum, 0.25)))
+		end
+		-- pectoral fins
+		ell(m, Vector3.new(1.0, 0.14, 0.6), CFrame.new(sd * 0.85, -0.3, -0.7) * CFrame.Angles(0, sd * 0.45, sd * -0.45), gum, G)
+	end
+	-- dorsal fin behind the saddle
+	wdg(m, Vector3.new(0.2, 1.0, 1.2), CFrame.new(0, SEAT_TOP + 0.35, 2.15) * CFrame.Angles(-0.2, 0, 0), darker(gum, 0.1), G)
+	-- sugar crystals on top (outside the saddle)
+	local rng = Random.new(5)
+	for i = 1, 14 do
+		local u = Vector3.new(rng:NextNumber(-0.8, 0.8), rng:NextNumber(0.35, 1), rng:NextNumber(-1, 1))
+		if math.abs(u.Z) > 0.35 or math.abs(u.X) > 0.55 then
+			keep(blk(m, Vector3.new(0.1, 0.1, 0.1), surf(body, BODY, u, -0.02) * CFrame.Angles(i, i * 2, 0), sugar))
+		end
+	end
+	-- saddle, harness and reins
+	ell(m, Vector3.new(1.2, 0.5, 1.7), CFrame.new(0, SEAT_TOP - 0.24, 0.85), rein)
+	ell(m, Vector3.new(1.24, 0.2, 1.4), CFrame.new(0, SEAT_TOP - 0.24, 0.85), WHITE)
+	local hb = head * CFrame.new(0, 0, 0.35)
+	ell(m, Vector3.new(1.49, 1.34, 0.14), hb, rein)
+	for _, sd in { -1, 1 } do
+		local from = (hb * CFrame.new(sd * 0.72, 0.05, 0)).Position
+		rod(m, from, Vector3.new(sd * (GRIP.X - 0.28), GRIP.Y, GRIP.Z), 0.08, WHITE, { Name = "Grip" })
+	end
+	grips(m, rein, 0.3)
+	wake(m, 4.6, 2.4)
+end
+
+-- Lollipop Jet: a jet ski in swirl colors, with a lollipop flag on the back
+builders.LollyJet = function(m)
+	jetSki(m, { C(255, 90, 170), WHITE, C(150, 110, 255), WHITE, C(90, 220, 255) }, WHITE)
+	local stick = Vector3.new(0.9, 0.2, 3.3)
+	rod(m, stick, stick + Vector3.new(0, 2.6, 0.2), 0.12, WHITE)
+	local disc = CFrame.new(stick + Vector3.new(0, 3.05, 0.22))
+	local cols = { C(255, 90, 170), WHITE, C(150, 110, 255), WHITE }
+	for k = 0, 3 do
+		local d = 1.15 * (1 - k * 0.22)
+		keep(Build.cyl(m, 0.14 + k * 0.03, d, disc * CFrame.Angles(0, 0, math.pi / 2) * CFrame.Angles(0, 0, 0), cols[k + 1]))
+	end
+end
+
+-- Candy Cane Board: a white board with red candy stripes and two candy cane
+-- hooks curling up at the nose
+builders.CaneBoard = function(m)
+	local red = C(230, 35, 55)
+	local tail, nose = surfboard(m, 8.2, 2.4, WHITE, red)
+	for i = 0, 6 do
+		local z = nose + 1.2 + i * 0.85
+		blk(m, Vector3.new(1.5 - math.abs(i - 3) * 0.12, 0.04, 0.26), CFrame.new(0, DECK + 0.005, z) * CFrame.Angles(0, 0.5, 0), red)
+	end
+	-- the hooks: a cane on each side rising from the rail and curling over the nose
+	for _, sd in { -1, 1 } do
+		-- a straight shaft up from the rail, then the hook curling forward and down
+		local x = sd * 0.75
+		local z0 = nose + 2.3
+		local pts = { Vector3.new(x, DECK + 0.05, z0), Vector3.new(x, DECK + 0.45, z0 - 0.05), Vector3.new(x, DECK + 0.85, z0 - 0.1) }
+		local hc, r = Vector3.new(x, DECK + 0.85, z0 - 0.4), 0.3
+		for k = 1, 5 do
+			local a = k / 5 * math.pi * 1.15 -- (0 = the back of the hook)
+			table.insert(pts, hc + Vector3.new(0, math.sin(a) * r, math.cos(a) * r))
+		end
+		for k = 1, #pts - 1 do
+			rod(m, pts[k], pts[k + 1], 0.2, (k % 2 == 0) and WHITE or red)
+		end
+		for k = 2, #pts - 1 do
+			ball(m, pts[k], 0.2, (k % 2 == 0) and WHITE or red)
+		end
+	end
+	-- a peppermint on the tail
+	local pm = CFrame.new(0, DECK + 0.04, tail - 1.0)
+	keep(Build.cyl(m, 0.08, 0.9, pm, WHITE))
+	for k = 0, 2 do
+		local a = k / 3 * math.pi * 2
+		keep(wdg(m, Vector3.new(0.05, 0.4, 0.36), pm * CFrame.new(0, 0.045, 0) * CFrame.Angles(math.pi / 2, 0, a) * CFrame.new(0, 0.2, 0), red))
+	end
+end
+
+-- Sugar Rocket: the rocket board in pink and white with rainbow sprinkles
+-- and a candy star on the nose
+builders.SugarRocket = function(m)
+	rocketBoard(m, C(255, 120, 200), WHITE, C(120, 230, 255), C(250, 235, 250))
+	local cols = { C(255, 220, 60), C(120, 230, 255), C(140, 240, 140), C(200, 130, 255), WHITE }
+	local rng = Random.new(11)
+	for i = 1, 16 do
+		local z = rng:NextNumber(-2.4, 2.6)
+		local x = rng:NextNumber(-0.85, 0.85) * (1 - math.abs(z) / 4.5)
+		if z > -1.1 and (math.abs(z) > 0.9 or math.abs(x) > 0.5) then -- (not under the feet or on the nose chevrons)
+			blk(m, Vector3.new(0.09, 0.05, 0.3), CFrame.new(x, DECK + 0.01 + (i % 3) * 0.006, z) * CFrame.Angles(0, rng:NextNumber(0, math.pi), 0), cols[i % #cols + 1])
+		end
+	end
+	for i = 0, 4 do
+		local a = i / 5 * math.pi * 2
+		wdg(m, Vector3.new(0.06, 0.5, 0.22), CFrame.new(0, DECK + 0.06, -1.7) * CFrame.Angles(math.pi / 2, 0, a) * CFrame.new(0, 0.25, 0), C(255, 240, 120),
+			{ Material = Enum.Material.Neon })
+	end
+	local sp = Instance.new("Sparkles")
+	sp.SparkleColor = C(255, 180, 230)
+	sp.Parent = m:FindFirstChildWhichIsA("BasePart")
+end
+
 -- Where each ride wants the rider's stance anchor (Rig.ANCHOR), in ride
 -- space (root at the feet, water surface at y -0.15):
 --   stand / prone: deck top (y)        sit: knees over the front rim (y, z)
@@ -859,6 +1025,8 @@ Rides.FIT = {
 	Surf = Vector3.new(0, DECK, 0), Rocket = Vector3.new(0, DECK, 0), SharkBoard = Vector3.new(0, DECK, 0),
 	Hover = Vector3.new(0, DECK, 0), Comet = Vector3.new(0, DECK, 0),
 	JetSki = SEAT, RainbowSki = SEAT, Banana = SEAT, Speedboat = SEAT, Dolphin = SEAT, LavaSki = SEAT,
+	Cloud = knee(CLOUD_TOP), GummyShark = SEAT, LollyJet = SEAT,
+	CaneBoard = Vector3.new(0, DECK, 0), SugarRocket = Vector3.new(0, DECK, 0),
 } :: { [string]: Vector3 }
 
 function Rides.build(id: string): Model

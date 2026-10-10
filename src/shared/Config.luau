@@ -257,6 +257,12 @@ Config.Rides = {
 	{ id = "Hover", name = "Hover Board", icon = "", price = 900000000, gain = 55 },
 	{ id = "LavaSki", name = "Lava Jet", icon = "", price = 4000000000, gain = 75 },
 	{ id = "Comet", name = "Golden Comet", icon = "", price = 18000000000, gain = 100 },
+	-- the candy sea (about one every 35 min from hour 3: tools/balance/audit.py)
+	{ id = "Cloud", name = "Cotton Candy Cloud", icon = "", price = 100e9, gain = 120 },
+	{ id = "GummyShark", name = "Gummy Shark", icon = "", price = 600e9, gain = 145 },
+	{ id = "LollyJet", name = "Lollipop Jet", icon = "", price = 4e12, gain = 175 },
+	{ id = "CaneBoard", name = "Candy Cane Board", icon = "", price = 25e12, gain = 210 },
+	{ id = "SugarRocket", name = "Sugar Rocket", icon = "", price = 150e12, gain = 250 },
 	-- Robux rides: never skip the ladder, they multiply it.
 	{ id = "GoldDuck", name = "Golden Duck", icon = "", price = 0, robux = "GoldDuck", mult = 1.25 },
 	{ id = "SharkBoard", name = "Shark Board", icon = "", price = 0, robux = "SharkBoard", mult = 1.5 },
@@ -306,6 +312,11 @@ Config.RideFeel.SharkBoard = { stance = "stand", accel = 0.6, coast = 1.4, turn 
 Config.RideFeel.RainbowSki = Config.RideFeel.JetSki
 Config.RideFeel.Hover = { stance = "stand", accel = 0.25, coast = 1.1, turn = 3.6, grip = 5.5, lean = 0.5, bob = 0.3, bobSpeed = 1.6, plane = 0.12 }
 Config.RideFeel.LavaSki = { stance = "straddle", accel = 0.3, coast = 1.0, turn = 4.4, grip = 3, lean = 0.6, bob = 0.16, bobSpeed = 4, plane = 0.14 }
+Config.RideFeel.Cloud = { stance = "sit", accel = 0.5, coast = 2.0, turn = 3.0, grip = 1.6, lean = 0.1, bob = 0.5, bobSpeed = 1.8, wobble = 0.2 }
+Config.RideFeel.GummyShark = { stance = "straddle", accel = 0.3, coast = 1.1, turn = 4.4, grip = 4.5, lean = 0.45, bob = 0.5, bobSpeed = 3.2 }
+Config.RideFeel.LollyJet = Config.RideFeel.LavaSki
+Config.RideFeel.CaneBoard = { stance = "stand", accel = 0.2, coast = 1.0, turn = 3.6, grip = 5.5, lean = 0.6, bob = 0.14, bobSpeed = 3, plane = 0.1 }
+Config.RideFeel.SugarRocket = { stance = "stand", accel = 0.15, coast = 0.9, turn = 3.5, grip = 5.5, lean = 0.5, bob = 0.12, bobSpeed = 6, plane = 0.12 }
 Config.RideFeel.Comet = { stance = "stand", accel = 0.2, coast = 0.9, turn = 3.4, grip = 5.5, lean = 0.5, bob = 0.12, bobSpeed = 6, plane = 0.12 }
 
 function Config.feel(rideId: string?): RideFeel
@@ -1385,6 +1396,9 @@ Config.RideSound = {
 	Speedboat = { "rideBoat", 1.0 },
 	Dolphin = { "rideDolphin", 1.0 },
 	Rocket = { "rideRocket", 1.0 },
+	Hover = { "rideRocket", 1.15 }, Comet = { "rideRocket", 0.9 }, LavaSki = { "rideJetSki", 0.9 },
+	Cloud = { "rideSplash", 1.1 }, GummyShark = { "rideDolphin", 1.1 }, LollyJet = { "rideJetSki", 1.18 },
+	CaneBoard = { "rideSurf", 1.1 }, SugarRocket = { "rideRocket", 1.1 },
 } :: { [string]: { any } }
 
 return Config
