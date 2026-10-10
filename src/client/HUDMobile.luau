@@ -333,7 +333,7 @@ local function buildRight()
 		call(HUD.onTank)
 	end)
 	PlayGifts.square(main, SQ, 3) -- free playtime gifts
-	menuButtons.Rebirth = square(extra, "Evolve", T.purple, 1, function()
+	menuButtons.Rebirth = square(extra, "Rebirth", T.purple, 1, function()
 		call(HUD.onRebirth)
 	end)
 	menuButtons.Rebirth.Visible = false

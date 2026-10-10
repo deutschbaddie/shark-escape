@@ -150,7 +150,7 @@ local function build()
 	menuButtons.Tank = square(right, "Tank", C.orange, 1, function()
 		call(HUD.onTank)
 	end)
-	menuButtons.Rebirth = square(right, "Evolve", C.green, 2, function()
+	menuButtons.Rebirth = square(right, "Rebirth", C.green, 2, function()
 		call(HUD.onRebirth)
 	end)
 	menuButtons.Rebirth.Visible = false
