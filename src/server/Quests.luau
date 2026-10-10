@@ -30,7 +30,7 @@ local function ensure(s: Game.Session): any
 	local p = s.profile
 	local q = p.quests
 	if type(q) ~= "table" or q.day ~= today() or type(q.ids) ~= "table" or type(q.n) ~= "table" then
-		local canChum = p.tut >= 5 and p.playtime >= Config.Chum.minPlaytime
+		local canChum = p.tut >= 5 and p.playtime >= math.max(Config.Chum.minPlaytime, Config.Bonk.protect)
 		local pool = {}
 		for _, d in Config.Quests.pool do
 			if not d.vet or canChum then
@@ -123,6 +123,12 @@ local ON: { [string]: (Game.Session, any) -> () } = {
 	end,
 	chumThrown = function(s)
 		progress(s, "chum", 1)
+	end,
+	bonkedLoot = function(s)
+		progress(s, "bonk", 1)
+	end,
+	bonkShark = function(s)
+		progress(s, "daze", 1)
 	end,
 }
 

@@ -1167,6 +1167,8 @@ Config.Quests = {
 		{ id = "rings", text = "Ride through %d boost rings", goal = 5 },
 		{ id = "night", text = "Catch %d creatures at night", goal = 5 },
 		{ id = "chum", text = "Chum %d riders", goal = 2, vet = true },
+		{ id = "bonk", text = "Bonk loot loose %d times", goal = 2, vet = true },
+		{ id = "daze", text = "Daze %d sharks with your noodle", goal = 2 },
 	},
 }
 

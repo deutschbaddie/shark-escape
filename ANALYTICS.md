@@ -89,6 +89,8 @@ One session per prompt: Prompted → Bought. The item is in custom field 1, and 
 | CloseCall | 1 | How often the shark just misses. The chase is working when this is a few per session. |
 | ReelStart / ReelWon / ReelSlipped | 1 | Won ÷ Start for the Legendary reel. Aim for ~60%. Lower: widen the green band or slow the marker in Reel.luau. |
 | BossReward | 1 | Players who got a Legendary from the boss Megalodon. Compare with players online during Megalodon Hour. |
+| SharkDazed / BonkLoot | 1 | Noodle Bonk on a shark / loot knocked off a rider. Lots of BonkLoot with falling SessionMinutes = it feels mean: raise Config.Bonk.immune or the cooldown. |
+| InvitedJoin / InviteReward | n | Friends who joined from an invite / rewards paid to inviters. Your cheapest growth: if it's near zero, make the Friends "+" more visible. |
 | Quest | Field 1 = quest id | Which daily quests get finished. A quest nobody finishes needs a smaller goal. |
 
 ## Also check (built into Roblox, no code)

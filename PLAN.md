@@ -88,6 +88,18 @@ Make it back to the sand for a big payout.**
 - [x] Zone unlock is a physical moment (buoys light up, water shifts)
 - [x] Playtest checklist (below)
 
+## Phase 6: players are the content (front-page audit)
+- [x] Noodle Bonk: bonk riders to knock their loot loose, bonk sharks to
+      daze them. At sea only; new players protected; procedural swing
+- [x] Top Bonkers board
+- [x] A server event every 15 min: Golden Tide, Feeding Frenzy, Bubble Rain
+- [x] Your best creature floats huge over your dock
+- [x] Invite a friend: you both get a Rare
+- [x] Noodle upgrades (coins) + Golden Noodle (pass: needs its id)
+- [x] Quests and analytics for all of it
+- [ ] Trading (once sessions hold 20+ minutes)
+- [ ] Playtest the bonk with real kids: funny or mean? Tune immune / cooldown
+
 ### Playtest checklist (3-5 people, phones, 15 minutes, watch, don't help)
 - [ ] First grab within 15 s of spawning?
 - [ ] Did anyone yell or laugh in the first 2 minutes (the practice chase,
@@ -105,7 +117,7 @@ Make it back to the sand for a big payout.**
       onboarding funnel. Fix the biggest drop first.
 
 ## Needs from the owner
-- Product id for **Tank Lock** (and MoneyPack1, still missing)
+- Product id for **Tank Lock** (and MoneyPack1, still missing), game pass id for the **Golden Noodle**
 - Zone icons for the 3 new Shark Beach zones and the 6 Candy Bay zones
 - Test the boss with `/boss` (and the whole event with `/event`) on a live server
 - Sound ids: thunder, portal whoosh, chest open, boss roar, reel click
