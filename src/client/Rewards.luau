@@ -304,6 +304,7 @@ function Rewards.start()
 	gui.DisplayOrder = 9
 	gui.Parent = player:WaitForChild("PlayerGui")
 	UI.autoScale(gui, Vector2.new(740, 566))
+	UI.hideInCutscenes(gui)
 
 	local function onState(d: any)
 		local wasReady = os.clock() >= dailyReadyAt
@@ -320,7 +321,13 @@ function Rewards.start()
 		end
 		if not autoOpened and not waitForTrip and d.tut >= 5 and (d.dailyWait or 1) <= 0 and not player:GetAttribute("Cinematic") then
 			autoOpened = true
-			task.delay(2, Rewards.openDaily)
+			task.delay(2, function()
+				if not player:GetAttribute("Cinematic") and not player:GetAttribute("ViewingTank") then
+					Rewards.openDaily()
+				else
+					autoOpened = false -- (try again next time)
+				end
+			end)
 		end
 	end
 	State.Changed:Connect(onState)

@@ -291,7 +291,32 @@ local function updateRides(now: number)
 end
 
 ----------------------------------------------------------------- start
+-- Roblox's own character sounds (jump, land, swim, splash...) aren't ours:
+-- default sounds don't fit the game and ignore Settings, so they're muted
+local DEFAULT_SOUNDS = { Climbing = true, Died = true, FreeFalling = true, GettingUp = true, Jumping = true,
+	Landing = true, Running = true, Splash = true, Swimming = true }
+local function muteDefaults(char: Model)
+	local function check(d: Instance)
+		if d:IsA("Sound") and DEFAULT_SOUNDS[d.Name] and d.Parent and d.Parent.Name == "HumanoidRootPart" then
+			d.Volume = 0
+		end
+	end
+	for _, d in char:GetDescendants() do
+		check(d)
+	end
+	char.DescendantAdded:Connect(check)
+end
+
 function Audio.start()
+	for _, p in Players:GetPlayers() do
+		if p.Character then
+			muteDefaults(p.Character)
+		end
+		p.CharacterAdded:Connect(muteDefaults)
+	end
+	Players.PlayerAdded:Connect(function(p)
+		p.CharacterAdded:Connect(muteDefaults)
+	end)
 	-- UI hooks
 	UI.onClick = function()
 		Fx.sound("uiClick", 0.5)

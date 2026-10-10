@@ -63,7 +63,7 @@ local function passed(i: number, at: Vector3)
 	pop(i)
 	Fx.ring(at, GOLD, Layout.RING_RADIUS * 3)
 	Fx.sparkle(at, GOLD, 24)
-	Fx.sound("rideKick", 0.7, 1.15)
+	Fx.sound("discover", 0.6, 1.2)
 	Fx.shake(0.4)
 	State.action("ring", i)
 end

@@ -267,7 +267,7 @@ local function buildLeft()
 			Notify.toast("Invite a friend: you both get a Rare!", C.gold)
 			game:GetService("SocialService"):PromptGameInvite(player)
 		end)
-	end, { Name = "Invite", Size = UDim2.fromOffset(28, 28), Position = UDim2.new(1, 2, 0.5, -1), AnchorPoint = Vector2.new(1, 0.5), ZIndex = fp.ZIndex + 3 })
+	end, { Name = "Invite", Size = UDim2.fromOffset(38, 38), Position = UDim2.new(1, 2, 0.5, -1), AnchorPoint = Vector2.new(1, 0.5), ZIndex = fp.ZIndex + 3 })
 	local il = invite:FindFirstChild("Label") :: TextLabel
 	il.Size = UDim2.new(1, -4, 1, -8)
 
@@ -314,7 +314,7 @@ local function buildRight()
 	-- settings: a small gear tucked beside the shark widget
 	menuButtons.Settings = UI.iconButton(gui, "Settings", "", T.navyLight, function()
 		call(HUD.onSettings)
-	end, { Name = "Settings", Size = UDim2.fromOffset(38, 38), Position = UDim2.new(1, -(SP[2] + 6 + TIMER_W + SP[2]), 0, SP[2] + 6), AnchorPoint = Vector2.new(1, 0) })
+	end, { Name = "Settings", Size = UDim2.fromOffset(50, 50), Position = UDim2.new(1, -(SP[2] + 6 + TIMER_W + SP[2]), 0, SP[2] + 6), AnchorPoint = Vector2.new(1, 0) })
 
 	-- square buttons: main column (Gift, Tank, Shop) on the edge, extras beside it
 	local right = UI.frame(gui, { Name = "Right", Size = UDim2.fromOffset((SQ + 4) * 3 + SP[3] * 2, 300), BackgroundTransparency = 1,

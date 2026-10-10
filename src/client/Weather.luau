@@ -19,12 +19,18 @@ local function sky(name: string, seconds: number)
 end
 
 function Weather.start()
+	local was = "calm"
 	Remotes.get("SharkEvent").OnClientEvent:Connect(function(kind)
+		local before = was
+		if kind == "warning" or kind == "hunt" or kind == "clear" then
+			was = kind
+		end
 		if kind == "warning" then
 			sky("dusk", 4)
 		elseif kind == "hunt" then
 			sky("night", 3)
-		elseif kind == "clear" then
+		elseif kind == "clear" and before ~= "calm" and before ~= "clear" then
+			-- (a "clear" on joining mid-day isn't a sunrise: no sky race)
 			-- sunrise: the clock runs on through dawn (not back through sunset)
 			TweenService:Create(Lighting, TweenInfo.new(2.5, Enum.EasingStyle.Sine), { ClockTime = 29.5 }):Play()
 			task.delay(2.6, function()

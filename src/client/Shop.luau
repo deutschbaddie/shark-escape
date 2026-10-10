@@ -864,11 +864,13 @@ function Shop.start()
 	gui.Parent = player:WaitForChild("PlayerGui")
 	UI.autoScale(gui, Vector2.new(800, 480)) -- Index is the widest window (780 x 470)
 	-- the bite cutscene owns the screen
-	player:GetAttributeChangedSignal("Cinematic"):Connect(function()
-		if player:GetAttribute("Cinematic") then
+	local function screenTaken()
+		if player:GetAttribute("Cinematic") or player:GetAttribute("ViewingTank") then
 			closeAll()
 		end
-	end)
+	end
+	player:GetAttributeChangedSignal("Cinematic"):Connect(screenTaken)
+	player:GetAttributeChangedSignal("ViewingTank"):Connect(screenTaken)
 	RunService.RenderStepped:Connect(function()
 		local t = os.clock()
 		for _, m in spinners do

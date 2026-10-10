@@ -207,11 +207,13 @@ function Tank.start()
 	gui.Parent = player:WaitForChild("PlayerGui")
 	UI.autoScale(gui, Vector2.new(660, 480))
 	State.Changed:Connect(render)
-	player:GetAttributeChangedSignal("Cinematic"):Connect(function()
-		if player:GetAttribute("Cinematic") then
+	local function screenTaken()
+		if player:GetAttribute("Cinematic") or player:GetAttribute("ViewingTank") then
 			Tank.close()
 		end
-	end)
+	end
+	player:GetAttributeChangedSignal("Cinematic"):Connect(screenTaken)
+	player:GetAttributeChangedSignal("ViewingTank"):Connect(screenTaken)
 end
 
 return Tank

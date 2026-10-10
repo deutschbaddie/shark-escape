@@ -96,7 +96,8 @@ RunService.Heartbeat:Connect(function()
 			break
 		end
 	end
-	if not req or not ensureFeet() then
+	local busy = player:GetAttribute("Cinematic") or player:GetAttribute("ViewingTank")
+	if not req or busy or not ensureFeet() then
 		beam.Enabled = false
 		marker.Enabled = false
 		return

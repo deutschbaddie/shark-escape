@@ -110,6 +110,7 @@ function Sell.open()
 		g.ResetOnSpawn = false
 		g.DisplayOrder = 9
 		g.Parent = player:WaitForChild("PlayerGui")
+		UI.hideInCutscenes(g)
 		UI.autoScale(g, Vector2.new(620, 480))
 		gui = g
 	end
