@@ -976,8 +976,7 @@ Config.Passes = {
 	GoldDuck = { iconName = "GoldDuck", id = 2022776256, price = 99, name = "Golden Duck", icon = "", desc = "Ride it - x1.25 speed gain" },
 	SharkBoard = { iconName = "SharkBoard", id = 2023016262, price = 199, name = "Shark Board", icon = "", desc = "Ride it - x1.5 speed gain" },
 	RainbowSki = { iconName = "RainbowSki", id = 2023094256, price = 399, name = "Rainbow Jet Ski", icon = "", desc = "Ride it - x2 speed gain" },
-	-- (needs its game pass id: create it on the Creator Dashboard)
-	GoldenNoodle = { iconName = "Crown", id = 0, price = 149, name = "Golden Noodle", icon = "", desc = "A shiny bonk noodle: the longest reach" },
+	GoldenNoodle = { iconName = "Crown", id = 2026364524, price = 149, name = "Golden Noodle", icon = "", desc = "A shiny bonk noodle: the longest reach" },
 }
 
 Config.Products = {
@@ -988,7 +987,7 @@ Config.Products = {
 	MoneyPack0 = { iconName = "MoneyPack0", id = 3717314065, price = 9, name = "Mini Cash Pack", icon = "", desc = "3 minutes of your tank income" },
 	Shield = { iconName = "Shield", id = 3717314118, price = 9, name = "Shark Shield", icon = "", desc = "Survive one bite (or one bonk), keep your creatures" },
 	-- id 0 = shows SOON until you create the product and paste its id here
-	TankLock = { iconName = "Lock", id = 0, price = 29, name = "Tank Lock", icon = "", desc = "No one can raid your tank for 30 minutes" },
+	TankLock = { iconName = "Lock", id = 3717710953, price = 29, name = "Tank Lock", icon = "", desc = "No one can raid your tank for 30 minutes" },
 	SpeedBoost = { iconName = "Boost", id = 3717315209, price = 49, name = "2x Speed (15 min)", icon = "", desc = "Double speed gain for 15 minutes" },
 	LuckPotion = { iconName = "Potion", id = 3717315275, price = 49, name = "Luck Potion (10 min)", icon = "", desc = "+15% rarity upgrade chance" },
 	GoldenBubble = { iconName = "GoldBubble", id = 3717315347, price = 99, name = "Golden Bubble", icon = "",
