@@ -258,7 +258,7 @@ local function grab(s: Game.Session, b: Bubble)
 	if s.profile.grabs == Config.Luck.pityEpic and Config.rarity(r).index < 4 then
 		local hadEpic = false
 		for key in s.profile.index do
-			if key:match(":Epic$") or key:match(":Legendary$") then
+			if Config.rarity(key:match(":(%w+)$") or "Common").index >= 4 then
 				hadEpic = true
 			end
 		end

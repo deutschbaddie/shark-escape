@@ -148,7 +148,7 @@ for key, pack in Config.Packs do
 			p.speed += amount
 			p.bestSpeed = math.max(p.bestSpeed, p.speed)
 			for _, zone in Config.worldZones(p.world) do
-				if zone.gate > 0 and before < zone.gate and p.speed >= zone.gate then
+				if zone.gate > 0 and before < zone.gate and p.speed >= zone.gate and (zone.evolve or 0) <= p.rebirths then
 					Game.notify(s.player, "unlock", { zone = zone.id })
 				end
 			end

@@ -72,7 +72,8 @@ local function nearestBubble(pos: Vector3): Vector3?
 		local shell = b:IsA("Model") and b.PrimaryPart
 		-- only bubbles in zones you can actually swim into
 		local zone = shell and Config.zoneById(b:GetAttribute("Zone"))
-		if shell and zone and zone.gate <= (State.data and State.data.speed or 0) then
+		local d0 = State.data
+		if shell and zone and d0 and zone.gate <= d0.speed and (zone.evolve or 0) <= (d0.rebirths or 0) then
 			local d = (shell.Position - pos).Magnitude
 			if d < bestD then
 				best, bestD = shell.Position, d

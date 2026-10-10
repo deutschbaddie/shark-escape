@@ -142,7 +142,8 @@ function Index.open()
 		tl.Parent = tabs
 		for i, zone in zones do
 			local active = zone.id == zoneId
-			local reached = d.speed >= zone.gate
+			local evolveNeed = zone.evolve or 0
+			local reached = d.speed >= zone.gate and (d.rebirths or 0) >= evolveNeed
 			local color = active and T.blue or (reached and T.navyLight or UI.dark(T.navyLight, 0.3))
 			local b = UI.button(tabs, zone.name, color, function()
 				zoneId = zone.id
@@ -153,7 +154,9 @@ function Index.open()
 			l.Position = UDim2.new(0.5, 0, 0, 5)
 			l.AnchorPoint = Vector2.new(0.5, 0)
 			local c = count(d, zone.id)
-			UI.label(b, "meta", reached and ("%d / %d"):format(c, #Config.Rarities) or ("%s speed"):format(UI.short(zone.gate)), {
+			UI.label(b, "meta", reached and ("%d / %d"):format(c, #Config.Rarities)
+				or ((d.rebirths or 0) < evolveNeed and ("Evolve %d"):format(evolveNeed))
+				or ("%s speed"):format(UI.short(zone.gate)), {
 				Size = UDim2.new(1, -12, 0, 17), Position = UDim2.new(0.5, 0, 0, 28), AnchorPoint = Vector2.new(0.5, 0), ZIndex = b.ZIndex + 1,
 				TextColor3 = (c == #Config.Rarities and UI.C.money) or (active and T.white) or T.mute })
 			if active then
