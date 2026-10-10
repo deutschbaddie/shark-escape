@@ -594,7 +594,6 @@ Config.Luck = {
 
 Config.BUBBLES_PER_ZONE = 9
 Config.GRAB_RADIUS = 6.5
-Config.RIDE_GRAB_MAX = 3 -- rarity index up to which riding through a bubble grabs it (Rare)
 Config.DEPOSIT_RADIUS = 15
 Config.COLLECT_RADIUS = 6
 Config.SELL_SECONDS = 20 -- a creature that doesn't fit sells for this many seconds of its income
@@ -700,6 +699,17 @@ Config.MiniEvents = {
 		{ id = "rain", name = "Bubble Rain", desc = "Bubbles near the shore!", color = Color3.fromRGB(110, 210, 255) },
 	},
 }
+
+-- what players call each shark ("Baby" alone reads oddly on the HUD)
+local SHARK_NAMES = {
+	Baby = "Baby Shark", Hammerhead = "Hammerhead", Tiger = "Tiger Shark", GreatWhite = "Great White",
+	Mecha = "Mecha Shark", Megalodon = "Megalodon", Frost = "Frost Shark", Magma = "Magma Shark", King = "King Shark",
+	Gummy = "Gummy Shark", Jelly = "Jelly Shark", Licorice = "Licorice Shark", Peppermint = "Peppermint Shark",
+	Fudge = "Fudge Shark", SugarKing = "Sugar King",
+}
+function Config.sharkName(variant: string?): string
+	return SHARK_NAMES[variant or ""] or "Shark"
+end
 
 -- Noodle Bonk (server Bonk.luau, client Bonk.luau): one button, two uses.
 -- Bonk a rider and the last creature they carry pops out as a bubble anyone

@@ -767,7 +767,7 @@ local function frame()
 			if lastZone ~= nil and os.clock() > quietTitlesUntil then
 				if zone then
 					Notify.banner(zone.name, { key = "zone", priority = 2, time = 2.4, big = true,
-						color = zone.water:Lerp(Color3.new(1, 1, 1), 0.35), sub = ("%s waters"):format((zone.shark:gsub("(%l)(%u)", "%1 %2"))) })
+						color = zone.water:Lerp(Color3.new(1, 1, 1), 0.35), sub = ("%s waters"):format(Config.sharkName(zone.shark)) })
 				else
 					Notify.banner("Shark Beach", { key = "zone", priority = 2, time = 2, big = true, color = Color3.fromRGB(255, 220, 120), sub = "Sand is always safe" })
 				end
@@ -963,7 +963,7 @@ handlers.rideShop = function()
 end
 
 handlers.aggro = function(d)
-	local name = tostring(d.shark or "Shark"):gsub("(%l)(%u)", "%1 %2")
+	local name = Config.sharkName(d.shark)
 	if d.why == "chum" then
 		Notify.takeover("Chummed", ("%s chummed you! %s coming!"):format(tostring(d.by or "Someone"), name), C.red, 1.4, "Shark")
 	else
@@ -1022,7 +1022,7 @@ end
 
 handlers.tooDeep = function(d)
 	local zone = Config.zoneById(d.zone)
-	local shark = zone and zone.shark:gsub("(%l)(%u)", "%1 %2") or "shark"
+	local shark = zone and Config.sharkName(zone.shark) or "shark"
 	Notify.banner("Too deep for your speed", { key = "deep", priority = 4, time = 3.5, color = C.red,
 		sub = ("The %s hunts you here! Need %s speed"):format(shark, UI.short(d.need or 0)) })
 	Fx.sound("sharkAlarm", 0.6)

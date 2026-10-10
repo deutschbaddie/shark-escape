@@ -3,7 +3,6 @@
 
 local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local CollectionService = game:GetService("CollectionService")
 
 local Shared = game.ReplicatedStorage.Shared
@@ -273,7 +272,8 @@ local function grab(s: Game.Session, b: Bubble)
 end
 
 -- hold the prompt to grab (server checks you're really there)
--- swept = the ride-over sweep already checked your path passed through it;
+-- swept = the caller already checked your path passed through it (unused now:
+-- every grab is a hold on the prompt);
 -- reeled = you just won the Legendary reel for it
 -- (true = it's in your hands now)
 tryGrab = function(player: Player, b: Bubble, swept: boolean?, reeled: boolean?): boolean
@@ -376,45 +376,7 @@ function Bubbles.start()
 			spawnBubble(zone)
 		end
 	end
-	-- ride-over grabs: Common..Rare are scooped up just by riding through
-	-- them (swept from your last spot, so speed can't skip them); Epic and
-	-- Legendary still want a hold (the tense moment). Not in the tutorial,
-	-- which teaches the prompt.
-	local last: { [Player]: Vector3 } = {}
-	local acc = 0
-	RunService.Heartbeat:Connect(function(dt)
-		acc += dt
-		if acc < 0.1 then
-			return
-		end
-		acc = 0
-		for player, s in Game.sessions do
-			local hrp = Game.root(player)
-			if not hrp or s.profile.tut < 5 or hrp.Anchored then
-				last[player] = nil
-				continue
-			end
-			local pos = hrp.Position
-			local from = last[player] or pos
-			last[player] = pos
-			-- (a jump longer than your speed allows is a teleport, not a ride)
-			if not Layout.inWater(pos) or reels[player] or Game.handsFull(s) or (pos - from).Magnitude > Game.walkSpeed(s) * 0.1 * 2.5 + 8 then
-				continue
-			end
-			for i = #live, 1, -1 do
-				local b = live[i]
-				if b and Config.rarity(b.r).index <= Config.RIDE_GRAB_MAX
-					and Layout.segmentDist(b.pos, from, pos) < Config.GRAB_RADIUS and math.abs(pos.Y - b.pos.Y) < 10 then
-					tryGrab(player, b, true)
-					if Game.handsFull(s) then
-						break
-					end
-				end
-			end
-		end
-	end)
 	Players.PlayerRemoving:Connect(function(p)
-		last[p] = nil
 		local r = reels[p]
 		if r then
 			if r.b.reservedBy == p then

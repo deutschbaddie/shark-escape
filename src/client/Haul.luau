@@ -39,7 +39,7 @@ local function myRoot(): BasePart?
 end
 
 local function sharkName(id: string): string
-	return (id:gsub("(%l)(%u)", "%1 %2"))
+	return Config.sharkName(id)
 end
 
 local function build()
@@ -89,7 +89,7 @@ local function tick()
 		color = color:Lerp(Color3.new(1, 1, 1), 0.25 + 0.25 * math.sin(os.clock() * 12))
 	end
 	fill.BackgroundColor3 = color
-	label.Text = k >= 1 and ("%s is hunting the biggest haul"):format(sharkName(zone.shark))
+	label.Text = k >= 1 and ("The %s is after the biggest haul"):format(sharkName(zone.shark))
 		or ("%s hunger"):format(sharkName(zone.shark))
 end
 
