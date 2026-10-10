@@ -62,7 +62,7 @@ task = {{
 """
     for m in ("Config", "Build", "Layout"):
         s += module(m, "shared", "mod:")
-    for m in ("UI", "Sounds", "Fx", "Notify", "Guide", "Travel", "Prompts", "HUDMobile", "HUDDesktop", "HUD", "Rewards", "Shop", "Index", "Tank", "Sell", "Hub", "PlayGifts", "RaidSpin", "Countdown"):
+    for m in ("UI", "Sounds", "Fx", "Notify", "Guide", "Travel", "Prompts", "HUDMobile", "HUDDesktop", "HUD", "Rewards", "Shop", "Index", "Tank", "Sell", "Hub", "PlayGifts", "RaidSpin", "Countdown", "Cine", "Tester"):
         s += module(m, "client", "cmod:")
     s += """
 local sig = function() return { Connect = function() end } end
@@ -460,6 +460,7 @@ SAMPLE.questsReset = 5 * 3600 + 120
 """
 MENU_SCENES = {
     "index": 'require("cmod:Shop").start()\nrequire("cmod:Index").open()',
+    "tester": 'require("cmod:Tester").open()',
     "rides": 'require("cmod:Shop").start()\nrequire("cmod:Shop").openRides()',
     "store": 'require("cmod:Shop").start()\nrequire("cmod:Shop").openStore()',
     "tank": 'require("cmod:Tank").start()\nrequire("cmod:Tank").open()',

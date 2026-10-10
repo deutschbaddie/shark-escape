@@ -76,7 +76,7 @@ Rojo project. Untested in Studio so far.
 - Moments (`Moments.luau`, built from the `Fx.luau` toolkit): grab pops by rarity, catches flying into the
   tank before the haul pays, the escape snap, close calls, bonk hits, a new best lit up over your dock.
   Short skippable cutscenes (`Cine.luau`, land only) for a new ride, a Mythic reaching your tank, evolving
-  and the Megalodon breaching.
+  and the Megalodon breaching. Developers can try them all with `/srctest` (`Tester.luau`).
 
 ## Robux store
 The store (`Shop.openStore()` in `src/client/Shop.luau`) opens from the red Shop button on the HUD and from

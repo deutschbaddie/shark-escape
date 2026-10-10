@@ -1,9 +1,9 @@
 -- The always-on screen. Small, bright, one obvious next thing, built from the
 -- design system in UI.luau (tokens, pills, nav buttons, cards, bars).
 --   top-left:      resource pills: Speed (red), Cash (green), Friend Boost
---                  (+ invite) with the Settings gear; under them the nav
---                  buttons, Index (blue) and Rides (orange), and beside those
---                  Shop (red, the Robux store) with the promo under it
+--                  (+ invite); under them the nav buttons in one column,
+--                  Index (blue), Rides (orange) and Shop (red, the Robux
+--                  store), with the store's promo beside Shop
 --   top-right:     shark event widget ("Shark in 57s", "HUNTING 12s")
 --   right:         square buttons: Gift, Tank; Rebirth and
 --                  the timed boosts (time left on a chip) in columns beside
@@ -107,8 +107,8 @@ end
 -- sizes on the 1280x720 design canvas
 local SQ = 60 -- right-side squares
 local COL_W = 190 -- left column (pills + nav)
-local NAV_H = 54
-local STORE_W = 156 -- Shop + promo column beside the nav (narrow: clear of the centered messages)
+local NAV_H = 40 -- (three of them stacked still clear the thumbstick)
+local STORE_W = 156 -- the promo beside Shop (narrow: clear of the centered messages)
 local TIMER_W = 250 -- shark widget
 local CARD_W = 600 -- bottom progression card
 local CARD_H = 146
@@ -244,7 +244,7 @@ local function buildLeft()
 	list(left, false, SP[2])
 
 	-- speed: the number that matters most
-	local sp, spv = UI.pill(left, "Sneaker", T.red, { Name = "Speed", Size = UDim2.fromOffset(COL_W, 44), LayoutOrder = 1 })
+	local sp, spv = UI.pill(left, "Sneaker", T.red, { Name = "Speed", Size = UDim2.fromOffset(COL_W, 41), LayoutOrder = 1 })
 	speedPill, speedLabel = sp, spv
 	speedLabel.TextColor3 = UI.light(T.gold, 0.25)
 	speedLabel.Size = UDim2.new(1, -112, 1, -10)
@@ -252,12 +252,12 @@ local function buildLeft()
 	gainLabel = UI.label(sp, "body", "+1/s", { Name = "Gain", Size = UDim2.new(0, 60, 0, 20), Position = UDim2.new(1, -12, 0.5, -2),
 		AnchorPoint = Vector2.new(1, 0.5), TextXAlignment = Enum.TextXAlignment.Right, ZIndex = sp.ZIndex + 2, StrokeColor = UI.dark(T.red, 0.6) })
 
-	local cp, cpv = UI.pill(left, "Cash", T.green, { Name = "Cash", Size = UDim2.fromOffset(COL_W, 44), LayoutOrder = 2 })
+	local cp, cpv = UI.pill(left, "Cash", T.green, { Name = "Cash", Size = UDim2.fromOffset(COL_W, 41), LayoutOrder = 2 })
 	cashPill, coinsLabel = cp, cpv
 	coinsLabel.TextColor3 = UI.light(T.gold, 0.55)
 
 	-- friend boost (+ invite)
-	local fp, fpv = UI.pill(left, "Friends", T.navyLight, { Name = "Friends", Size = UDim2.fromOffset(COL_W, 34), LayoutOrder = 3 })
+	local fp, fpv = UI.pill(left, "Friends", T.navyLight, { Name = "Friends", Size = UDim2.fromOffset(COL_W, 31), LayoutOrder = 3 })
 	friendLabel = fpv
 	friendLabel.Size = UDim2.new(1, -72, 1, -8)
 	friendLabel.Position = UDim2.new(0, 36, 0.5, -2)
@@ -272,16 +272,16 @@ local function buildLeft()
 	local il = invite:FindFirstChild("Label") :: TextLabel
 	il.Size = UDim2.new(1, -4, 1, -8)
 
-	-- navigation: Index and Rides, the same size and build; beside them the
-	-- red Shop (the Robux store) with the promo under it. Two short columns
-	-- keep everything above the thumbstick.
-	local nav = UI.frame(left, { Name = "Nav", Size = UDim2.fromOffset(COL_W + SP[2] + STORE_W, NAV_H * 2 + SP[2] + SP[1]), BackgroundTransparency = 1,
+	-- navigation: Index, Rides and the red Shop (the Robux store), one column
+	-- of the same size and build down the left edge, with the store's promo
+	-- beside Shop. Short buttons keep all three above the thumbstick.
+	local nav = UI.frame(left, { Name = "Nav", Size = UDim2.fromOffset(COL_W + SP[2] + STORE_W, NAV_H * 3 + SP[2] * 2 + SP[1]), BackgroundTransparency = 1,
 		LayoutOrder = 4 })
 	-- a little air between the resources and the buttons
 	local pad = Instance.new("UIPadding")
 	pad.PaddingTop = UDim.new(0, SP[1])
 	pad.Parent = nav
-	local navCol = UI.frame(nav, { Name = "Places", Size = UDim2.fromOffset(COL_W, NAV_H * 2 + SP[2]), BackgroundTransparency = 1 })
+	local navCol = UI.frame(nav, { Name = "Places", Size = UDim2.fromOffset(COL_W, NAV_H * 3 + SP[2] * 2), BackgroundTransparency = 1 })
 	list(navCol, false, SP[2])
 	menuButtons.Index = UI.navButton(navCol, "Index", "Index", T.blue, function()
 		call(HUD.onIndex)
@@ -289,14 +289,11 @@ local function buildLeft()
 	menuButtons.Rides = UI.navButton(navCol, "Rides", "Rides", T.orange, function()
 		call(HUD.onRides)
 	end, { Size = UDim2.fromOffset(COL_W, NAV_H), LayoutOrder = 2 })
-	local storeCol = UI.frame(nav, { Name = "Store", Size = UDim2.fromOffset(STORE_W, NAV_H * 2 + SP[2]), Position = UDim2.fromOffset(COL_W + SP[2], 0),
-		BackgroundTransparency = 1 })
-	list(storeCol, false, SP[2])
-	menuButtons.Shop = UI.navButton(storeCol, "Shop", "Shop", T.red, function()
+	menuButtons.Shop = UI.navButton(navCol, "Shop", "Shop", T.red, function()
 		UI.clearBadge(menuButtons.Shop)
 		Shop.openStore()
-	end, { Size = UDim2.fromOffset(STORE_W, NAV_H), LayoutOrder = 1, Visible = false })
-	local promo, update = Shop.promo(storeCol, { Size = UDim2.fromOffset(STORE_W, NAV_H), LayoutOrder = 2 })
+	end, { Size = UDim2.fromOffset(COL_W, NAV_H), LayoutOrder = 3, Visible = false })
+	local promo, update = Shop.promo(nav, { Size = UDim2.fromOffset(STORE_W, 50), Position = UDim2.fromOffset(COL_W + SP[2], (NAV_H + SP[2]) * 2 + NAV_H / 2), AnchorPoint = Vector2.new(0, 0.5) })
 	menuButtons.Promo = promo
 	updatePromo = update
 end

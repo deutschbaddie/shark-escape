@@ -31,6 +31,7 @@ local Haul = require(script.Haul)
 local Bonk = require(script.Bonk)
 local Grab = require(script.Grab)
 local Moments = require(script.Moments)
+local Tester = require(script.Tester)
 
 -- no reset button: resetting would be a free ride home (or a free raid
 -- defense). Sharks spit you out instead of killing you anyway.
@@ -60,6 +61,7 @@ Haul.start()
 Bonk.start()
 Grab.start()
 Moments.start()
+Tester.start()
 Prompts.start()
 Ride.start()
 Shop.start()

@@ -29,6 +29,7 @@ local function build(): ScreenGui
 	gui.Name = "SpeedFeel"
 	gui.ResetOnSpawn = false
 	gui.IgnoreGuiInset = true
+	gui.ScreenInsets = Enum.ScreenInsets.None
 	gui.DisplayOrder = -5 -- under every HUD
 	gui.Parent = player:WaitForChild("PlayerGui")
 	for i = 1, STREAKS do

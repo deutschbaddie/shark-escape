@@ -500,9 +500,31 @@ local function bossBreach(data: any)
 	end
 end
 
+Moments.boss = bossBreach -- (the /srctest tester)
+
 ----------------------------------------------------------------- new best creature
 -- your best creature changed: a beam of light drops onto your dock showcase
 local bestValue: number? = nil
+local function lightBest(m: Model, r: string)
+	local pos = m:GetPivot().Position
+	local color = Config.rarity(r).color
+	Fx.pillar(pos - UP * 26, color, 160, 2.4, 9)
+	Fx.burst(pos, color, 1)
+	Fx.popup3D(pos + UP * 9, "New best!", color, true)
+	Fx.sound("discover", 0.7, 1, pos)
+end
+
+-- the /srctest tester: light up your showcase as if it were new
+function Moments.testBest(): boolean
+	for _, m in CollectionService:GetTagged("Showcase") do
+		if m:IsA("Model") and m:GetAttribute("OwnerId") == player.UserId then
+			lightBest(m, tostring(m:GetAttribute("Key") or "Rare"):match("^([^|]+)") or "Rare")
+			return true
+		end
+	end
+	return false
+end
+
 local function onShowcase(m: Instance)
 	if m:GetAttribute("OwnerId") ~= player.UserId then
 		return
@@ -524,16 +546,11 @@ local function onShowcase(m: Instance)
 		if not (m:IsA("Model") and m.Parent) then
 			return
 		end
-		local pos = m:GetPivot().Position
-		local color = Config.rarity(r).color
 		local hrp = root()
-		if hrp and (hrp.Position - pos).Magnitude > 400 then
+		if hrp and (hrp.Position - m:GetPivot().Position).Magnitude > 400 then
 			return
 		end
-		Fx.pillar(pos - UP * 26, color, 160, 2.4, 9)
-		Fx.burst(pos, color, 1)
-		Fx.popup3D(pos + UP * 9, "New best!", color, true)
-		Fx.sound("discover", 0.7, 1, pos)
+		lightBest(m, r)
 	end)
 end
 

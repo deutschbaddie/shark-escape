@@ -3,6 +3,7 @@
 --   /event   start a 15 min Megalodon Hour now
 --   /boss    the boss Megalodon surfaces in your world now
 --   /mini    the next server event (Golden Tide / Feeding Frenzy / Bubble Rain) now
+--   /srctest the cutscene + effects tester panel (Tester.luau, only on your screen)
 
 local Players = game:GetService("Players")
 local TextChatService = game:GetService("TextChatService")
@@ -38,6 +39,9 @@ local COMMANDS: { [string]: (Player) -> () } = {
 	end,
 	mini = function()
 		Events.forceMini(nil)
+	end,
+	srctest = function(player)
+		Game.notify(player, "srctest", {})
 	end,
 	boss = function(player)
 		local s = Game.sessions[player]

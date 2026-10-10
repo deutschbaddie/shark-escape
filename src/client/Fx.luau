@@ -523,6 +523,7 @@ function Fx.screen(): ScreenGui
 		screen = Instance.new("ScreenGui")
 		screen.Name = "FxScreen"
 		screen.IgnoreGuiInset = true
+		screen.ScreenInsets = Enum.ScreenInsets.None -- (edge to edge: past a phone's notch / rounded corners too)
 		screen.ResetOnSpawn = false
 		screen.DisplayOrder = 20
 		screen.Parent = player:WaitForChild("PlayerGui")
@@ -617,6 +618,16 @@ function Fx.gateWave(z: number, originX: number, width: number, color: Color3)
 		end)
 	end
 	Debris:AddItem(folder, 2.6)
+end
+
+-- you made it: the jaws slam shut on air right behind you. A hit, a wall of
+-- water and a gold ring racing out from the line
+function Fx.escapeSnap(at: Vector3)
+	Fx.nearMiss()
+	Fx.shake(1.2)
+	Fx.spray(at, 26, 20)
+	Fx.shockwave(at, UI.C.gold, 46)
+	task.delay(0.12, Fx.impactFrame, 0.8)
 end
 
 function Fx.nearMiss()

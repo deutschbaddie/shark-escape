@@ -133,5 +133,7 @@ Make it back to the sand for a big payout.**
 - Product id for the **Small Cash Pack** (MoneyPack1): the id sent was the Cash Pack's
 - Zone icons for the deep and candy biomes
 - Test the boss with `/boss` (and the whole event with `/event`) on a live server
+- Test every cutscene and effect with `/srctest` (NotTufferson / SickleEdge only): a panel of buttons,
+  only on your screen. Stand on land for the cutscenes; at sea you see their in-place versions
 - Sound ids: thunder, chest open, boss roar
 - Badge ids if you want badges
