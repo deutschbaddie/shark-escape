@@ -6,10 +6,14 @@
 --          owner is home a shield shimmers over the tank (plot attribute
 --          "Guarded" = "home" / "lock" / "new"; client Pvp.luau signs). It
 --          takes Config.Raid.time seconds; they're alerted at once and stop
---          it by getting back to their dock. Too slow, and you take one of
---          their creatures (never their best) and carry it home.
--- Chum: players who've played a while. Raids: after your first rebirth
--- (raider and owner both).
+--          it by getting back to their dock. The further out they are, the
+--          longer the raid takes, so the race home is always winnable (too
+--          far out to make it back = can't be raided). Too slow, and one of
+--          their lesser creatures goes into your tank (never their best,
+--          never a Mythic). After a raid the tank is safe for a while, and
+--          you can't keep picking on the same player.
+-- Chum: players who've played a while. Raids: after your first evolve
+-- (raider and owner both), between players within a couple of evolves.
 
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
@@ -27,8 +31,10 @@ local Raids = {}
 type Raid = { raider: Game.Session, victim: Game.Session, plot: World.Plot, ends: number }
 
 local raids: { [Player]: Raid } = {} -- by victim
-local raidedAt: { [Player]: number } = {}
-local raiderAt: { [Player]: number } = {}
+-- cooldowns by UserId, so leaving and rejoining doesn't reset them
+local raidedAt: { [number]: number } = {}
+local raiderAt: { [number]: number } = {}
+local pairAt: { [string]: number } = {} -- "raider:victim": last raid between them
 local chumAt: { [Player]: number } = {}
 local rng = Random.new()
 
@@ -133,7 +139,7 @@ local function tankPos(plot: World.Plot): Vector3
 	return Layout.tankPos(plot.cf)
 end
 
--- tell whoever's still here that it's over (someone left / took the portal)
+-- tell whoever's still here that it's over (someone left the game)
 local function abandon(victim: Player)
 	local r = raids[victim]
 	if not r then
@@ -143,7 +149,7 @@ local function abandon(victim: Player)
 		Game.notify(victim, "raidDefended", { by = r.raider.player.DisplayName, gaveUp = true })
 	end
 	if Game.sessions[r.raider.player] then
-		Game.notify(r.raider.player, "raidFail", { why = "left" })
+		Game.notify(r.raider.player, "raidFail", { why = "gone" })
 	end
 end
 
@@ -154,8 +160,11 @@ local function endRaid(victim: Player)
 	end
 	raids[victim] = nil
 	r.plot.model:SetAttribute("RaidEnds", nil)
-	raidedAt[victim] = os.clock()
-	raiderAt[r.raider.player] = os.clock()
+	-- the tank is safe for a while (clients hide the prompt and say so)
+	r.plot.model:SetAttribute("SafeUntil", workspace:GetServerTimeNow() + Config.Raid.victimCooldown)
+	raidedAt[victim.UserId] = os.clock()
+	raiderAt[r.raider.player.UserId] = os.clock()
+	pairAt[r.raider.player.UserId .. ":" .. victim.UserId] = os.clock()
 end
 
 local function startRaid(s: Game.Session, plotIndex: any)
@@ -180,22 +189,27 @@ local function startRaid(s: Game.Session, plotIndex: any)
 	end
 	for _, r in raids do
 		if r.raider == s then
-			return
+			return no("You're already raiding")
 		end
 	end
 	if (hrp.Position - tankPos(plot)).Magnitude > cfg.stayRadius then
-		return
+		return no("Get closer to the tank")
 	end
 	if not raider(s) then
 		return no("Raids unlock after you evolve")
 	elseif not raider(v) then
 		return no("They're too new to raid")
+	elseif math.abs(s.profile.rebirths - v.profile.rebirths) > cfg.evolveGap then
+		return no("Too far apart in evolves to raid")
 	end
-	if now - (raiderAt[s.player] or -1e9) < cfg.raiderCooldown then
+	if now - (raiderAt[s.player.UserId] or -1e9) < cfg.raiderCooldown then
 		return no("Catch your breath before the next raid")
 	end
-	if now - (raidedAt[owner :: Player] or -1e9) < cfg.victimCooldown then
+	if now - (raidedAt[(owner :: Player).UserId] or -1e9) < cfg.victimCooldown then
 		return no("This tank was raided recently")
+	end
+	if now - (pairAt[s.player.UserId .. ":" .. (owner :: Player).UserId] or -1e9) < cfg.pairCooldown then
+		return no("Give them a break: raid someone else")
 	end
 	if v.profile.lockUntil > os.time() then
 		return no("That tank is locked")
@@ -206,31 +220,49 @@ local function startRaid(s: Game.Session, plotIndex: any)
 	if #v.profile.creatures < 2 then
 		return no("Nothing worth taking")
 	end
-	local r: Raid = { raider = s, victim = v, plot = plot, ends = now + cfg.time }
+	-- the further out they are, the longer it takes: the race home is
+	-- always winnable (time to get back at full speed, plus some slack)
+	local vr = Game.root(v.player)
+	local away = vr and (vr.Position - tankPos(plot)).Magnitude or 0
+	local secs = math.max(cfg.time, away / Config.realSpeed(v.profile.speed) * 1.3 + 10)
+	if secs > cfg.maxTime then
+		return no("They're too far out to race back")
+	end
+	secs = math.ceil(secs)
+	local r: Raid = { raider = s, victim = v, plot = plot, ends = now + secs }
 	raids[owner :: Player] = r
-	plot.model:SetAttribute("RaidEnds", workspace:GetServerTimeNow() + cfg.time)
-	Game.notify(v.player, "raided", { by = s.player.DisplayName, seconds = cfg.time, x = tankPos(plot).X, y = tankPos(plot).Y, z = tankPos(plot).Z })
-	Game.notify(s.player, "raidStart", { name = v.player.DisplayName, seconds = cfg.time })
+	plot.model:SetAttribute("RaidEnds", workspace:GetServerTimeNow() + secs)
+	Game.notify(v.player, "raided", { by = s.player.DisplayName, seconds = secs, x = tankPos(plot).X, y = tankPos(plot).Y, z = tankPos(plot).Z })
+	Game.notify(s.player, "raidStart", { name = v.player.DisplayName, seconds = secs })
 	Game.track(s.player, "raid", { stage = "start" })
 end
 
--- a random creature from their tank that isn't their best (Active or not,
--- so unequipping everything from the Tank window can't dodge a raid)
+-- one of their lesser creatures (Active or not, so unequipping everything
+-- from the Tank window can't dodge a raid): never their best, never a
+-- Mythic, and from the cheaper half of the rest, so a raid stings but
+-- never wrecks a tank
 local function pickLoot(v: Game.Session): Data.Creature?
-	local best, bestV = nil, -1
 	local pool = {}
 	for _, c in v.profile.creatures do
-		local val = Config.creatureValue(c.r, c.z, c.m, c.s)
-		if val > bestV then
-			best, bestV = c, val
+		if c.r ~= "Mythic" then
+			table.insert(pool, { c = c, v = Config.creatureValue(c.r, c.z, c.m, c.s) })
 		end
-		table.insert(pool, c)
 	end
-	local i = table.find(pool, best)
-	if i then
-		table.remove(pool, i)
+	table.sort(pool, function(a, b)
+		return a.v < b.v
+	end)
+	-- the best one overall is never taken
+	local bestV = -1
+	for _, c in v.profile.creatures do
+		bestV = math.max(bestV, Config.creatureValue(c.r, c.z, c.m, c.s))
 	end
-	return #pool > 0 and pool[rng:NextInteger(1, #pool)] or nil
+	if #pool > 0 and pool[#pool].v >= bestV then
+		table.remove(pool)
+	end
+	if #pool == 0 then
+		return nil
+	end
+	return pool[rng:NextInteger(1, math.max(1, #pool // 2))].c
 end
 
 local function finish(r: Raid)
@@ -247,17 +279,12 @@ local function finish(r: Raid)
 	end
 	Game.refreshTank(v)
 	v.dirty = true
-	local loot = { r = c.r, z = c.z, m = c.m, s = c.s }
-	if Game.handsFull(s) then
-		Game.addCreature(s, loot)
-	else
-		Game.takeCatch(s, loot)
-	end
+	-- straight into the raider's tank (they're already home on the beach)
+	Game.addCreature(s, { r = c.r, z = c.z, m = c.m, s = c.s })
 	s.dirty = true
 	local name = Config.fullName(c.z, c.r, c.m, c.s)
 	Game.notify(s.player, "raidWon", { name = name, from = v.player.DisplayName })
-	Game.notify(v.player, "raidLost", { name = name, by = s.player.DisplayName })
-	Game.notifyAll("raidNews", { by = s.player.DisplayName, from = v.player.DisplayName, name = name })
+	Game.notify(v.player, "raidLost", { name = name, by = s.player.DisplayName, safe = Config.Raid.victimCooldown })
 	Game.track(s.player, "raid", { stage = "won" })
 end
 
@@ -323,7 +350,7 @@ function Raids.start()
 				endRaid(victim)
 			end
 		end
-		raidedAt[p], raiderAt[p], chumAt[p] = nil, nil, nil
+		chumAt[p] = nil -- (raid cooldowns are by UserId and outlive a rejoin)
 	end)
 end
 

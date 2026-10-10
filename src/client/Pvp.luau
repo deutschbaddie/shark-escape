@@ -37,6 +37,7 @@ local defendBy = ""
 local raidBoards: { [Model]: BillboardGui } = {}
 local safeBoards: { [Model]: BillboardGui } = {}
 local GREEN = Color3.fromRGB(110, 255, 150)
+local ORANGE = Color3.fromRGB(255, 165, 60) -- raids: urgent, never scary red
 local myGuard: string? = "start"
 local toldOut, toldHome = false, false
 
@@ -125,14 +126,20 @@ function safeSign(m: Model, owner: any)
 	local why = m:GetAttribute("Guarded")
 	local mine = owner == player.UserId
 	local text, color
+	local safeUntil = m:GetAttribute("SafeUntil")
+	local d = State.data
 	if typeof(owner) ~= "number" or why == "new" or (typeof(m:GetAttribute("RaidEnds")) == "number") then
 		text = nil
+	elseif typeof(safeUntil) == "number" and safeUntil > Workspace:GetServerTimeNow() and why ~= "home" then
+		text, color = "Just raided: safe for a bit", GREEN
 	elseif why == "lock" then
 		text, color = "Tank Lock: safe from raids", Color3.fromRGB(255, 205, 70)
 	elseif why == "home" then
 		text, color = mine and "Safe from raids while you're home" or "Owner is home: safe from raids", GREEN
 	elseif mine then
-		text, color = "Can be raided while you're out", RED
+		text, color = "Can be raided while you're out", ORANGE
+	elseif d and d.rebirths >= 1 then
+		text, color = "Owner is out: you can raid", C.gold
 	end
 	local board = safeBoards[m]
 	if not text then
@@ -166,7 +173,7 @@ function safeSign(m: Model, owner: any)
 	if mine and why ~= myGuard then
 		if myGuard == "home" and why == nil and not toldOut then
 			toldOut = true
-			Notify.toast("Your tank can be raided now", RED)
+			Notify.toast("Your tank can be raided now", ORANGE)
 		elseif myGuard == nil and why == "home" and not toldHome then
 			toldHome = true
 			Notify.toast("Home: your tank is safe", GREEN)
@@ -187,6 +194,7 @@ local function raidTick()
 				and d ~= nil and d.rebirths >= 1 -- (raids come after your first rebirth)
 				and not (typeof(lock) == "number" and lock > os.time()) -- (Tank Lock)
 				and m:GetAttribute("Guarded") == nil -- (owner is home)
+				and not (typeof(m:GetAttribute("SafeUntil")) == "number" and m:GetAttribute("SafeUntil") > now) -- (just raided)
 		end
 		safeSign(m, owner)
 		-- a red countdown over a tank being raided (everyone sees it)
@@ -204,14 +212,14 @@ local function raidTick()
 					board.MaxDistance = 300
 					board.Adornee = anchor
 					board.Parent = player:WaitForChild("PlayerGui")
-					UI.outlined(board, "", { Name = "T", Size = UDim2.fromScale(1, 1), TextColor3 = RED })
+					UI.outlined(board, "", { Name = "T", Size = UDim2.fromScale(1, 1), TextColor3 = ORANGE })
 					raidBoards[m] = board
 				end
 			end
 			if board then
 				local t = board:FindFirstChild("T") :: TextLabel?
 				if t then
-					t.Text = ("RAID %d"):format(math.ceil(ends - now))
+					t.Text = ("Raid %ds"):format(math.ceil(ends - now))
 				end
 			end
 		elseif board then
@@ -222,7 +230,7 @@ local function raidTick()
 	-- my own countdowns
 	local left = raidEnds - os.clock()
 	if left > 0 then
-		Notify.banner(("RAIDING... %d"):format(math.ceil(left)), { key = "raid", sticky = true, priority = 6, color = RED,
+		Notify.banner(("Raiding: %ds"):format(math.ceil(left)), { key = "raid", sticky = true, priority = 4, compact = true, color = ORANGE,
 			sub = "Stay by the tank!" })
 	end
 	local dleft = defendEnds - os.clock()
@@ -232,8 +240,9 @@ local function raidTick()
 		return
 	end
 	if dleft > 0 then
-		Notify.banner(("Your tank is being raided, %d"):format(math.ceil(dleft)), { key = "raid", sticky = true, priority = 6, color = RED,
-			sub = defendBy .. " is robbing you. Rush home!" })
+		-- (priority under the shark status, so a shark warning on the way home always shows)
+		Notify.banner(("Get home! %ds"):format(math.ceil(dleft)), { key = "raid", sticky = true, priority = 4, compact = true, color = ORANGE,
+			sub = defendBy .. " is at your tank" })
 	end
 end
 
@@ -255,27 +264,28 @@ end
 handlers.raided = function(d)
 	defendEnds = os.clock() + (d.seconds or Config.Raid.time)
 	defendBy = tostring(d.by)
-	Notify.takeover("Raid", ("%s is robbing your tank. Rush home!"):format(defendBy), RED, 1.6)
+	Notify.takeover("Raid", ("%s is robbing your tank. Rush home!"):format(defendBy), ORANGE, 1.6)
 	Notify.chat(("%s is robbing your tank!"):format(defendBy), nil, "RAID", true)
-	Fx.sound("sharkAlarm", 1)
+	Fx.sound("uiTakeover", 1) -- (not the shark alarm: no shark is coming)
 	Guide.set("raid", Vector3.new(d.x, d.y + 2, d.z), "Your tank")
 end
 
 handlers.raidStart = function(d)
 	raidEnds = os.clock() + (d.seconds or Config.Raid.time)
-	Notify.toast(("Raiding %s's tank!"):format(tostring(d.name)), RED)
+	Notify.toast(("Raiding %s's tank!"):format(tostring(d.name)), ORANGE)
 end
 
 handlers.raidWon = function(d)
 	clearRaid()
-	Notify.takeover("Stolen", ("%s from %s. Get it home!"):format(tostring(d.name), tostring(d.from)), C.gold, 1.8)
+	Notify.takeover("Stolen", ("%s from %s. It's in your tank!"):format(tostring(d.name), tostring(d.from)), C.gold, 1.8)
 	Notify.chat(("You stole a %s from %s!"):format(tostring(d.name), tostring(d.from)), nil, "RAID", true)
 	Fx.sound("legendary", 0.8)
 end
 
 handlers.raidLost = function(d)
 	clearRaid()
-	Notify.takeover("Robbed", ("%s stole your %s"):format(tostring(d.by), tostring(d.name)), RED, 2)
+	Notify.takeover("Raided", ("%s took your %s. Your tank is safe for %d min"):format(tostring(d.by), tostring(d.name),
+		math.floor((d.safe or Config.Raid.victimCooldown) / 60)), ORANGE, 2)
 	Notify.chat(("%s stole your %s"):format(tostring(d.by), tostring(d.name)), nil, "RAID", true)
 end
 
@@ -295,21 +305,18 @@ end
 handlers.raidFail = function(d)
 	clearRaid()
 	if d.why == "defended" then
-		Notify.takeover("Caught", ("%s got home in time"):format(tostring(d.by)), RED, 1.4)
+		Notify.takeover("Caught", ("%s got home in time"):format(tostring(d.by)), ORANGE, 1.4)
 	elseif d.why == "left" then
-		Notify.toast("You left the tank: raid failed", RED)
+		Notify.toast("You left the tank: raid failed", ORANGE)
+	elseif d.why == "gone" then
+		Notify.toast("They left the game: raid off", C.white)
 	elseif d.why == "locked" then
-		Notify.toast("They locked their tank: raid failed", RED)
+		Notify.toast("They locked their tank: raid failed", ORANGE)
 	else
 		Notify.toast("Nothing worth taking in there", C.white)
 	end
 end
 
-handlers.raidNews = function(d)
-	if d.by ~= player.DisplayName and d.from ~= player.DisplayName then
-		Notify.toast(("%s raided %s's tank!"):format(tostring(d.by), tostring(d.from)), RED)
-	end
-end
 
 function Pvp.start()
 	buildChum()

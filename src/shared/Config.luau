@@ -706,7 +706,10 @@ Config.Chum = { range = 90, cooldown = 45, grudge = 18, minPlaytime = 300 }
 -- sea; after `time` seconds you take one of their creatures (never their
 -- best). They're alerted at once and stop it by getting back to their dock.
 Config.Raid = {
-	time = 35, -- long: the owner has time to rush home from deep water
+	time = 35, -- at least this long; longer the further out the owner is
+	maxTime = 60, -- an owner too far out to make it back in this long can't be raided
+	evolveGap = 2, -- raider and owner within this many evolves of each other
+	pairCooldown = 900, -- the same raider can't hit the same player again for this long
 	defendRadius = 28, -- the owner this close to their own tank stops it
 	stayRadius = 16, -- the raider has to stay this close to the tank
 	victimCooldown = 240, -- a raided player is safe from raids this long
