@@ -1067,7 +1067,7 @@ actions.rebirth = function(s)
 			biome, biomeId = zone.name, zone.id
 		end
 	end
-	Game.notifyAll("announce", { text = ("%s evolved!"):format(s.player.DisplayName) })
+	Game.notifyAll("announce", { text = ("%s evolved!"):format(s.player.DisplayName), news = true })
 	Game.notify(s.player, "rebirth", { rebirths = p.rebirths, biome = biome, zone = biomeId })
 	s.dirty = true
 end

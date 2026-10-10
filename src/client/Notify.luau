@@ -54,7 +54,8 @@ local bannerFrame: Frame? = nil
 local bannerRefresh: ((Banner) -> ())? = nil
 local order = 0
 
-local toastQueue: { { text: string, color: Color3 } } = {}
+local toastQueue: { { text: string, color: Color3, born: number } } = {}
+local TOAST_STALE = 4 -- a toast that waited this long is old news: dropped
 local toastsUp = 0
 
 
@@ -315,8 +316,13 @@ local function showToast(item: { text: string, color: Color3 })
 end
 
 pumpToasts = function()
-	while toastsUp < 2 and #toastQueue > 0 and not suppressed() do
-		showToast(table.remove(toastQueue, 1) :: any)
+	-- under something urgent (a shark, a big moment) only one toast at a time
+	local limit = (shownBanner and (shownBanner.priority or 0) >= 4) and 1 or 2
+	while toastsUp < limit and #toastQueue > 0 and not suppressed() do
+		local item = table.remove(toastQueue, 1) :: any
+		if os.clock() - item.born <= TOAST_STALE then
+			showToast(item)
+		end
 	end
 end
 
@@ -326,11 +332,23 @@ function Notify.toast(text: string, color: Color3?)
 			return
 		end
 	end
-	table.insert(toastQueue, { text = text, color = color or C.white })
-	while #toastQueue > 3 do
+	table.insert(toastQueue, { text = text, color = color or C.white, born = os.clock() })
+	while #toastQueue > 2 do
 		table.remove(toastQueue, 1) -- stale news goes first
 	end
 	pumpToasts()
+end
+
+-- other players' news: a line in the chat log, not on your screen
+local TextChatService = game:GetService("TextChatService")
+function Notify.chat(text: string, color: Color3?)
+	pcall(function()
+		local channels = TextChatService:FindFirstChild("TextChannels")
+		local system = channels and channels:FindFirstChild("RBXSystem") :: TextChannel?
+		if system then
+			system:DisplaySystemMessage(("<font color=\"#%s\"><b>%s</b></font>"):format((color or C.gold):ToHex(), text))
+		end
+	end)
 end
 
 -- A big moment. House rule (PLAN.md): no shouty / tilted / bouncing center

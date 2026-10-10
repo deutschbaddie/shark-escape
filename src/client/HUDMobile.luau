@@ -1100,6 +1100,13 @@ handlers.purchase = function(d)
 end
 
 handlers.announce = function(d)
+	if d.news then
+		-- server-wide news goes to the chat log; only a Mythic sighting gets a toast
+		Notify.chat(d.text, d.color or C.gold)
+		if not d.big then
+			return
+		end
+	end
 	Notify.toast(d.text, d.color or C.gold)
 end
 

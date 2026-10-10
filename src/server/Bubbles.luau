@@ -131,7 +131,8 @@ local function spawnBubble(zone: Config.Zone, fixed: Fixed?): Bubble
 		tryGrab(player, entry)
 	end)
 	if (r == "Legendary" or r == "Mythic") and not fixed then
-		Game.notifyAll("announce", { text = ("A %s %s appeared in %s"):format(r, Config.fullName(zone.id, r, m, size), zone.name), color = rarity.color })
+		Game.notifyAll("announce", { text = ("A %s %s appeared in %s"):format(r, Config.fullName(zone.id, r, m, size), zone.name), color = rarity.color,
+			news = true, big = r == "Mythic" })
 	end
 	if fixed and fixed.rain then
 		model:SetAttribute("DropAt", Workspace:GetServerTimeNow()) -- (clients drop it in from the sky)
