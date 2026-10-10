@@ -227,40 +227,47 @@ builders.Tube = function(m)
 	ell(m, Vector3.new(0.3, 0.08, 0.9), CFrame.lookAt(h, h + tan) * CFrame.new(0, RING_D / 2 - 0.01, 0) * CFrame.Angles(0.05, 0, 0), WHITE, { Transparency = 0.35 })
 end
 
--- Rubber duck float: a glossy yellow ring body, a plump chest under your
--- legs, a big friendly head out in front, little wings and a tail flick.
-local DUCK_YELLOW = C(255, 214, 30)
-local DUCK_ORANGE = C(255, 130, 20)
+-- Rubber duck float: one big glossy inflatable. A fat ring body you sit in,
+-- a plump chest under your shins, a big round head sitting low on a short
+-- thick neck, a wide two-tone bill, big shiny black eyes, wings bulging on
+-- the sides and a tail flicked up behind you.
+local DUCK_YELLOW = C(255, 212, 20)
+local DUCK_ORANGE = C(255, 120, 30)
+local DUCK_TUBE = 1.5 -- the ring's fat tube
+local DUCK_TOP = -0.1 + DUCK_TUBE / 2 -- (top of the ring: your knees sit over it)
+local DUCK_HEAD = CFrame.new(0, 1.75, KNEE_Z - 2.45)
+local DUCK_HEAD_SIZE = Vector3.new(2.6, 2.35, 2.35)
 local function duck(m: Model, yellow: Color3, orange: Color3)
-	torus(m, yellow, 1.25, -0.05)
-	-- rump + tail flick behind your back
-	ell(m, Vector3.new(2.3, 1.35, 1.7), CFrame.new(0, 0.2, RING_C.Z + RING_RZ + 0.25), yellow)
-	ell(m, Vector3.new(1.3, 0.75, 1.3), CFrame.new(0, 0.85, RING_C.Z + RING_RZ + 0.75) * CFrame.Angles(0.75, 0, 0), yellow)
-	ell(m, Vector3.new(0.7, 0.55, 0.9), CFrame.new(0, 1.35, RING_C.Z + RING_RZ + 1.05) * CFrame.Angles(1.1, 0, 0), yellow)
-	-- wings folded along the sides, tips swept up at the back
-	for _, s in { -1, 1 } do
-		ell(m, Vector3.new(0.4, 0.75, 1.8), CFrame.new(s * (RING_RX + 0.5), 0.25, RING_C.Z + 0.4) * CFrame.Angles(-0.3, 0, s * 0.18), darker(yellow, 0.05))
+	local G = { Reflectance = 0.14 }
+	-- the ring, smooth (more segments) and fat, over a wide belly that makes
+	-- the whole float read as one inflatable
+	local c = Vector3.new(RING_C.X, -0.1, RING_C.Z)
+	path(m, ellipse(c, RING_RX, RING_RZ, 22), DUCK_TUBE, yellow, true)
+	ell(m, Vector3.new(RING_RX * 2 + DUCK_TUBE - 0.5, 0.9, RING_RZ * 2 + DUCK_TUBE - 0.3), CFrame.new(c.X, -0.3, c.Z), yellow, G)
+	-- rump + tail flicked up behind your back
+	ell(m, Vector3.new(2.6, 1.6, 1.9), CFrame.new(0, 0.3, RING_C.Z + RING_RZ + 0.35), yellow, G)
+	ell(m, Vector3.new(1.5, 0.95, 1.4), CFrame.new(0, 1.05, RING_C.Z + RING_RZ + 0.9) * CFrame.Angles(0.75, 0, 0), yellow, G)
+	ell(m, Vector3.new(0.85, 0.65, 1.0), CFrame.new(0, 1.62, RING_C.Z + RING_RZ + 1.25) * CFrame.Angles(1.15, 0, 0), yellow, G)
+	-- wings: big soft bulges along the sides, tips swept up at the back
+	for _, sd in { -1, 1 } do
+		ell(m, Vector3.new(0.5, 1.05, 2.0), CFrame.new(sd * (RING_RX + 0.62), 0.2, RING_C.Z + 0.45) * CFrame.Angles(-0.3, 0, sd * 0.05), darker(yellow, 0.03), G)
 	end
-	-- plump chest under your shins, a thick neck, then the head
-	ell(m, Vector3.new(2.2, 1.3, 2.4), CFrame.new(0, 0.05, KNEE_Z - 1.2), yellow)
-	ell(m, Vector3.new(1.6, 2.0, 1.6), CFrame.new(0, 0.85, KNEE_Z - 2.25) * CFrame.Angles(0.25, 0, 0), yellow)
-	local head = CFrame.new(0, 2.2, KNEE_Z - 2.35)
-	local HEAD = Vector3.new(2.15, 2.0, 2.0)
-	ell(m, HEAD, head, yellow)
-	-- tuft of feathers on top
-	ell(m, Vector3.new(0.3, 0.55, 0.45), head * CFrame.new(0, 1.05, 0.05) * CFrame.Angles(0.35, 0, 0), yellow)
-	ell(m, Vector3.new(0.25, 0.4, 0.35), head * CFrame.new(0, 1.0, 0.35) * CFrame.Angles(0.9, 0, 0), yellow)
-	-- flat orange bill: wide upper half, smaller lower half
-	local bill = head * CFrame.new(0, -0.22, -0.88)
-	keep(ell(m, Vector3.new(1.35, 0.36, 1.05), bill * CFrame.new(0, 0.1, -0.12) * CFrame.Angles(-0.12, 0, 0), orange, { Name = "Bill" }))
-	keep(ell(m, Vector3.new(1.05, 0.3, 0.8), bill * CFrame.new(0, -0.14, -0.02) * CFrame.Angles(0.1, 0, 0), darker(orange, 0.12), { Name = "Bill" }))
-	-- big friendly eyes + rosy cheeks
-	for _, s in { -1, 1 } do
-		eye(m, surf(head, HEAD, Vector3.new(s * 0.42, 0.3, -1), 0.06), Vector3.new(0.48, 0.64, 0.24))
-		keep(ell(m, Vector3.new(0.42, 0.26, 0.14), surf(head, HEAD, Vector3.new(s * 0.85, -0.18, -1), 0.04), C(255, 140, 130), { Name = "Cheek" }))
+	-- plump chest under your shins, a short thick neck, then the big head
+	ell(m, Vector3.new(2.5, 1.35, 2.5), CFrame.new(0, 0.1, KNEE_Z - 1.35), yellow, G)
+	ell(m, Vector3.new(2.1, 1.7, 1.8), CFrame.new(0, 0.75, KNEE_Z - 2.2) * CFrame.Angles(0.2, 0, 0), yellow, G)
+	local head = DUCK_HEAD
+	local HEAD = DUCK_HEAD_SIZE
+	ell(m, HEAD, head, yellow, G)
+	-- wide flat bill: a lighter upper half with a rounded tip, a darker lower lip
+	local bill = head * CFrame.new(0, -0.38, -1.02)
+	keep(ell(m, Vector3.new(2.0, 0.5, 1.5), bill * CFrame.new(0, 0.1, -0.25) * CFrame.Angles(-0.14, 0, 0), orange, { Name = "Bill", Reflectance = 0.16 }))
+	keep(ell(m, Vector3.new(1.65, 0.36, 1.15), bill * CFrame.new(0, -0.19, -0.12) * CFrame.Angles(0.12, 0, 0), darker(orange, 0.14), { Name = "Bill", Reflectance = 0.16 }))
+	-- big glossy black eyes on the front sides of the head
+	for _, sd in { -1, 1 } do
+		eye(m, surf(head, HEAD, Vector3.new(sd * 0.58, 0.3, -1), 0.08), Vector3.new(0.62, 0.82, 0.3))
 	end
-	-- glossy highlight on the head
-	keep(ell(m, Vector3.new(0.55, 0.3, 0.14), surf(head, HEAD, Vector3.new(-0.45, 0.75, -0.45), 0.04), WHITE, { Transparency = 0.4, Name = "Shine" }))
+	-- shine on the head and the back
+	keep(ell(m, Vector3.new(0.7, 0.34, 0.14), surf(head, HEAD, Vector3.new(-0.45, 0.8, -0.35), 0.04), WHITE, { Transparency = 0.45, Name = "Shine" }))
 end
 
 builders.Duck = function(m)
@@ -279,8 +286,7 @@ builders.GoldDuck = function(m)
 		end
 	end
 	-- a little crown with gems
-	local head = CFrame.new(0, 2.2, KNEE_Z - 2.35)
-	local crown = head * CFrame.new(0, 0.98, 0.25) * CFrame.Angles(-0.12, 0, 0)
+	local crown = DUCK_HEAD * CFrame.new(0, DUCK_HEAD_SIZE.Y / 2 - 0.12, 0.2) * CFrame.Angles(-0.12, 0, 0)
 	local gold = C(255, 205, 50)
 	keep(Build.cyl(m, 0.32, 0.95, crown, gold, { Reflectance = 0.35 }))
 	for i = 0, 4 do
@@ -1101,7 +1107,7 @@ local SEAT = Vector3.new(0, SEAT_TOP, 0.3)
 Rides.FIT = {
 	Noodle = Vector3.new(0, 1.7, 0.35),
 	Tube = knee(RING_TOP + 0.02),
-	Duck = knee(-0.05 + 1.25 / 2), GoldDuck = knee(-0.05 + 1.25 / 2),
+	Duck = knee(DUCK_TOP), GoldDuck = knee(DUCK_TOP),
 	Donut = knee(DONUT_TOP),
 	Bathtub = knee(TUB_TOP + 0.19),
 	Boogie = Vector3.new(0, 0.3, 0),
