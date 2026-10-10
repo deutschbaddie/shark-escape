@@ -483,8 +483,9 @@ local function rocketBoard(m: Model, navy: Color3, red: Color3, yel: Color3, ste
 		rod(m, Vector3.new(x, y, z1), Vector3.new(x, y, z1 + 0.35), 0.5, C(70, 70, 80), { Reflectance = 0.2 })
 		rod(m, Vector3.new(x, y, z1 + 0.33), Vector3.new(x, y, z1 + 0.36), 0.4, C(255, 160, 40), { Material = Enum.Material.Neon })
 		-- fins
-		wdg(m, Vector3.new(0.08, 0.45, 0.6), CFrame.new(x + s * 0.4, y + 0.05, z1 - 0.3) * CFrame.Angles(0, 0, s * 1.2), red)
-		wdg(m, Vector3.new(0.08, 0.45, 0.6), CFrame.new(x, y + 0.48, z1 - 0.3), red)
+		-- (a hair short of the nozzle end, so their backs don't share its face)
+		wdg(m, Vector3.new(0.08, 0.45, 0.6), CFrame.new(x + s * 0.4, y + 0.05, z1 - 0.32) * CFrame.Angles(0, 0, s * 1.2), red)
+		wdg(m, Vector3.new(0.08, 0.45, 0.6), CFrame.new(x, y + 0.48, z1 - 0.32), red)
 		-- flame: hot core inside a soft outer flame
 		ell(m, Vector3.new(0.4, 0.4, 1.3), CFrame.new(x, y, z1 + 0.95), C(255, 230, 120), { Material = Enum.Material.Neon })
 		local flame = ell(m, Vector3.new(0.58, 0.58, 2.0), CFrame.new(x, y, z1 + 1.2), C(255, 120, 30), { Material = Enum.Material.Neon, Transparency = 0.35 })
@@ -779,7 +780,8 @@ builders.Speedboat = function(m)
 	Build.cyl(m, 0.1, 0.75, wheelAt, dark)
 	Build.cyl(m, 0.12, 0.25, wheelAt, chrome)
 	-- bucket seat (top SEAT_TOP) with a padded backrest
-	rrect(m, 1.3, 1.8, 0.8, 0.45, CFrame.new(0, 0.6, 1.3), white)
+	-- (the base stops just under the cushion: equal tops flickered)
+	rrect(m, 1.3, 1.8, 0.74, 0.45, CFrame.new(0, 0.57, 1.3), white)
 	rrect(m, 1.5, 2.0, 0.22, 0.5, CFrame.new(0, SEAT_TOP - 0.11, 1.3), red)
 	rrect(m, 1.5, 1.2, 0.35, 0.45, CFrame.new(0, 1.65, 2.35) * CFrame.Angles(math.pi / 2 - 0.15, 0, 0), red)
 	-- outboard motor on the transom
