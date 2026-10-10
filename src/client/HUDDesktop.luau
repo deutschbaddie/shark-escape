@@ -727,7 +727,7 @@ handlers.unlock = function(d)
 end
 
 handlers.stolen = function()
-	Notify.banner("You took it from too deep!", { key = "stolen", priority = 5, time = 3, color = C.red,
+	Notify.banner("You took it from too deep!", { key = "stolen", priority = 5, time = 3, color = C.gold,
 		sub = "Every shark on the way home will chase you" })
 	Fx.sound("sharkAlarm", 0.7, 0.9)
 end
@@ -737,7 +737,10 @@ handlers.tooDeep = function(d)
 	local shark = zone and Config.sharkName(zone.shark) or "shark"
 	if d.evolve then
 		Notify.banner("Not evolved enough", { key = "deep", priority = 4, time = 3.5, color = C.red,
-			sub = ("The %s hunts you here! Evolve %d times to fish here"):format(shark, d.evolve) })
+			sub = ("The %s hunts you here! Evolve %s"):format(shark, (function()
+				local left = d.evolve - ((State.data and State.data.rebirths) or 0)
+				return left <= 1 and "once more to fish here" or ("%d more times to fish here"):format(left)
+			end)()) })
 	else
 		Notify.banner("Too deep for your speed", { key = "deep", priority = 4, time = 3.5, color = C.red,
 			sub = ("The %s hunts you here! Need %s speed"):format(shark, UI.short(d.need or 0)) })

@@ -701,7 +701,8 @@ function Game.updateTankSign(s: Session)
 end
 
 -- a new catch arrives at the dock
-function Game.addCreature(s: Session, c: Data.Creature)
+-- quiet: no deposit moment (raid loot: the spin shows it)
+function Game.addCreature(s: Session, c: Data.Creature, quiet: boolean?)
 	local p = s.profile
 	c.id = p.nextId
 	p.nextId += 1
@@ -711,7 +712,9 @@ function Game.addCreature(s: Session, c: Data.Creature)
 	c.e = Game.activeCount(s) < tankSlots(s)
 	info.active = c.e
 	table.insert(p.creatures, c)
-	Game.notify(s.player, "deposit", info)
+	if not quiet then
+		Game.notify(s.player, "deposit", info)
+	end
 	Game.refreshTank(s)
 	s.dirty = true
 end
@@ -1045,6 +1048,11 @@ actions.rebirth = function(s)
 	if p.speed < Config.rebirthSpeed(p.wr, p.world) then
 		return
 	end
+	-- (evolving takes you home: not a way to beat the sharks home with a catch)
+	if Game.carryCount(s) > 0 then
+		Game.notify(s.player, "announce", { text = "Bring your catch home first" })
+		return
+	end
 	p.rebirths += 1
 	p.wr += 1
 	p.speed = 0
@@ -1146,6 +1154,8 @@ local function emptyPlot(plot: World.Plot)
 	plot.slots:ClearAllChildren()
 	plot.model:SetAttribute("Owner", nil)
 	plot.model:SetAttribute("LockUntil", nil)
+	plot.model:SetAttribute("SafeUntil", nil) -- (the next owner starts fresh)
+	plot.model:SetAttribute("RaidEnds", nil)
 	plot.model:SetAttribute("Guarded", nil)
 	local guard = plot.model:FindFirstChild("Guard") :: BasePart?
 	if guard then

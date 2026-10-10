@@ -109,8 +109,12 @@ function UI.hideInCutscenes(gui: ScreenGui)
 	local function refresh()
 		gui.Enabled = player:GetAttribute("Cinematic") ~= true and player:GetAttribute("ViewingTank") ~= true
 	end
-	player:GetAttributeChangedSignal("Cinematic"):Connect(refresh)
-	player:GetAttributeChangedSignal("ViewingTank"):Connect(refresh)
+	local a = player:GetAttributeChangedSignal("Cinematic"):Connect(refresh)
+	local b = player:GetAttributeChangedSignal("ViewingTank"):Connect(refresh)
+	gui.Destroying:Connect(function()
+		a:Disconnect()
+		b:Disconnect()
+	end)
 	refresh()
 end
 

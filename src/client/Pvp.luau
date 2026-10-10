@@ -38,6 +38,7 @@ local toldOut, toldHome = false, false
 
 ----------------------------------------------------------------- raid prompts + boards
 local safeSign: (Model, any) -> ()
+local closeInEvolves: (any) -> boolean
 
 local function plotModels(): { Model }
 	local out = {}
@@ -57,6 +58,14 @@ local function clearRaid()
 	Guide.set("raid", nil)
 end
 
+-- is this tank's owner within raiding range of my evolves?
+closeInEvolves = function(owner: any): boolean
+	local p = typeof(owner) == "number" and Players:GetPlayerByUserId(owner)
+	local theirs = p and p:GetAttribute("Rebirths")
+	local d = State.data
+	return typeof(theirs) == "number" and d ~= nil and math.abs(theirs - d.rebirths) <= Config.Raid.evolveGap
+end
+
 -- the line over a tank that says whether it can be raided
 function safeSign(m: Model, owner: any)
 	local why = m:GetAttribute("Guarded")
@@ -74,7 +83,7 @@ function safeSign(m: Model, owner: any)
 		text, color = mine and "Safe from raids while you're home" or "Owner is home: safe from raids", GREEN
 	elseif mine then
 		text, color = "Can be raided while you're out", ORANGE
-	elseif d and d.rebirths >= 1 then
+	elseif d and d.rebirths >= 1 and closeInEvolves(owner) then
 		text, color = "Owner is out: you can raid", C.gold
 	end
 	local board = safeBoards[m]
@@ -127,7 +136,8 @@ local function raidTick()
 			local lock = m:GetAttribute("LockUntil")
 			local d = State.data
 			prompt.Enabled = typeof(owner) == "number" and owner ~= player.UserId
-				and d ~= nil and d.rebirths >= 1 -- (raids come after your first rebirth)
+				and d ~= nil and d.rebirths >= 1 -- (raids come after your first evolve)
+				and closeInEvolves(owner) -- (Config.Raid.evolveGap)
 				and not (typeof(lock) == "number" and lock > os.time()) -- (Tank Lock)
 				and m:GetAttribute("Guarded") == nil -- (owner is home)
 				and not (typeof(m:GetAttribute("SafeUntil")) == "number" and m:GetAttribute("SafeUntil") > now) -- (just raided)

@@ -234,6 +234,9 @@ local function finish(r: Raid)
 	local v, s = r.victim, r.raider
 	endRaid(v.player)
 	local c, spin, winAt = pickLoot(v)
+	if #v.profile.creatures < 2 then
+		c = nil -- (they sold down to their last one mid-raid: never take that)
+	end
 	if not c then
 		Game.notify(s.player, "raidFail", { why = "empty" })
 		return
@@ -245,7 +248,7 @@ local function finish(r: Raid)
 	Game.refreshTank(v)
 	v.dirty = true
 	-- straight into the raider's tank (they're already home on the beach)
-	Game.addCreature(s, { r = c.r, z = c.z, m = c.m, s = c.s })
+	Game.addCreature(s, { r = c.r, z = c.z, m = c.m, s = c.s }, true)
 	s.dirty = true
 	local name = Config.fullName(c.z, c.r, c.m, c.s)
 	Game.notify(s.player, "raidWon", { name = name, from = v.player.DisplayName, spin = spin, win = winAt })

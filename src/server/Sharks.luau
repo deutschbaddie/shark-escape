@@ -694,7 +694,9 @@ local function stolenSweep(now: number)
 				local h = hunters[#hunters]
 				h.aggroUntil = now + 4
 				h.stalkTime *= cfg.stolenStalk -- (no patient circling: it wants it now)
-				Game.notify(player, "aggro", { shark = zone.shark, why = "stolen" })
+				if mine == 0 then -- (one alert per chase: the rest just show up)
+					Game.notify(player, "aggro", { shark = zone.shark, why = "stolen" })
+				end
 			end
 		end
 	end

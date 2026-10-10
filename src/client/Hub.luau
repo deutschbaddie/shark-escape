@@ -326,7 +326,8 @@ local function gateTick()
 					end
 					if sub then
 						sub.Text = open and "You're fast enough"
-							or not evolved and ("Evolve %d times to fish here"):format(evolveNeed)
+							or not evolved and (evolveNeed - (d.rebirths or 0) <= 1 and "Evolve once more to fish here"
+								or ("Evolve %d more times to fish here"):format(evolveNeed - (d.rebirths or 0)))
 							or ("Recommended %s speed · you have %s"):format(UI.short(need), UI.short(d.speed))
 						sub.TextColor3 = open and C.money or C.gold
 					end

@@ -155,7 +155,7 @@ function Index.open()
 			l.AnchorPoint = Vector2.new(0.5, 0)
 			local c = count(d, zone.id)
 			UI.label(b, "meta", reached and ("%d / %d"):format(c, #Config.Rarities)
-				or ((d.rebirths or 0) < evolveNeed and ("Evolve %d"):format(evolveNeed))
+				or ((d.rebirths or 0) < evolveNeed and ("Needs evolve %d"):format(evolveNeed))
 				or ("%s speed"):format(UI.short(zone.gate)), {
 				Size = UDim2.new(1, -12, 0, 17), Position = UDim2.new(0.5, 0, 0, 28), AnchorPoint = Vector2.new(0.5, 0), ZIndex = b.ZIndex + 1,
 				TextColor3 = (c == #Config.Rarities and UI.C.money) or (active and T.white) or T.mute })
