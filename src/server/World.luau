@@ -599,10 +599,6 @@ local function buildLane()
 	end
 	checkerWall(walls, Vector3.new(-WALL_X - WALL_T / 2, 0, endZ), Vector3.new(WALL_X + WALL_T / 2, 0, endZ), WALL_BOTTOM, WALL_TOP, { Enum.NormalId.Front })
 	buildBanks()
-	-- foam line at the shore (client pulses it)
-	local foam = Build.part(lane, Vector3.new(W, 0.2, 3), CFrame.new(0, 0.12, 9), C(255, 255, 255),
-		{ Name = "ShoreFoam", Transparency = 0.25, CanCollide = false, CanQuery = false })
-	CollectionService:AddTag(foam, "ShoreFoam")
 end
 
 ----------------------------------------------------------------- gates
@@ -1013,30 +1009,6 @@ local function buildEventBoard()
 		C(120, 230, 255))
 end
 
------------------------------------------------------------------ zone warp
--- A signpost on the sand: its prompt opens the warp menu (client Warp.luau)
--- to jump to the start of any zone you've unlocked.
-local function buildWarp()
-	local m = Build.model("Warp", map)
-	local base = CFrame.new(Layout.Warp)
-	studAll(Build.part(m, Vector3.new(1.4, 9, 1.4), base * CFrame.new(0, 4.5, 0), C(255, 255, 255)))
-	local board = Build.part(m, Vector3.new(9, 3.4, 0.8), base * CFrame.new(0, 8.6, 0), C(30, 32, 58), { Name = "Board" })
-	studAll(Build.part(m, Vector3.new(9.8, 4.2, 0.5), base * CFrame.new(0, 8.6, 0.6), C(60, 220, 255)))
-	surfaceText(board, Enum.NormalId.Back, "ZONE WARP", C(255, 255, 255))
-	surfaceText(board, Enum.NormalId.Front, "ZONE WARP", C(255, 255, 255))
-	Build.cyl(m, 0.3, 7, base * CFrame.new(0, 0.15, 0), C(60, 220, 255), { Material = Enum.Material.Neon, CanCollide = false, CastShadow = false })
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.Name = "Warp"
-	prompt.ActionText = "Warp"
-	prompt.ObjectText = "Zone Warp"
-	prompt.HoldDuration = 0
-	prompt.MaxActivationDistance = 12
-	prompt.RequiresLineOfSight = false
-	prompt.Style = Enum.ProximityPromptStyle.Custom
-	prompt.KeyboardKeyCode = Enum.KeyCode.E
-	prompt.Parent = board
-end
-
 ----------------------------------------------------------------- portal
 -- A studded arch in the next world's color with a swirling force field;
 -- its prompt asks the server to teleport (Game actions.portal). The client
@@ -1131,7 +1103,6 @@ function World.build()
 		buildBoards()
 		buildGroupChest()
 		buildPortal()
-		buildWarp()
 		buildEventBoard()
 		buildLane()
 		buildGates()

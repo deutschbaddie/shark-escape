@@ -422,7 +422,6 @@ local function scanRainbow()
 	end
 end
 
-local foamParts: { BasePart } = {}
 
 ----------------------------------------------------------------- safe rings during attacks
 function Water.setSafeGlow(on: boolean)
@@ -494,15 +493,6 @@ function Water.start()
 	end
 	Players.PlayerAdded:Connect(trackPlayer)
 	buildLines()
-	local function addFoam(f: Instance)
-		if f:IsA("BasePart") then
-			table.insert(foamParts, f)
-		end
-	end
-	for _, f in CollectionService:GetTagged("ShoreFoam") do
-		addFoam(f)
-	end
-	CollectionService:GetInstanceAddedSignal("ShoreFoam"):Connect(addFoam)
 	task.spawn(function()
 		while true do
 			scanRainbow()
@@ -524,10 +514,6 @@ function Water.start()
 					tex.Color3 = c
 				end
 			end
-		end
-		for _, f in foamParts do
-			f.Transparency = 0.2 + 0.3 * (0.5 + 0.5 * math.sin(t * 1.6))
-			f.Size = Vector3.new(f.Size.X, 0.2, 3 + math.sin(t * 1.6) * 1.2)
 		end
 	end)
 end
