@@ -20,6 +20,7 @@ local Layout = require(Shared.Layout)
 local Remotes = require(Shared.Remotes)
 local UI = require(script.Parent.UI)
 local Fx = require(script.Parent.Fx)
+local Moments = require(script.Parent.Moments)
 local PlayGifts = require(script.Parent.PlayGifts)
 local State = require(script.Parent.State)
 local Water = require(script.Parent.Water)
@@ -553,9 +554,9 @@ handlers.grab = function(d)
 	local name = Config.fullName(d.z, d.r, d.m, d.s)
 	local pos = myPos()
 	if pos then
-		Fx.sparkle(pos + Vector3.new(0, 3, 0), r.color, 20 + r.index * 12)
 		Fx.popup3D(pos + Vector3.new(0, 5, 0), ("+$%s/s"):format(Config.formatRate(d.v)), r.color)
 	end
+	Moments.grab(d)
 	Fx.sound("grab", 0.6, 1 + r.index * 0.05)
 	-- the bigger the catch, the bigger the moment
 	if r.index >= 5 then
@@ -589,20 +590,8 @@ handlers.indexClaim = function(d)
 end
 
 handlers.deposit = function(d)
-	local r = Config.rarity(d.r)
-	local data = State.data
-	if not (data and data.plot > 0) then
-		return
-	end
-	-- everything is shown right at the tank, where it happens
-	local tank = Layout.tankPos(Layout.plot(data.plot, State.data and State.data.world))
-	Fx.sparkle(tank + Vector3.new(0, 6, 0), r.color, 40)
-	Fx.sound("deposit", 0.7, 1, tank)
-	if d.active then
-		Fx.popup3D(tank + Vector3.new(0, 11, 0), ("+$%s/s"):format(Config.formatRate(d.v)), C.money, true)
-	else
-		Fx.popup3D(tank + Vector3.new(0, 11, 0), "Not equipped", Color3.fromRGB(170, 170, 180), true)
-	end
+	-- your catch flies into the tank and lands with its +$/s (Moments)
+	Moments.deposit(d)
 end
 
 handlers.code = function(d)
@@ -655,15 +644,13 @@ end
 
 handlers.ride = function(d)
 	local ride = Config.ride(d.id)
-	local pos = myPos()
-	if pos then
-		Fx.confetti(pos)
-		Fx.splash(Vector3.new(pos.X, 0.5, pos.Z), 1.2)
-	end
 	Fx.sound("buy", 0.8)
-	Fx.sound("rideNew", 0.8)
 	Notify.chat(("You got the %s!"):format(ride and ride.name or "new ride"), nil, "NEW RIDE", true)
-	Notify.takeover("New ride", ("%s · +%s speed/s"):format(ride and ride.name or "", UI.short(d.gain)), C.gold, 1.6)
+	-- on land the ride gets its reveal (which shows the name); else the title
+	if not Moments.ride(d) then
+		Fx.sound("rideNew", 0.8)
+		Notify.takeover("New ride", ("%s · +%s speed/s"):format(ride and ride.name or "", UI.short(d.gain)), C.gold, 1.6)
+	end
 	UI.pop(gainLabel, 1.5)
 end
 
@@ -687,6 +674,7 @@ handlers.closeCall = function(d)
 	Notify.toast(("Close call: +%s speed"):format(UI.short(d.amount or 0)), C.gold)
 	Fx.sound("dodge", 0.9)
 	Fx.nearMiss()
+	Moments.closeCall()
 end
 
 -- THE ESCAPE: you hit the sand with your shark right behind you
@@ -717,10 +705,7 @@ handlers.unlock = function(d)
 		Notify.chat(("You reached %s!"):format(zone.name), nil, "NEW ZONE", true)
 		Notify.takeover(zone.name, "Rarer creatures, bigger sharks!", C.gold, 1.8)
 		Fx.sound("zoneUnlock", 0.8)
-		local pos = myPos()
-		if pos then
-			Fx.confetti(pos)
-		end
+		Moments.unlock(zone)
 		-- the zone line lights up across the water
 		Fx.gateWave(zone.zStart, Config.originX(zone.world), Config.LANE_WIDTH, Color3.fromRGB(110, 255, 140))
 	end
@@ -791,23 +776,16 @@ handlers.shield = function()
 end
 
 handlers.rebirth = function(d)
-	Fx.flash(Color3.new(1, 1, 1), 0.8, 0)
 	Fx.sound("rebirth", 0.8)
 	Notify.chat(d.biome and ("You evolved! %s is open"):format(d.biome) or "You evolved!", nil, "EVOLVED", true)
 	if d.rebirths == 1 then
 		Notify.chat("Raids unlocked! Rob tanks while owners are at sea", nil, "RAID", true)
 	end
-	Notify.takeover("You evolved", d.biome and ("%s is open"):format(d.biome) or ("x%s speed for good"):format(tostring(Config.Rebirth.mult ^ d.rebirths)), C.green, 2, "Rebirth")
-	-- a party where you stand, and the newly opened biome's line lights up
-	local pos = myPos()
-	if pos then
-		Fx.confetti(pos)
-		Fx.sparkle(pos + Vector3.new(0, 3, 0), Color3.fromRGB(110, 255, 140), 40)
-	end
-	local zone = d.zone and Config.zoneById(d.zone)
-	if zone then
-		Fx.gateWave(zone.zStart, Config.originX(zone.world), Config.LANE_WIDTH, Color3.fromRGB(110, 255, 140))
-	end
+	-- the evolve moment: a cutscene with its own title (on land), else this
+	-- title; the beacon over the newly opened biome either way
+	Moments.evolve(d, function()
+		Notify.takeover("You evolved", d.biome and ("%s is open"):format(d.biome) or ("x%s speed for good"):format(tostring(Config.Rebirth.mult ^ d.rebirths)), C.green, 2, "Rebirth")
+	end)
 end
 
 handlers.purchase = function(d)

@@ -1083,6 +1083,10 @@ end
 Config.Images = {
 	Studs = "rbxassetid://6927295847",
 	StudsWorldTile = 8, -- studs of world space one image tile covers on parts
+	-- VFX particle textures (assets/vfx, drawn by tools/vfx/make_vfx.py):
+	-- white, so particles tint them any color. Upload each PNG and paste its
+	-- id; until then Fx.luau uses a plainer built-in look.
+	Vfx = { Glow = "", Star = "", Ring = "", Smoke = "", Streak = "", Burst = "", Droplet = "", Bubble = "", Beam = "" },
 }
 
 -- Custom icons. Upload each PNG from assets/icons/single/ (Asset Manager >

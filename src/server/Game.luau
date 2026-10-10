@@ -632,6 +632,7 @@ function Game.updateShowcase(s: Session)
 	NameTag.attach(ring, best, nil, { height = -2.2, maxDist = 220, width = 9 })
 	m.PrimaryPart = creature.PrimaryPart
 	m:SetAttribute("Owner", s.player.DisplayName)
+	m:SetAttribute("OwnerId", s.player.UserId) -- (its owner's client lights up a new best)
 	Build.ghost(m)
 	CollectionService:AddTag(m, "Showcase")
 	m.Parent = plot.model

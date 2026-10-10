@@ -181,7 +181,8 @@ local STAR = Color3.fromRGB(255, 225, 80)
 
 -- the impact: a white ring, little stars flying out, a squeak
 local function impact(at: Vector3, shield: boolean)
-	Fx.ring(at, shield and Color3.fromRGB(120, 210, 255) or Color3.new(1, 1, 1), 16)
+	Fx.glow(at + Vector3.new(0, 2, 0), shield and Color3.fromRGB(120, 210, 255) or STAR, 9, 0.2)
+	Fx.wave(at + Vector3.new(0, 2, 0), shield and Color3.fromRGB(120, 210, 255) or Color3.new(1, 1, 1), 16)
 	Fx.sparkle(at + Vector3.new(0, 2, 0), shield and Color3.fromRGB(120, 210, 255) or STAR, 22)
 	Fx.sound(shield and "dodge" or "duckSqueak", 0.9, 0.9 + math.random() * 0.35, at)
 	for i = 1, 6 do
@@ -359,10 +360,16 @@ function Bonk.start()
 		end
 		if kind == "bonkHit" then
 			impact(Vector3.new(d.x, d.y, d.z), d.shield == true)
+			if d.by == player.UserId and not d.shield then
+				Fx.impactFrame(0.5) -- (the hitter feels it land)
+			end
 		elseif kind == "bonked" then
 			-- you got bonked: shoved, popped up, spun round
 			Ride.knock(Vector3.new(d.x, 0, d.z), d.shield and Config.Bonk.knock * 0.4 or Config.Bonk.knock)
 			Fx.shake(1.4)
+			if not d.shield then
+				Fx.impactFrame(0.7)
+			end
 			if d.shield then
 				Notify.toast("Your shield blocked a bonk", Color3.fromRGB(120, 210, 255))
 			elseif d.lost then

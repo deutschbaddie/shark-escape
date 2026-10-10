@@ -78,6 +78,8 @@ MODULES["cmod:State"] = function() return { data = SAMPLE, Changed = sig(), acti
 MODULES["cmod:Water"] = function() return { setSafeGlow = function() end } end
 MODULES["cmod:SharkView"] = function() return { myHunter = function() return nil end, breach = function() end } end
 MODULES["cmod:Travel"] = function() return { go = function() end } end
+MODULES["cmod:Perf"] = function() return { enabled = function() return false end } end
+MODULES["cmod:Moments"] = function() return setmetatable({}, { __index = function() return function() end end }) end
 -- 3D builders: a stand-in model (viewports draw as a placeholder box)
 local function fakeModel()
 	return { PivotTo = function() end, GetBoundingBox = function() return CFrame.new(), Vector3.new(2, 2, 2) end, ScaleTo = function() end,

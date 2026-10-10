@@ -1123,8 +1123,13 @@ Remotes.get("SharkEvent").OnClientEvent:Connect(function(kind, data)
 		end
 		local hrp = myRoot()
 		if data.victim == player.UserId then
+			-- the jaws slam shut on air right behind you: a hit, a wall of
+			-- water and a gold ring racing out from the line
 			Fx.nearMiss()
 			Fx.shake(1.2)
+			Fx.spray(at, 26, 20)
+			Fx.shockwave(at, UI.C.gold, 46)
+			task.delay(0.12, Fx.impactFrame, 0.8)
 		elseif hrp and (hrp.Position - at).Magnitude < 90 then
 			Fx.shake(0.6)
 		end

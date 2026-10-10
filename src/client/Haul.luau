@@ -23,6 +23,7 @@ local Notify = require(script.Parent.Notify)
 local Guide = require(script.Parent.Guide)
 local State = require(script.Parent.State)
 local SharkView = require(script.Parent.SharkView)
+local Moments = require(script.Parent.Moments)
 
 local Haul = {}
 local player = Players.LocalPlayer
@@ -246,7 +247,12 @@ local function payout(d: any)
 		if k >= 1 then
 			conn:Disconnect()
 			if multi then
+				-- the finale: a gold pop over the tank, bigger for a bigger haul
 				Fx.sound("coin", 0.8, 1.2)
+				Fx.burst(at - Vector3.new(0, 4, 0), T.gold, 0.5 + math.min(d.n, 8) * 0.08)
+				if d.n >= 3 then
+					Fx.shockwave(Vector3.new(d.x, d.y + 0.5, d.z), T.gold, 30 + math.min(d.n, 8) * 5)
+				end
 			end
 			task.delay(1.4, function()
 				TweenService:Create(amount, TweenInfo.new(0.4), { TextTransparency = 1 }):Play()
@@ -306,7 +312,8 @@ function Haul.start()
 			return
 		end
 		if kind == "haul" then
-			payout(d)
+			-- (once the catches flying into the tank have landed)
+			task.delay(Moments.landing(), payout, d)
 		elseif kind == "spill" then
 			onSpill(d)
 		elseif kind == "grab" and spillUntil > os.clock() then

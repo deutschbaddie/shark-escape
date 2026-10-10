@@ -24,6 +24,10 @@ Rojo project. Untested in Studio so far.
   your code editor, not in Studio, because Rojo overwrites Studio edits). Start with the HUD ones:
   Sneaker, Cash, Shop, Index, Rides, Tank, Rebirth, Shark. A decal id works too; the server converts it.
   Until an id is set, that icon shows an emoji.
+- **VFX textures:** import the 9 PNGs in `assets/vfx/` (Glow, Star, Ring, Smoke, Streak, Burst, Droplet,
+  Bubble, Beam) and paste each id next to its name in `Config.Images.Vfx`. They're white on purpose (the
+  game tints them). Until then the effects use Roblox's plainer built-in particles. Redraw them with
+  `python3 tools/vfx/make_vfx.py` (`tools/vfx/sheet.png` shows them all).
 - **Store art:** `assets/store/GameIcon.png` (512x512) and `Thumbnail.png` (1920x1080) go in
   Creator Hub > your experience > Places / Thumbnails.
 - Regenerate art with `tools/icons/render.sh`. Preview all 90 creatures with
@@ -69,6 +73,10 @@ Rojo project. Untested in Studio so far.
 - Creature Index (`Index.luau`): 15 biomes x 6 rarities (Common to Mythic), ??? silhouettes, one-time rewards, CLAIM ALL.
 - Welcome Back (`Hub.luau`): the tank earns 7% while you're offline (max 4 h), claim on join.
 - Shark timer, zone title pop-ups, distance meter, offer banner (only once the shop unlocks).
+- Moments (`Moments.luau`, built from the `Fx.luau` toolkit): grab pops by rarity, catches flying into the
+  tank before the haul pays, the escape snap, close calls, bonk hits, a new best lit up over your dock.
+  Short skippable cutscenes (`Cine.luau`, land only) for a new ride, a Mythic reaching your tank, evolving
+  and the Megalodon breaching.
 
 ## Robux store
 The store (`Shop.openStore()` in `src/client/Shop.luau`) opens from the red Shop button on the HUD and from
