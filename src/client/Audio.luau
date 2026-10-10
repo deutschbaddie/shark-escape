@@ -228,7 +228,7 @@ local function retarget(listener: Vector3)
 end
 
 ----------------------------------------------------------------- rides (3D)
-type RideLoop = { sound: Sound, key: string, nextCall: number }
+type RideLoop = { sound: Sound, key: string, nextCall: number, seed: number }
 local rideLoops: { [Model]: RideLoop } = {}
 
 local function updateRides(now: number)
@@ -257,7 +257,7 @@ local function updateRides(now: number)
 			s.RollOffMaxDistance = 140
 			Sounds.randomStart(s)
 			s:Play()
-			entry = { sound = s, key = key, nextCall = now + 3 }
+			entry = { sound = s, key = key, nextCall = now + 3, seed = math.random() * 100 }
 			rideLoops[char] = entry
 		end
 		local pos = hrp.Position
@@ -268,9 +268,14 @@ local function updateRides(now: number)
 		local vol = wet and ((mine and 0.25 or 0.18) + k * (mine and 0.35 or 0.25)) or 0
 		ease(entry.sound, vol, 0.15)
 		local base = (entry.sound:GetAttribute("Pitch") :: number?) or 1
-		entry.sound.PlaybackSpeed = base * (spec and spec[2] or 1) * (0.85 + k * 0.45)
-		-- a call now and then (dolphin clicks, duck squeaks), from the rider
 		local slot = Config.SoundSlots[key]
+		-- the pitch drifts slowly and unevenly (two slow waves, out of step
+		-- per rider), so a short loop never sounds like the same clip again
+		local w = slot and slot.wander or 0.03
+		local sd = entry.seed
+		local drift = 1 + w * (0.6 * math.sin(now * 0.9 + sd) + 0.4 * math.sin(now * 2.3 + sd * 1.7))
+		entry.sound.PlaybackSpeed = base * (spec and spec[2] or 1) * (0.85 + k * 0.45) * drift
+		-- a call now and then (dolphin clicks, duck squeaks), from the rider
 		local every = slot and slot.every
 		if every and wet and now >= entry.nextCall then
 			entry.nextCall = now + every[2] + math.random() * (every[3] - every[2])

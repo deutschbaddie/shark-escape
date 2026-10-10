@@ -1258,6 +1258,7 @@ Config.SoundFiles = {
 export type SoundSlot = {
 	file: string, from: number?, to: number?, loop: { number }?, gain: number?, pitch: number?,
 	eq: { number }?, fade: number?, layers: { string }?, every: { any }?, fallback: string?,
+	wander: number?, -- ride loops: how far the pitch drifts (+-, default 0.03) so a loop never sounds stuck
 }
 local F = {
 	soap = "mixkit-soap-bubble-sound-2925", pop = "mixkit-explainer-video-pops-whoosh-light-pop-3005",
@@ -1314,7 +1315,8 @@ Config.SoundSlots = {
 	duckSqueak = { file = F.duck, from = 0.08, to = 0.66, gain = 0.82 },
 	dolphinCall = { file = F.dolphin, from = 0.43, to = 2.58, gain = 0.31 },
 	rideSplash = { file = F.swim, loop = { 2.782, 8.443 }, gain = 0.72 },
-	rideKick = { file = F.swim, loop = { 1.426, 4.198 }, pitch = 1.12, gain = 0.72 },
+	-- (a short loop: quieter, and its pitch wanders more so it doesn't nag)
+	rideKick = { file = F.swim, loop = { 1.426, 4.198 }, pitch = 1.12, gain = 0.42, wander = 0.08 },
 	rideDuck = { file = F.paddle, loop = { 40.008, 43.98 }, gain = 0.73, every = { "duckSqueak", 5, 10, 0.3 } },
 	rideSurf = { file = F.flow, loop = { 9.95, 14.215 }, eq = { -6, 0, 2 }, gain = 0.36 },
 	rideBubbles = { file = F.deep, loop = { 0, 1.12 }, gain = 0.33 },
