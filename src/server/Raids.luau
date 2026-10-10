@@ -75,6 +75,11 @@ local function updateGuards()
 			if raids[s.player] then
 				why = nil -- (mid-raid: they're on their way)
 			end
+			-- can sharks be sent after them? (clients only offer it when it'd work)
+			local bait = veteran(s, Config.Chum.minPlaytime)
+			if s.player:GetAttribute("Baitable") ~= bait then
+				s.player:SetAttribute("Baitable", bait)
+			end
 			if plot.model:GetAttribute("Guarded") ~= why then
 				plot.model:SetAttribute("Guarded", why)
 				local dome = plot.model:FindFirstChild("Guard", true) :: BasePart?
@@ -106,7 +111,7 @@ local function chum(s: Game.Session, targetId: any)
 		return
 	end
 	if not veteran(s, cfg.minPlaytime) then
-		Game.notify(s.player, "announce", { text = "Chum unlocks after 5 minutes" })
+		Game.notify(s.player, "announce", { text = "Sending sharks unlocks after 5 minutes" })
 		return
 	end
 	if (a.Position - b.Position).Magnitude > cfg.range or not veteran(t, cfg.minPlaytime) or not atSea(t) then
@@ -119,17 +124,18 @@ local function chum(s: Game.Session, targetId: any)
 		t.profile.shields -= 1
 		t.dirty = true
 		chumAt[s.player] = now
-		Game.notify(t.player, "announce", { text = ("Your shield blocked %s's chum"):format(s.player.DisplayName) })
-		Game.notify(s.player, "announce", { text = ("%s's shield blocked your chum"):format(target.DisplayName) })
+		Game.notify(t.player, "announce", { text = ("Your shield blocked %s's shark"):format(s.player.DisplayName) })
+		Game.notify(s.player, "announce", { text = ("%s's shield blocked your shark"):format(target.DisplayName) })
 		return
 	end
 	local ok = Game.sharkAggro and Game.sharkAggro(t, cfg.grudge, "chum", s.player.DisplayName)
 	if not ok then
-		Game.notify(s.player, "announce", { text = "No shark came" })
+		Game.notify(s.player, "announce", { text = "The sharks are busy right now" })
 		return
 	end
 	chumAt[s.player] = now
-	Game.notify(s.player, "chumThrown", { name = target.DisplayName, cooldown = cfg.cooldown })
+	local zone = Config.zoneAtPos(b.Position)
+	Game.notify(s.player, "chumThrown", { name = target.DisplayName, cooldown = cfg.cooldown, shark = zone and zone.shark or nil })
 	Game.notifyAll("chumSplash", { x = b.Position.X, z = b.Position.Z })
 	Game.track(s.player, "chum", {})
 end

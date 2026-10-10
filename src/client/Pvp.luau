@@ -1,6 +1,7 @@
 -- Chum and raids on this client (server: Raids.luau).
---   Chum: a red CHUM button shows up when another rider is near you at sea;
---         tap it and their zone's shark comes for them. Then a cooldown.
+--   Chum: a SEND SHARK button shows up when another rider is near you at
+--         sea (by day, both of you past 5 minutes); tap it and their zone's
+--         shark comes for them. Then a cooldown.
 --   Raid: other players' docks get a RAID prompt (hold F). While a raid is
 --         on, a red countdown hangs over that tank for everyone; the owner
 --         gets an alarm and the guide arrow home; the raider a countdown.
@@ -27,7 +28,6 @@ local RaidSpin = require(script.Parent.RaidSpin)
 local Pvp = {}
 local player = Players.LocalPlayer
 local C = UI.C
-local RED = Color3.fromRGB(235, 55, 70)
 
 local chumBtn: TextButton
 local chumTarget: Player? = nil
@@ -59,11 +59,11 @@ local function buildChum()
 	gui.ResetOnSpawn = false
 	gui.Parent = player:WaitForChild("PlayerGui")
 	UI.autoScale(gui)
-	chumBtn = UI.button(gui, "CHUM", RED, function()
+	chumBtn = UI.button(gui, "SEND SHARK", ORANGE, function()
 		if chumTarget and os.clock() >= chumReadyAt then
 			State.action("chum", chumTarget.UserId)
 		end
-	end, { Size = UDim2.fromOffset(190, 54), Position = UDim2.new(0.5, 0, 1, -150), AnchorPoint = Vector2.new(0.5, 1), Visible = false })
+	end, { Size = UDim2.fromOffset(250, 54), Position = UDim2.new(0.5, 0, 1, -150), AnchorPoint = Vector2.new(0.5, 1), Visible = false })
 end
 
 -- the nearest other rider at sea in reach, in your world
@@ -76,7 +76,8 @@ local function pickTarget(): Player?
 	for _, p in Players:GetPlayers() do
 		local char = p ~= player and p.Character
 		local hrp = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
-		if hrp and atSea(hrp.Position) and Config.worldAt(hrp.Position) == Config.worldAt(me.Position) then
+		-- (only riders a shark can actually be sent after: not brand-new players)
+		if hrp and p:GetAttribute("Baitable") == true and atSea(hrp.Position) and Config.worldAt(hrp.Position) == Config.worldAt(me.Position) then
 			local d = (hrp.Position - me.Position).Magnitude
 			if d < bestD then
 				best, bestD = p, d
@@ -86,17 +87,24 @@ local function pickTarget(): Player?
 	return best
 end
 
+local night = false -- (at night sharks hunt everyone anyway: nothing to send)
+local explained = false
 local function chumTick()
-	chumTarget = pickTarget()
+	local me = player:GetAttribute("Baitable") == true -- (you need 5 minutes in too)
+	chumTarget = (me and not night) and pickTarget() or nil
 	local wait = chumReadyAt - os.clock()
 	chumBtn.Visible = chumTarget ~= nil
 	if chumTarget then
+		if not explained then
+			explained = true
+			Notify.toast("Send a shark after a nearby rider!", ORANGE)
+		end
 		if wait > 0 then
-			UI.setText(chumBtn, ("CHUM  %ds"):format(math.ceil(wait)))
+			UI.setText(chumBtn, ("SEND SHARK  %ds"):format(math.ceil(wait)))
 			chumBtn.BackgroundColor3 = UI.T.navyLight
 		else
-			UI.setText(chumBtn, "CHUM " .. chumTarget.DisplayName)
-			chumBtn.BackgroundColor3 = RED
+			UI.setText(chumBtn, "SEND SHARK: " .. chumTarget.DisplayName)
+			chumBtn.BackgroundColor3 = ORANGE
 		end
 	end
 end
@@ -252,14 +260,15 @@ local handlers: { [string]: (any) -> () } = {}
 
 handlers.chumThrown = function(d)
 	chumReadyAt = os.clock() + (d.cooldown or Config.Chum.cooldown)
-	Notify.toast(("Chummed %s!"):format(tostring(d.name)), RED)
+	local shark = d.shark and Config.sharkName(d.shark) or "A shark"
+	Notify.toast(("%s is after %s!"):format(shark, tostring(d.name)), ORANGE)
 	Fx.sound("splash", 0.8, 0.8)
 end
 
 handlers.chumSplash = function(d)
 	local pos = Vector3.new(d.x, 0.5, d.z)
 	Fx.splash(pos, 1.6)
-	Fx.ring(pos, RED, 22)
+	Fx.ring(pos, ORANGE, 22)
 end
 
 handlers.raided = function(d)
@@ -345,6 +354,13 @@ function Pvp.start()
 	Prompts.Triggered:Connect(function(prompt)
 		if prompt.Name == "RaidTank" then
 			State.action("raid", prompt:GetAttribute("Plot"))
+		end
+	end)
+	Remotes.get("SharkEvent").OnClientEvent:Connect(function(kind)
+		if kind == "hunt" or kind == "warning" then
+			night = true
+		elseif kind == "clear" then
+			night = false
 		end
 	end)
 	Remotes.get("Notify").OnClientEvent:Connect(function(kind, data)

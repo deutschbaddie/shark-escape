@@ -674,7 +674,7 @@ end
 handlers.aggro = function(d)
 	local name = Config.sharkName(d.shark)
 	if d.why == "chum" then
-		Notify.takeover("Chummed", ("%s chummed you! %s coming!"):format(tostring(d.by or "Someone"), name), C.red, 1.4, "Shark")
+		Notify.takeover("Shark sent!", ("%s sent the %s after you!"):format(tostring(d.by or "Someone"), name), C.red, 1.4, "Shark")
 	else
 		-- (the one line that teaches it: the hungry shark wants the biggest haul)
 		local sub = ({ fins = "Your haul drew it in. Get to the sand!",
