@@ -40,8 +40,9 @@ local MOVES: { [string]: (number, number, number) -> CFrame } = {
 	fin = function(t, side, ph) return A(0, 0, side * math.sin(t * 6 + ph) * 0.5) end,
 	wing = function(t, side, ph) return A(0, 0, side * math.sin(t * 2.6 + ph) * 0.55) end,
 	tent = function(t, side, ph) return A(math.sin(t * 3 + ph) * 0.35, 0, math.cos(t * 2.5 + ph) * 0.25) end,
-	leg = function(t, side, ph) return A(math.sin(t * 10 + ph) * 0.35, 0, 0) end,
-	claw = function(t, side, ph) return A(0, side * math.abs(math.sin(t * 2.5)) * 0.35, 0) end,
+	-- legs run along X from the hip: lifting the tip is a turn about Z
+	leg = function(t, side, ph) return A(0, 0, side * math.sin(t * 10 + ph) * 0.3) end,
+	claw = function(t, side, ph) return A(0, side * math.abs(math.sin(t * 2.5)) * 0.22, 0) end,
 	flipper = function(t, side, ph) return A(0, side * math.sin(t * 2.4 + ph) * 0.3, side * math.sin(t * 2.4 + ph) * 0.4) end,
 	fluke = function(t, side, ph) return A(math.sin(t * 4 + ph) * 0.35, 0, 0) end,
 	seg = function(t, side, ph) return A(0, math.sin(t * 4 - ph) * 0.28, 0) end,

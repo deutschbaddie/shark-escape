@@ -137,16 +137,19 @@ builders.crab = function(x)
 		blk(x, Vector3.new(0.1, 0.4, 0.1), Vector3.new(side * 0.28, 0.6, -0.45), c1)
 		blk(x, Vector3.new(0.2, 0.2, 0.2), Vector3.new(side * 0.28, 0.85, -0.47), WHITE, { keep = true })
 		blk(x, Vector3.new(0.12, 0.12, 0.12), Vector3.new(side * 0.28, 0.86, -0.56), INK, { keep = true })
-		-- claws
-		local claw = { anim = "claw", hinge = Vector3.new(side * 0.8, 0, -0.35), side = side }
-		blk(x, Vector3.new(0.28, 0.28, 0.6), Vector3.new(side * 0.95, 0.05, -0.6), c1, claw)
-		blk(x, Vector3.new(0.5, 0.4, 0.5), Vector3.new(side * 1.05, 0.1, -1.05), c1, { studs = "top", anim = "claw", hinge = claw.hinge, side = side })
-		blk(x, Vector3.new(0.2, 0.18, 0.3), Vector3.new(side * 0.9, 0.1, -1.38), c2, { anim = "claw", hinge = claw.hinge, side = side })
-		-- legs
-		local legLen = sp.long and 0.95 or 0.6
-		for i, z in { -0.15, 0.15, 0.45 } do
-			blk(x, Vector3.new(legLen, 0.12, 0.12), Vector3.new(side * (0.8 + legLen / 2), -0.22, z), darker(c1, 0.1),
-				{ anim = "leg", hinge = Vector3.new(side * 0.8, -0.22, z), side = side, phase = i * 1.3 })
+		-- claws: an arm that grows out of the front corner of the body (it
+		-- overlaps it, and swings from a shoulder inside it, so it never comes
+		-- loose), then the pincer and its finger, each overlapping the last
+		local claw = { anim = "claw", hinge = Vector3.new(side * 0.7, 0.05, -0.45), side = side }
+		blk(x, Vector3.new(0.3, 0.3, 0.75), Vector3.new(side * 0.72, 0.05, -0.75), c1, claw)
+		blk(x, Vector3.new(0.55, 0.45, 0.55), Vector3.new(side * 0.78, 0.1, -1.25), c1, { studs = "top", anim = "claw", hinge = claw.hinge, side = side })
+		blk(x, Vector3.new(0.2, 0.18, 0.32), Vector3.new(side * 0.62, 0.12, -1.6), c2, { anim = "claw", hinge = claw.hinge, side = side })
+		-- legs: start inside the body's underside and reach out (they lift and
+		-- step from the hip, staying attached)
+		local legLen = sp.long and 0.95 or 0.65
+		for i, z in { -0.2, 0.12, 0.42 } do
+			blk(x, Vector3.new(legLen + 0.2, 0.13, 0.13), Vector3.new(side * (0.6 + (legLen + 0.2) / 2), -0.2, z), darker(c1, 0.1),
+				{ anim = "leg", hinge = Vector3.new(side * 0.65, -0.2, z), side = side, phase = i * 1.3 })
 		end
 	end
 	if sp.shell then
