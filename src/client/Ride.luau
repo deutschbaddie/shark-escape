@@ -54,6 +54,12 @@ local burstUntil, burstLen = 0, 1
 local knockUntil, knockVel, spinStart = 0, Vector3.zero, -10
 local KNOCK_TIME, SPIN_TIME = 0.55, 0.7
 local lastKick = Vector3.zero
+-- bursts and knocks ease in over this long: a step bigger than the
+-- LinearVelocity can deliver in a frame would read back as lost speed
+-- (lastKick is taken off the measured velocity before steering)
+local KICK_IN = 0.1
+local burstK = 0 -- burst kick in play, as a share of top speed
+local idle = 1 -- 0 while steering, 1 at rest (fades the idle wobble)
 
 -- ride through a boost ring: a burst of speed and a pop into the air
 function Ride.burst(seconds: number, pop: number?)
@@ -95,9 +101,12 @@ local REVERSE_AT = math.rad(140) -- input this far off the nose from a stop = re
 local REVERSE_SPEED = 0.45
 local REVERSE_SWING = 0.4 -- hold reverse this long and the nose swings round
 local LATCH_KEEP = math.rad(60) -- stick moves within this of the latched direction steer relative to it
+local DEAD = 0.05 -- stick dead zone
+local GRACE = 0.12 -- a blip through the dead zone this short (flicking the stick, switching keys) doesn't end a turn-around
+local SETTLE = 25 -- the nose eases the last few degrees onto the stick (1/s) instead of stopping dead; also soaks up stick jitter
 
-export type Steer = { heading: number, whip: boolean, launch: number, reverse: number, latchYaw: number?, latchMv: Vector3? }
-local steerState: Steer = { heading = 0, whip = false, launch = 0, reverse = 0 }
+export type Steer = { heading: number, whip: boolean, launch: number, reverse: number, latchYaw: number?, latchMv: Vector3?, idle: number? }
+local steerState: Steer = { heading = 0, whip = false, launch = 0, reverse = 0, idle = 0 }
 
 local function getControls()
 	if controls then
@@ -140,6 +149,13 @@ local function turnToward(a: number, b: number, step: number): number
 	return a + math.clamp(d, -step, step)
 end
 
+-- turnToward at up to `rate` rad/s, easing in over the last few degrees
+-- (exponential, so the same at any frame rate)
+local function easeToward(a: number, b: number, rate: number, dt: number): number
+	local d = math.abs((b - a + math.pi) % (2 * math.pi) - math.pi)
+	return turnToward(a, b, math.min(rate * dt, d * (1 - math.exp(-SETTLE * dt))))
+end
+
 local function approach(v: number, target: number, step: number): number
 	if v < target then
 		return math.min(v + step, target)
@@ -164,18 +180,31 @@ function Ride.steer(st: Steer, input: Vector3, mv: Vector3?, v: Vector3, feel: C
 	-- where the stick points. After a whip the target is latched: small stick
 	-- moves steer relative to it (whatever the camera does meanwhile); a new
 	-- direction (over 60 degrees away) or letting go goes back to camera-relative
-	local want = m > 0.05 and yawOf(input) or nil
-	local nudge = st.latchMv and mv and wrap(yawOf(mv) - yawOf(st.latchMv)) or nil
-	if st.latchYaw and nudge and math.abs(nudge) < LATCH_KEEP then
-		want = st.latchYaw + nudge
+	local want = m > DEAD and yawOf(input) or nil
+	if want then
+		st.idle = 0
+		local nudge = st.latchMv and mv and wrap(yawOf(mv) - yawOf(st.latchMv)) or nil
+		if st.latchYaw and nudge and math.abs(nudge) < LATCH_KEEP then
+			want = st.latchYaw + nudge
+		else
+			st.latchYaw, st.latchMv = nil, nil
+		end
 	else
-		st.latchYaw, st.latchMv = nil, nil
+		-- let go: a brief blip keeps a turn-around (and the latch) going;
+		-- anything longer ends it
+		st.idle = (st.idle or 0) + dt
+		if st.idle > GRACE then
+			st.whip, st.reverse = false, 0
+			st.latchYaw, st.latchMv = nil, nil
+		elseif st.whip then
+			want = st.latchYaw
+		end
 	end
 	local off = want and math.abs(wrap(want - st.heading)) or 0
 
 	-- modes
 	if not want then
-		st.whip, st.reverse = false, 0
+		-- (released: coast; a reverse in progress holds its timer through a blip)
 	elseif st.whip then
 		if off < WHIP_DONE then
 			-- done; the target stays latched until the stick moves, so a
@@ -208,7 +237,7 @@ function Ride.steer(st: Steer, input: Vector3, mv: Vector3?, v: Vector3, feel: C
 		if st.whip then
 			rate = math.max(rate * 2, WHIP_RATE)
 		end
-		st.heading = turnToward(st.heading, want, rate * dt)
+		st.heading = easeToward(st.heading, want, rate, dt)
 	end
 	local turned = wrap(st.heading - before)
 
@@ -223,7 +252,7 @@ function Ride.steer(st: Steer, input: Vector3, mv: Vector3?, v: Vector3, feel: C
 
 	-- throttle
 	local target, rate
-	if st.reverse > 0 then
+	if st.reverse > 0 and want then
 		target = -top * REVERSE_SPEED * m
 		rate = top / math.max(feel.accel, 0.3)
 	elseif st.whip then
@@ -293,10 +322,10 @@ end
 local function enter(r: Rig)
 	active = true
 	local look = r.hrp.CFrame.LookVector
-	steerState = { heading = yawOf(look), whip = false, launch = 0, reverse = 0 }
+	steerState = { heading = yawOf(look), whip = false, launch = 0, reverse = 0, idle = 0 }
 	roll, vy, airborne = 0, 0, false
 	r.hum.PlatformStand = true
-	r.lv.MaxForce = r.hrp.AssemblyMass * 900
+	r.lv.MaxForce = r.hrp.AssemblyMass * 900 -- (scaled with top speed each frame)
 	r.lv.Enabled = true
 	r.ao.Enabled = true
 	setAnimate(r.char, false)
@@ -338,28 +367,37 @@ local function step(dt: number)
 	if not active then
 		return
 	end
-	-- teleported (gate bounce, respawn): take the new facing
-	if lastPos and (pos - lastPos).Magnitude > 40 then
-		steerState = { heading = yawOf(hrp.CFrame.LookVector), whip = false, launch = 0, reverse = 0 }
+	-- teleported (gate bounce, respawn): take the new facing. Measured against
+	-- how far you'd have gone anyway, so a frame hitch at top speed (320
+	-- studs/s covers 40 studs in an eighth of a second) isn't mistaken for one
+	local flatVel = hrp.AssemblyLinearVelocity * Vector3.new(1, 0, 1)
+	if lastPos and (pos - lastPos).Magnitude > 40 + flatVel.Magnitude * dt * 1.5 then
+		steerState = { heading = yawOf(hrp.CFrame.LookVector), whip = false, launch = 0, reverse = 0, idle = 0 }
 	end
 	lastPos = pos
 	local feel = Config.feel(r.char:GetAttribute("Ride") :: string?)
 	local top = math.max(hum.WalkSpeed, 8)
 	local t = os.clock()
+	-- enough push to carve and brake as tuned at any speed (a fixed cap let
+	-- the ride skid wide of its nose above ~150 studs/s)
+	local force = hrp.AssemblyMass * (900 + 10 * top)
+	if math.abs(r.lv.MaxForce - force) > force * 0.01 then
+		r.lv.MaxForce = force
+	end
 
 	-- steering + throttle (Ride.steer)
 	local input, mv = moveInput(hum)
-	local flat, yawRate, event = Ride.steer(steerState, input, mv, hrp.AssemblyLinearVelocity * Vector3.new(1, 0, 1) - lastKick, feel, top, dt)
+	local flat, yawRate, event = Ride.steer(steerState, input, mv, flatVel - lastKick, feel, top, dt)
 	local heading = steerState.heading
 	-- boost ring burst, fading: up to +70% of your top speed straight ahead
 	local left = burstUntil - t
-	lastKick = Vector3.zero
-	if left > 0 then
-		lastKick = Vector3.new(-math.sin(heading), 0, -math.cos(heading)) * top * 0.7 * (left / burstLen)
-	end
+	local burstWant = left > 0 and 0.7 * (left / burstLen) or 0
+	burstK = burstWant > burstK and math.min(burstK + 0.7 * dt / KICK_IN, burstWant) or burstWant
+	lastKick = Vector3.new(-math.sin(heading), 0, -math.cos(heading)) * top * burstK
 	local kleft = knockUntil - t
 	if kleft > 0 then
-		lastKick += knockVel * (kleft / KNOCK_TIME) -- (fades out; kept out of the steering like the burst)
+		-- (fades out; kept out of the steering like the burst)
+		lastKick += knockVel * (kleft / KNOCK_TIME) * math.min((KNOCK_TIME - kleft) / KICK_IN, 1)
 	end
 	flat += lastKick
 	local vf = flat:Dot(Vector3.new(-math.sin(heading), 0, -math.cos(heading)))
@@ -396,7 +434,7 @@ local function step(dt: number)
 	-- attitude: lean into turns, nose up at speed, idle wobble
 	local speedK = math.clamp(vf / top, 0, 1)
 	-- turning left raises yaw; a positive roll leans left, so lean = +yawRate
-	roll += (math.clamp(yawRate * feel.lean * (0.3 + speedK), -0.6, 0.6) - roll) * math.min(dt * 6, 1)
+	roll += (math.clamp(yawRate * feel.lean * (0.3 + speedK), -0.6, 0.6) - roll) * (1 - math.exp(-6 * dt))
 	local pitch = (feel.plane or 0) * speedK * 2.2 + math.cos(t * feel.bobSpeed) * feel.bob * 0.05
 	if feel.porpoise then
 		pitch += math.cos(t * feel.bobSpeed) * porpoise * 0.25
@@ -404,7 +442,9 @@ local function step(dt: number)
 	if airborne then
 		pitch += math.clamp(vy / 80, -0.4, 0.4)
 	end
-	local wobble = (feel.wobble or 0) * math.sin(t * 1.3) * (1 - speedK * 0.6)
+	-- idle wobble: mostly settles while you steer, so the nose points where you're going
+	idle += ((input.Magnitude > DEAD and 0 or 1) - idle) * (1 - math.exp(-3 * dt))
+	local wobble = (feel.wobble or 0) * math.sin(t * 1.3) * (1 - speedK * 0.6) * (0.3 + 0.7 * idle)
 	-- bonked: one full spin, fast then settling
 	local spin = 0
 	local st = (t - spinStart) / SPIN_TIME
