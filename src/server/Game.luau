@@ -321,7 +321,8 @@ function Game.push(s: Session)
 		starter = p.starter,
 		starterNext = Config.StarterLadder[p.starterTier + 1], -- next pack to offer (nil = all bought)
 		dealBought = p.dealBought,
-		dailyDay = p.daily.day,
+		-- (a broken streak shows day 1 now, not the big prize it won't pay)
+		dailyDay = (p.daily.last > 0 and os.time() - p.daily.last > Config.DAILY_RESET_HOURS * 3600) and 1 or p.daily.day,
 		quests = Game.questList and Game.questList(s) or nil,
 		noodle = p.noodle, -- (Config.Noodles tier; the Golden Noodle pass is in `passes`)
 		bonks = p.bonks,
@@ -712,7 +713,7 @@ function Game.updateTankSign(s: Session)
 	end
 	local inc = Game.income(s)
 	plot.tankIncome.Text = ("$%s/s  ·  %d/%d Active"):format(Config.formatRate(inc), Game.activeCount(s), tankSlots(s))
-	plot.tankOffline.Text = ("$%s / day offline"):format(formatShort(Config.offlinePerDay(inc)))
+	plot.tankOffline.Text = ("Up to $%s while you're away"):format(formatShort(Config.offlineMax(inc)))
 end
 
 -- a new catch arrives at the dock
@@ -799,7 +800,8 @@ function Game.huntable(s: Session): boolean
 	if os.clock() < s.eatenUntil then
 		return false
 	end
-	if s.profile.tut < 5 and os.clock() - s.joinedAt < Config.Shark.newPlayerGrace then
+	-- (still learning: no real sharks until the tutorial's shark lesson is done)
+	if s.profile.tut < 4 or (s.profile.tut < 5 and os.clock() - s.joinedAt < Config.Shark.newPlayerGrace) then
 		return false
 	end
 	local pos = hrp.Position
@@ -878,6 +880,7 @@ actions.buyRide = function(s, id)
 		return
 	end
 	if s.profile.coins < ride.price then
+		Game.notify(s.player, "announce", { text = "Not enough cash yet" })
 		return
 	end
 	-- rides are bought at the Ride Shop

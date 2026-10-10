@@ -265,6 +265,9 @@ local function grab(s: Game.Session, b: Bubble)
 	end
 	local c = { r = r, z = b.z, m = b.m, s = b.s }
 	Game.takeCatch(s, c) -- (your hands, or your net)
+	if Game.handsFull(s) then
+		Game.notify(s.player, "announce", { text = "Net full! Take your catch home" })
+	end
 	scoop(s, b, r)
 	Game.discover(s, c)
 	if Game.sharkOnGrab then

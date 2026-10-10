@@ -1,3 +1,4 @@
+local GroupService = game:GetService("GroupService")
 -- Free rewards that bring players back:
 --   Daily Rewards  a 7-day streak (claim every 20h; miss 48h and it restarts).
 --                  Day 7 is a Huge Legendary.
@@ -63,8 +64,19 @@ local function inGroup(player: Player): boolean
 	if Config.GroupId == 0 then
 		return true -- no group yet: the chest only asks for a like
 	end
-	local ok, yes = pcall(player.IsInGroup, player, Config.GroupId)
-	return ok and yes == true
+	-- (asked fresh each time: IsInGroup is cached for the session, so a kid
+	-- who joins through the prompt would still be told to join)
+	local ok, groups = pcall(GroupService.GetGroupsAsync, GroupService, player.UserId)
+	if ok and typeof(groups) == "table" then
+		for _, g in groups do
+			if g.Id == Config.GroupId then
+				return true
+			end
+		end
+		return false
+	end
+	local ok2, yes = pcall(player.IsInGroup, player, Config.GroupId)
+	return ok2 and yes == true
 end
 
 local function claimGroup(s: Game.Session)

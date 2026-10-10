@@ -698,7 +698,7 @@ local function statusLine(pos: Vector3?)
 	end
 	if menuOpen or atMyDock(pos) then
 		-- what the tank earns while you're away (shown when you open the menu to leave)
-		Notify.status(d.income > 0 and ("Your tank earns $%s / day while you're offline"):format(UI.short(Config.offlinePerDay(d.income)))
+		Notify.status(d.income > 0 and ("Your tank earns up to $%s while you're away"):format(UI.short(Config.offlineMax(d.income)))
 			or "Put creatures in your tank to earn while you're offline", Color3.fromRGB(190, 225, 255))
 	elseif Layout.inWater(pos) then
 		local zone = Config.zoneAtPos(pos)
@@ -1089,7 +1089,7 @@ handlers.rebirth = function(d)
 	Fx.sound("rebirth", 0.8)
 	Notify.chat(d.biome and ("You evolved! %s is open"):format(d.biome) or "You evolved!", nil, "EVOLVED", true)
 	if d.rebirths == 1 then
-		Notify.chat("Raids unlocked! Hold the prompt at a tank while its owner is out at sea", nil, "RAID", true)
+		Notify.chat("Raids unlocked! Rob tanks while owners are at sea", nil, "RAID", true)
 	end
 	Notify.takeover("You evolved", d.biome and ("%s is open"):format(d.biome) or ("x%s speed for good"):format(tostring(Config.Rebirth.mult ^ d.rebirths)), C.green, 2, "Rebirth")
 	-- a party where you stand, and the newly opened biome's line lights up

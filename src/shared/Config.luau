@@ -1073,6 +1073,11 @@ function Config.offlinePerDay(income: number): number
 	return income * Config.Offline.rate * 86400
 end
 
+-- what a full stretch away pays (offline earnings stop after maxHours)
+function Config.offlineMax(income: number): number
+	return income * Config.Offline.rate * Config.Offline.maxHours * 3600
+end
+
 ----------------------------------------------------------------- images
 -- Stud texture: "Studs" by aetoreous (public domain). Decal 6927295857,
 -- image 6927295847. The image is a 4x4 grid of studs.

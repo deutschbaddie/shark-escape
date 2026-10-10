@@ -1001,7 +1001,7 @@ local function buildEventBoard()
 		s.Parent = t
 	end
 	line("Title", 6, 56, Config.Event.name, C(255, 90, 100))
-	line("When", 64, 28, "Every Saturday · 3 PM ET", C(200, 210, 230))
+	line("When", 64, 28, "Every Saturday afternoon", C(200, 210, 230))
 	line("Time", 96, 58, "", C(255, 255, 255))
 	line("Limited", 160, 40, "", C(255, 255, 255)) -- this week's limited catch (client Countdown)
 	line("Update", 206, 38, "", C(255, 210, 60))

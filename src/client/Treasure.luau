@@ -5,6 +5,7 @@
 local Players = game:GetService("Players")
 
 local Shared = game.ReplicatedStorage.Shared
+local Config = require(Shared.Config)
 local Remotes = require(Shared.Remotes)
 local UI = require(script.Parent.UI)
 local Fx = require(script.Parent.Fx)
@@ -38,6 +39,13 @@ function Treasure.start()
 			live[data.world] = at
 			if data.world ~= myWorld() then
 				return
+			end
+			-- (only lead kids to treasure in water they can actually fish)
+			local d = State.data
+			for _, z in Config.Zones do
+				if z.name == data.zone and d and (z.gate > d.speed or (z.evolve or 0) > (d.rebirths or 0)) then
+					return
+				end
 			end
 			Guide.set("treasure", at, "Treasure")
 			Notify.banner("Dawn treasure", { key = "treasure", color = GOLD, priority = 2, time = data.quiet and 3 or 6,
