@@ -680,15 +680,17 @@ Config.Boss = {
 	minHits = 3,
 	lifetime = 300, -- seconds before it gives up and dives
 	every = 1200, -- one more surfaces this long after the last one (during the event)
-	zone = 2, -- it lives over this zone (reachable for everyone)
+	zone = 4, -- it lives over Shipwreck Bay: past the starter zones, still close enough for most
 	circle = 55, -- the radius it patrols around its spot
 	speed = 30,
 	sight = 160, -- it charges riders this close
-	chargeEvery = 6,
-	chargeTime = 2.4,
-	chargeMult = 1.05, -- vs the target's top speed: turn hard to dodge it
-	turn = 1.6, -- radians / second while charging
-	biteRadius = 12,
+	chargeEvery = 5,
+	aimTime = 0.8, -- it stops and swings round to face you (the tell), then dashes
+	chargeTime = 4, -- the dash, at most (it ends early if it bites or shoots past you)
+	chargeMult = 1.15, -- vs the target's top speed: dodge it by turning hard, not by outrunning it
+	turn = 0.35, -- radians / second while dashing: it commits to a line, so a hard turn gets you clear
+	lead = 0.5, -- how far ahead of you it aims (share of the time it needs to reach you)
+	biteRadius = 14, -- from its mouth, not its middle
 	reward = "Legendary",
 }
 -- the next update's release (unix time, UTC). 0 hides the board line

@@ -826,17 +826,30 @@ local function bossUpdate(b: Boss, dt: number): boolean -- false: remove it
 			b.nextCharge = os.clock() + cfg.chargeEvery
 		end
 	elseif b.state == "charge" then
+		-- two beats: aim (it slows and swings round to face you: your tell),
+		-- then a committed dash that ends when it bites, shoots past you or runs
+		-- out of time. Bites count from its mouth (well ahead of its middle).
 		local s = b.target
 		local hrp = s and Game.root(s.player)
-		if not (s and hrp and Game.sessions[s.player] and Game.huntable(s)) or b.timer > cfg.chargeTime then
+		local aiming = b.timer < cfg.aimTime
+		local mouth = b.pos + forward(b.yaw) * cfg.length * 0.38
+		local p = hrp and (hrp :: BasePart).Position
+		local passed = p and not aiming and b.timer > cfg.aimTime + 0.6
+			and forward(b.yaw):Dot(flat(p - mouth)) < -cfg.biteRadius
+		if not (s and hrp and Game.sessions[s.player] and Game.huntable(s)) or b.timer > cfg.aimTime + cfg.chargeTime or passed then
 			b.state, b.timer, b.target = "circle", 0, nil
 			b.nextCharge = os.clock() + cfg.chargeEvery
 		else
-			local p = (hrp :: BasePart).Position
-			b.yaw = turnToward(b.yaw, yawOf(flat(p - b.pos)), cfg.turn * dt)
-			local spd = math.max(cfg.speed * 2, Game.walkSpeed(s :: Game.Session) * cfg.chargeMult)
+			-- it aims a little ahead of where you're going
+			p = p :: Vector3
+			local dash = math.max(cfg.speed * 3, Game.walkSpeed(s :: Game.Session) * cfg.chargeMult)
+			local spd = aiming and cfg.speed * 0.4 or dash
+			local vel = flat((hrp :: BasePart).AssemblyLinearVelocity)
+			local ahead = p + vel * (flat(p - b.pos).Magnitude / dash * cfg.lead)
+			b.yaw = turnToward(b.yaw, yawOf(flat(ahead - b.pos)), (aiming and 5 or cfg.turn) * dt)
 			b.pos = clampLane(b.pos + forward(b.yaw) * spd * dt)
-			if flat(p - b.pos).Magnitude < cfg.biteRadius then
+			mouth = b.pos + forward(b.yaw) * cfg.length * 0.38
+			if flat(p - mouth).Magnitude < cfg.biteRadius then
 				local victim = s :: Game.Session
 				local carried = victim.carrying
 				local result = Game.bite(victim, b.pos)
