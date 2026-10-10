@@ -211,9 +211,12 @@ end
 -- The shark's jaws snap shut over the whole screen, hold, then fling open:
 -- the "spat out" moment. Blocky stepped teeth (the game's stud look) that
 -- interlock when closed. onClosed runs while the screen is covered.
-local GUM, GUM_EDGE, TOOTH = Color3.fromRGB(176, 52, 74), Color3.fromRGB(110, 24, 44), Color3.fromRGB(250, 247, 236)
+-- `color`: the biting shark's (Config.biteColor), bright, never blood red
+local TOOTH = Color3.fromRGB(252, 250, 242)
 local TEETH, TOOTH_H = 10, 54
-function Fx.jaws(onClosed: (() -> ())?)
+function Fx.jaws(onClosed: (() -> ())?, color: Color3?)
+	local GUM = color or Color3.fromRGB(60, 170, 255)
+	local GUM_EDGE = GUM:Lerp(Color3.new(0, 0, 0), 0.25)
 	local root = UI.frame(Fx.screen(), { Name = "Jaws", Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ZIndex = 55 })
 	local jaws = {}
 	for i, top in { true, false } do

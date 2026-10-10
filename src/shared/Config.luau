@@ -747,6 +747,19 @@ Config.MiniEvents = {
 }
 
 -- what players call each shark ("Baby" alone reads oddly on the HUD)
+-- each shark's bite color (the jaws over the screen, the flashes): bright
+-- and friendly, never blood red
+Config.SharkBite = {
+	Baby = Color3.fromRGB(255, 185, 50), Hammerhead = Color3.fromRGB(255, 135, 40), Tiger = Color3.fromRGB(120, 210, 60),
+	GreatWhite = Color3.fromRGB(60, 170, 255), Mecha = Color3.fromRGB(50, 220, 230), Megalodon = Color3.fromRGB(150, 90, 255),
+	Frost = Color3.fromRGB(110, 210, 255), Magma = Color3.fromRGB(255, 120, 30), King = Color3.fromRGB(255, 200, 40),
+	Gummy = Color3.fromRGB(110, 230, 100), Jelly = Color3.fromRGB(255, 110, 200), Licorice = Color3.fromRGB(170, 90, 230),
+	Peppermint = Color3.fromRGB(70, 220, 170), Fudge = Color3.fromRGB(235, 150, 70), SugarKing = Color3.fromRGB(255, 80, 200),
+} :: { [string]: Color3 }
+function Config.biteColor(variant: string?): Color3
+	return Config.SharkBite[variant or ""] or Color3.fromRGB(60, 170, 255)
+end
+
 local SHARK_NAMES = {
 	Baby = "Baby Shark", Hammerhead = "Hammerhead", Tiger = "Tiger Shark", GreatWhite = "Great White",
 	Mecha = "Mecha Shark", Megalodon = "Megalodon", Frost = "Frost Shark", Magma = "Magma Shark", King = "King Shark",

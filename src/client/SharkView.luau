@@ -597,6 +597,8 @@ local function eatenCinematic(sh: Shark?, at: Vector3, carried: { r: string, m: 
 		return
 	end
 	cine = true
+	local biteColor = Config.biteColor(sh and sh.variant)
+	player:SetAttribute("BitBy", sh and sh.variant or nil) -- (the HUD's jaws use its color)
 	player:SetAttribute("Cinematic", true)
 	local cam = Workspace.CurrentCamera
 	cam.CameraType = Enum.CameraType.Scriptable
@@ -677,8 +679,8 @@ local function eatenCinematic(sh: Shark?, at: Vector3, carried: { r: string, m: 
 	task.delay(CHOMP_AT, function()
 		hideCharacter(true)
 		Fx.shake(5)
-		Fx.flash(Color3.fromRGB(255, 40, 60), 0.35, 0.35)
-		tint.TintColor = Color3.fromRGB(255, 190, 195)
+		Fx.flash(biteColor, 0.35, 0.35)
+		tint.TintColor = biteColor:Lerp(Color3.new(1, 1, 1), 0.7)
 		if caption then
 			caption.Text = carried and ("The shark ate your %s!"):format(Config.fullName(carried.z, carried.r, carried.m, carried.s)) or "The shark got you!"
 		end
@@ -1073,7 +1075,7 @@ Remotes.get("SharkEvent").OnClientEvent:Connect(function(kind, data)
 		if data.victim == player.UserId then
 			-- the turn: a quick FOV punch so you feel it lock on
 			Fx.shake(1.5)
-			Fx.flash(Color3.fromRGB(255, 40, 60), 0.3, 0.75)
+			Fx.flash(Config.biteColor(sh and sh.variant), 0.3, 0.75)
 			local cam = Workspace.CurrentCamera
 			if cam.CameraType == Enum.CameraType.Custom then
 				cam.FieldOfView = 62
