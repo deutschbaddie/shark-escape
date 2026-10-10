@@ -139,7 +139,7 @@ local function drillStart(pos: Vector3)
 	drill.state = "chase"
 	drill.t = os.clock()
 	Water.setSafeGlow(true)
-	Notify.banner("A shark smells your catch", { key = "drill", priority = 4, time = 2.4, color = C.red, sub = "Race it home to the sand! (just practice)" })
+	Notify.banner("A shark smells your catch", { key = "drill", priority = 4, time = 2.4, color = C.red, sub = "Race it home! (practice)" })
 	Fx.sound("sharkAlarm", 0.8)
 	Fx.shake(1)
 	drill.shark = SharkView.spawnLocal(zone.shark, zone.sharkLength, from, yaw, function(sh, dt)
@@ -225,7 +225,7 @@ local function drillTick(pos: Vector3): (Vector3?, string?, string?, string?, Co
 				Fx.shake(1.2)
 			end
 			Notify.banner("You made it", { key = "drill", priority = 4, time = 3, color = C.gold,
-				sub = "Grabs make sharks hungry. The sand is always safe" })
+				sub = "The sand is always safe" })
 			Fx.sound("dodge", 1)
 			return nil
 		end
@@ -238,10 +238,10 @@ local function drillTick(pos: Vector3): (Vector3?, string?, string?, string?, Co
 				drillEnd("caught")
 				if drill.catches >= 2 then
 					drill.done = true -- don't loop on failure: they've seen it, move on
-					Notify.toast("It got you (just practice). Real ones spill your haul. Sand is always safe", C.red)
+					Notify.toast("Got you! (practice) The sand is safe", C.red)
 					return nil
 				end
-				Notify.toast("It got you (just practice). Real ones spill your haul. It'll be slower this time", C.red)
+				Notify.toast("Got you! (practice) Try again", C.red)
 				drill.state = "pause"
 				return nil
 			end
@@ -307,7 +307,7 @@ local function update()
 				at, label, title, sub, color = dAt, dLabel, dTitle, dSub, dColor
 			elseif plot then
 				at, label = Layout.tankPos(plot) + Vector3.new(0, 4, 0), "Your tank"
-				title, sub = "Bring it home", "Follow the arrow to your tank"
+				title, sub = "Bring it home", "Follow the arrow"
 			end
 		end
 	end
@@ -323,7 +323,7 @@ local function update()
 			title, sub = "Bring the haul home", ("Two at once: x%s cash"):format(("%g"):format(Config.haulMult(2)))
 		else
 			at, label = nearestBubble(pos), "Grab it!"
-			title, sub = n == 1 and "One more!" or "Grab two, then go home", "The more you carry, the more it pays (and the hungrier the shark)"
+			title, sub = n == 1 and "One more!" or "Grab two, then go home", "More creatures = more cash"
 		end
 		if os.clock() - haulSince > 120 then
 			advance(4, true) -- (not getting it: don't hold them here)
@@ -335,7 +335,7 @@ local function update()
 			advance(5)
 		elseif d.coins >= nxt.price then
 			at, label = Layout.inWorld(Layout.RideShopPad, d.world) + Vector3.new(0, 1, 0), "Ride Shop"
-			title, sub = ("Get the %s"):format(nxt.name), ("Walk onto the Ride Shop pad · +%d speed/s"):format(nxt.gain or 0)
+			title, sub = ("Get the %s"):format(nxt.name), ("Ride Shop pad · +%d speed/s"):format(nxt.gain or 0)
 			HUD.pulseRide(true)
 		else
 			-- not enough yet: keep them on the loop that earns cash
@@ -383,7 +383,7 @@ function Onboarding.start()
 
 	-- first time here: one big hello, then step 1
 	if step == 0 and #d.creatures == 0 then
-		Notify.takeover("+1 Speed to Escape the Shark", "Grab sea creatures and race the shark home", C.gold, 2.2)
+		Notify.takeover("+1 Speed to Escape the Shark", "Grab creatures. Race the shark home!", C.gold, 2.2)
 	end
 
 	local conn
@@ -397,7 +397,7 @@ function Onboarding.start()
 			if drill.shark then
 				drillEnd("abort")
 			end
-			Notify.takeover("You're ready", "Carry more, earn more. Just make it home", C.gold, 2)
+			Notify.takeover("You're ready", "Carry more, earn more!", C.gold, 2)
 			Fx.confetti(myRoot() and (myRoot() :: BasePart).Position or Vector3.zero)
 		end
 	end)

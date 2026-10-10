@@ -54,7 +54,7 @@ local function welcome(amount: number)
 		title = "Welcome Back!",
 		icon = "Clock",
 		color = C.blue,
-		text = ("Your tank earned while you were away! (%d%% rate, up to %dh)"):format(math.floor(Config.Offline.rate * 100), Config.Offline.maxHours),
+		text = "Earned while you were away!",
 		value = "+$0",
 		primary = { text = "CLAIM", color = C.green }, -- closing banks the coins (below)
 		secondary = { text = "Later" },

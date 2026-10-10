@@ -909,7 +909,7 @@ updateShelter = function(dt: number)
 	Water.setIslandShelter(i, left / shelter.max)
 	if left <= Config.Shark.islandWarn then
 		shelter.shown = true
-		local sub = left > 0 and ("Shelter ends in %d · hop to another island or the sand"):format(math.ceil(left))
+		local sub = left > 0 and ("Shelter ends in %d! Move!"):format(math.ceil(left))
 			or "The shark can reach you here!"
 		Notify.banner("Island sinking! Move!", { key = "island", priority = 6, time = 0.6, color = UI.C.red, sub = sub })
 	end
@@ -963,7 +963,7 @@ Remotes.get("Notify").OnClientEvent:Connect(function(kind, d)
 		escapeRun += 1
 		Notify.clear("fresh")
 		Notify.word("It got away", UI.C.red, 1)
-		Notify.toast(("Your %s slipped back into the sea"):format(creatureName(d)), UI.C.red)
+		Notify.toast(("Your %s got away!"):format(creatureName(d)), UI.C.red)
 		local hrp = myRoot()
 		if hrp then
 			Fx.splash(Vector3.new(hrp.Position.X, 0.5, hrp.Position.Z), 1.2)
@@ -1002,7 +1002,7 @@ Remotes.get("SharkEvent").OnClientEvent:Connect(function(kind, data)
 		local hrp = myRoot()
 		local zone = hrp and Config.zoneAtPos(hrp.Position)
 		if data.double and zone and zone.index >= (data.doubleFrom or 3) then
-			Notify.toast("Two sharks are hunting out here!", UI.C.red)
+			Notify.toast("Two sharks out here!", UI.C.red)
 		end
 		return
 	end

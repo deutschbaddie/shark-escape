@@ -88,9 +88,9 @@ HUD.takeover = false
 local function carryText(d: any): string
 	local n = 1 + (d.bag or 0)
 	if n == 1 then
-		return ("%s: bring it home to your tank!"):format(Config.fullName(d.carrying.z, d.carrying.r, d.carrying.m, d.carrying.s))
+		return ("%s: bring it home!"):format(Config.fullName(d.carrying.z, d.carrying.r, d.carrying.m, d.carrying.s))
 	end
-	return ("Haul of %d · x%s cash at your dock: bring it home!"):format(n, ("%g"):format(Config.haulMult(n)))
+	return ("Haul of %d · x%s: bring it home!"):format(n, ("%g"):format(Config.haulMult(n)))
 end
 
 function HUD.goToRideShop()
@@ -715,7 +715,7 @@ local function sharkLine(pos: Vector3)
 		if safe then
 			text, sub, color = ("Night falls in %d"):format(left), "You're safe here", C.green
 		else
-			text, sub, color = ("Night falls in %d"):format(left), "Get to sand or an island", C.red
+			text, sub, color = ("Night falls in %d"):format(left), "Get to the sand!", C.red
 		end
 	else
 		local mine = SharkView.myHunter()
@@ -830,7 +830,7 @@ handlers.grab = function(d)
 	flyToTank(r.color)
 	-- the bigger the catch, the bigger the moment
 	if r.index >= 5 then
-		Notify.takeover(name, "A Legendary catch. Get it home safe", r.color, 1.8)
+		Notify.takeover(name, "Get it home safe!", r.color, 1.8)
 		Fx.shake(1.5)
 		Fx.sound("legendary", 0.8)
 	elseif d.lucky then
@@ -919,7 +919,7 @@ end
 
 handlers.tankFull = function(d)
 	Notify.banner(("Tank full! %d dead fish"):format(d.max or 10), { key = "tankFull", priority = 2, time = 4, color = C.red,
-		sub = "Sell some at the SELL hut, or equip them", icon = "Tank" })
+		sub = "Sell some at the Sell hut", icon = "Tank" })
 	Fx.sound("uiError", 0.6)
 	local pad = Travel.padPos("Sell")
 	if pad then
@@ -953,7 +953,7 @@ handlers.ride = function(d)
 	end
 	Fx.sound("buy", 0.8)
 	Fx.sound("rideNew", 0.8)
-	Notify.takeover("New ride", ("%s · +%s speed every second"):format(ride and ride.name or "", UI.short(d.gain)), C.gold, 1.6, "Rides")
+	Notify.takeover("New ride", ("%s · +%s speed/s"):format(ride and ride.name or "", UI.short(d.gain)), C.gold, 1.6, "Rides")
 	UI.pop(speedPill, 1.15)
 end
 
@@ -964,13 +964,13 @@ end
 handlers.aggro = function(d)
 	local name = tostring(d.shark or "Shark"):gsub("(%l)(%u)", "%1 %2")
 	if d.why == "chum" then
-		Notify.takeover("Chummed", ("%s threw chum at you. The %s is coming!"):format(tostring(d.by or "Someone"), name), C.red, 1.4, "Shark")
+		Notify.takeover("Chummed", ("%s chummed you! %s coming!"):format(tostring(d.by or "Someone"), name), C.red, 1.4, "Shark")
 	else
 		-- (the one line that teaches it: the hungry shark wants the biggest haul)
-		local sub = ({ hunger = "It's starving and you've got the biggest haul. Get to the sand!",
-			reel = "Reel it in before it reaches you" } :: any)[d.why]
+		local sub = ({ hunger = "Biggest haul! Get to the sand!",
+			reel = "Reel it in fast!" } :: any)[d.why]
 		Notify.banner(d.why == "hunger" and ("The %s is coming for you"):format(name) or ("The %s noticed you"):format(name), { key = "aggro", priority = 4, time = 2.6, color = C.red,
-			sub = sub or "Get to sand or an island" })
+			sub = sub or "Get to the sand!" })
 	end
 	Fx.sound("sharkAlarm", 0.7)
 	Fx.shake(0.5)
@@ -986,12 +986,12 @@ end
 handlers.madeIt = function(d)
 	local n = d.carried or 0
 	Notify.banner("You made it", { key = "madeIt", priority = 4, time = 2.4, color = C.gold,
-		sub = ("+%s speed%s"):format(UI.short(d.amount or 0), n > 0 and (" · now get %s to your tank"):format(n == 1 and "it" or "them") or "") })
+		sub = ("+%s speed%s"):format(UI.short(d.amount or 0), n > 0 and " · now to your tank!" or "") })
 	Fx.sound("dodge", 1)
 end
 
 handlers.net = function(d)
-	Notify.takeover(d.name, ("Carry %d creatures per trip. A bite loses them all"):format(d.cap), C.blue, 1.8)
+	Notify.takeover(d.name, ("Carry %d per trip!"):format(d.cap), C.blue, 1.8)
 	Fx.sound("buy", 0.8)
 end
 
@@ -1002,7 +1002,7 @@ end
 handlers.unlock = function(d)
 	local zone = Config.zoneById(d.zone)
 	if zone then
-		Notify.takeover(zone.name, "You're fast enough now · rarer creatures, bigger sharks", C.gold, 1.8, zone.id)
+		Notify.takeover(zone.name, "Rarer creatures, bigger sharks!", C.gold, 1.8, zone.id)
 		Fx.sound("zoneUnlock", 0.8)
 		local pos = myPos()
 		if pos then
@@ -1018,7 +1018,7 @@ handlers.tooDeep = function(d)
 	local zone = Config.zoneById(d.zone)
 	local shark = zone and zone.shark:gsub("(%l)(%u)", "%1 %2") or "shark"
 	Notify.banner("Too deep for your speed", { key = "deep", priority = 4, time = 3.5, color = C.red,
-		sub = ("The %s hunts you nonstop here. Recommended: %s speed"):format(shark, UI.short(d.need or 0)) })
+		sub = ("The %s hunts you here! Need %s speed"):format(shark, UI.short(d.need or 0)) })
 	Fx.sound("sharkAlarm", 0.6)
 end
 
@@ -1085,7 +1085,7 @@ local function onPhase(kind: string, data: any)
 		phase, phaseEnds = "warning", os.clock() + (data.duration or 5)
 		local pos = myPos()
 		local exposed = pos ~= nil and not Layout.isSafe(pos)
-		Notify.takeover("Night falls", exposed and "Sharks hunt everyone till dawn: get to sand or an island!" or "Stay on the sand and you're safe till dawn", C.red, 1.4, "Shark")
+		Notify.takeover("Night falls", exposed and "Sharks hunt everyone. Get to the sand!" or "Stay on the sand till dawn", C.red, 1.4, "Shark")
 		Water.setSafeGlow(true)
 		Fx.sound("sharkAlarm", 0.8)
 		-- the horizon breach: a shark leaps where you can see it
@@ -1118,7 +1118,7 @@ local function onPhase(kind: string, data: any)
 		Water.setSafeGlow(false)
 		Notify.clear("shark")
 		if was then
-			Notify.toast("Dawn! The sharks are gone. Back to the water!", C.green)
+			Notify.toast("Sharks gone! Back to the water!", C.green)
 		end
 	end
 end

@@ -758,6 +758,10 @@ Config.Shark = {
 	stalkEnd = 13,
 	chargeMult = 1.35, -- charge speed vs the zone's shark speed...
 	chargeVsPlayer = 1.22, -- ...and never slower than this x your top speed
+	-- the first zones (Shark Beach) are kinder: the charge only matches you
+	-- (Lagoon) or just beats you (Coral Reef), so riding straight home works
+	easyCharge = { 1.0, 1.08 }, -- x your top speed, by zone index
+	easyMin = 24, -- (never slower than this)
 	chargeRadius = 26, -- turning circle while charging (studs): same feel at any speed
 	chargeGiveUp = 4,
 	lungeRange = 22, -- commits to the leap this close (studs)...

@@ -91,7 +91,7 @@ function PlayGifts.start()
 			Notify.takeover("Free gift", tostring(data.text), UI.C.gold, 1.6)
 			Fx.sound("discover", 0.8)
 			if data.last then
-				Notify.toast("That's every gift this session. Thanks for playing!", UI.C.gold)
+				Notify.toast("All gifts claimed!", UI.C.gold)
 			end
 		end
 	end)

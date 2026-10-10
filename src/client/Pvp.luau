@@ -165,10 +165,10 @@ function safeSign(m: Model, owner: any)
 	if mine and why ~= myGuard then
 		if myGuard == "home" and why == nil and not toldOut then
 			toldOut = true
-			Notify.toast("Off the beach: your tank can be raided until you're back", RED)
+			Notify.toast("Your tank can be raided now", RED)
 		elseif myGuard == nil and why == "home" and not toldHome then
 			toldHome = true
-			Notify.toast("Home: your tank is safe from raids", GREEN)
+			Notify.toast("Home: your tank is safe", GREEN)
 		end
 		myGuard = why
 	end
@@ -222,7 +222,7 @@ local function raidTick()
 	local left = raidEnds - os.clock()
 	if left > 0 then
 		Notify.banner(("RAIDING... %d"):format(math.ceil(left)), { key = "raid", sticky = true, priority = 6, color = RED,
-			sub = "Stay by the tank! If they get home first, you're thrown off" })
+			sub = "Stay by the tank!" })
 	end
 	local dleft = defendEnds - os.clock()
 	-- (a raid that ended without word: never leave the banner up)
@@ -232,7 +232,7 @@ local function raidTick()
 	end
 	if dleft > 0 then
 		Notify.banner(("Your tank is being raided, %d"):format(math.ceil(dleft)), { key = "raid", sticky = true, priority = 6, color = RED,
-			sub = defendBy .. " is stealing from you. Get back to your dock!" })
+			sub = defendBy .. " is robbing you. Rush home!" })
 	end
 end
 
@@ -241,7 +241,7 @@ local handlers: { [string]: (any) -> () } = {}
 
 handlers.chumThrown = function(d)
 	chumReadyAt = os.clock() + (d.cooldown or Config.Chum.cooldown)
-	Notify.toast(("Chummed %s! The shark is on its way"):format(tostring(d.name)), RED)
+	Notify.toast(("Chummed %s!"):format(tostring(d.name)), RED)
 	Fx.sound("splash", 0.8, 0.8)
 end
 
@@ -261,7 +261,7 @@ end
 
 handlers.raidStart = function(d)
 	raidEnds = os.clock() + (d.seconds or Config.Raid.time)
-	Notify.toast(("Raiding %s's tank. They've been warned!"):format(tostring(d.name)), RED)
+	Notify.toast(("Raiding %s's tank!"):format(tostring(d.name)), RED)
 end
 
 handlers.raidWon = function(d)
@@ -282,7 +282,7 @@ handlers.raidDefended = function(d)
 	elseif d.gaveUp then
 		Notify.toast(("%s gave up the raid"):format(tostring(d.by)), C.green)
 	else
-		Notify.takeover("Defended", ("You got home in time. %s got thrown off!"):format(tostring(d.by)), C.green, 1.6)
+		Notify.takeover("Defended", ("%s got thrown off!"):format(tostring(d.by)), C.green, 1.6)
 		Fx.sound("dodge", 0.9)
 	end
 end

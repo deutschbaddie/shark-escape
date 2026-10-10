@@ -114,7 +114,10 @@ Layout.Boards = {
 }
 Layout.Board = Layout.Boards[2].pos -- the middle one (palms keep clear of the row)
 Layout.GroupChest = Vector3.new(36, Config.BEACH_TOP, -66) -- "Join Group / Like to Claim!"
-Layout.Portal = Vector3.new(-40, Config.BEACH_TOP, -72) -- to the other world (mirrors the chest)
+-- to the other world: off in the back-right corner (behind the last dock,
+-- right of the Sell hut), turned to face the plaza, out of everyone's way
+Layout.Portal = Vector3.new(134, Config.BEACH_TOP, -80)
+Layout.PORTAL_YAW = math.pi / 2
 Layout.Warp = Vector3.new(-22, Config.BEACH_TOP, -7) -- zone warp signpost on the sand
 Layout.EventBoard = Vector3.new(38, Config.BEACH_TOP, -112) -- Megalodon Hour / next update countdowns
 

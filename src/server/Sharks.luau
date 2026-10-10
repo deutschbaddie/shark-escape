@@ -131,9 +131,16 @@ local function clampLane(p: Vector3): Vector3
 end
 
 -- the charge never loses a straight race: faster than the zone's shark
--- speed or your own top speed, whichever is higher
+-- speed or your own top speed, whichever is higher (except the first two
+-- zones, Config.Shark.easyCharge, where kids can just ride home)
 local function chargeSpeed(h: Hunter, s: Game.Session): number
 	local cfg = Config.Shark
+	local hrp = Game.root(s.player)
+	local zone = hrp and Config.zoneAtPos(hrp.Position)
+	local easy = zone and zone.world == 1 and cfg.easyCharge[zone.index]
+	if easy then
+		return math.max(Game.walkSpeed(s) * easy, cfg.easyMin)
+	end
 	return math.max(h.speed * cfg.chargeMult, Game.walkSpeed(s) * cfg.chargeVsPlayer)
 end
 

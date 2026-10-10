@@ -80,7 +80,7 @@ local function tick()
 	if not taught and d and d.tut >= 5 and (d.playtime or 0) < 3600 then
 		taught = true
 		Notify.banner("Shark hunger", { key = "hungerTip", priority = 3, time = 4.5, color = ORANGE,
-			sub = "Every grab fills it. When it's full, the shark goes for the biggest haul" })
+			sub = "Grabs fill it. Full = it hunts the biggest haul" })
 	end
 	local k = math.clamp(v / 100, 0, 1)
 	fill.Size = UDim2.fromScale(k, 1)
@@ -146,12 +146,12 @@ local function onSpill(d: any)
 		-- yours: once you've washed up, go get it back
 		task.delay(Config.Shark.eatenTime + 1, function()
 			Notify.banner("Your haul spilled", { key = "spill", priority = 3, time = 4, color = ORANGE,
-				sub = "It floats where you got bitten for a while. Grab it back before someone else does" })
+				sub = "Grab it back fast!" })
 		end)
 		spillUntil = os.clock() + time
 		Guide.set("spill", at, "Your haul")
 	elseif hrp and Config.worldAt(hrp.Position) == Config.worldAt(at) and (hrp.Position - at).Magnitude < 350 then
-		Notify.toast(("%s got bitten. Their haul is up for grabs"):format(tostring(d.name)), ORANGE)
+		Notify.toast(("%s's haul is up for grabs!"):format(tostring(d.name)), ORANGE)
 		spillUntil = os.clock() + math.min(time, 20)
 		Guide.set("spill", at, "Loot")
 	else

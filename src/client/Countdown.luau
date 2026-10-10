@@ -59,7 +59,7 @@ local function tick()
 	end
 	if live then
 		Notify.banner(Config.Event.name, { key = "event", sticky = true, priority = 1, color = RED,
-			sub = ("x3 luck · 2x coins · the boss Megalodon · %s left"):format(long(ends - now)) })
+			sub = ("x3 luck · 2x cash · boss · %s left"):format(long(ends - now)) })
 	else
 		Notify.clear("event")
 	end
@@ -76,7 +76,7 @@ function Countdown.start()
 	end)
 	Remotes.get("Notify").OnClientEvent:Connect(function(kind)
 		if kind == "event" then
-			Notify.takeover(Config.Event.name, "x3 luck, 2x coins, and the boss Megalodon surfaces soon", RED, 2.4, "Shark")
+			Notify.takeover(Config.Event.name, "x3 luck, 2x cash, and a boss!", RED, 2.4, "Shark")
 			Fx.sound("sharkAlarm", 0.9)
 			Fx.shake(1)
 		end

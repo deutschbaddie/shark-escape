@@ -100,7 +100,7 @@ local function tick()
 		button.BackgroundColor3 = wait > 0 and T.navyLight or RED
 	end
 	Guide.set("boss", not inRange and Vector3.new(sh.pos.X, 4, sh.pos.Z) or nil, "Megalodon")
-	local sub = ("Harpoon it %d+ times for a Legendary · %d%% left"):format(Config.Boss.minHits, math.ceil(k * 100))
+	local sub = ("%d+ hits = a Legendary · %d%% left"):format(Config.Boss.minHits, math.ceil(k * 100))
 	if sub ~= shownSub then
 		shownSub = sub
 		Notify.banner("The Megalodon is up", { key = "boss", sticky = true, priority = 2, color = RED, sub = sub })
@@ -185,7 +185,7 @@ function Boss.start()
 		if kind == "boss" then
 			if data.world == myWorld() then
 				Notify.banner("The Megalodon surfaced", { key = "bossUp", color = RED, priority = 3, time = 5,
-					sub = ("Over %s. Everyone harpoon it for a Legendary"):format(tostring(data.zone)) })
+					sub = "Harpoon it for a Legendary!" })
 				Fx.sound("sharkAlarm", 0.9)
 				Fx.shake(1.2)
 				Fx.edgeWarn(Vector3.new(data.x, 0, data.z), 1.5, RED)
@@ -201,7 +201,7 @@ function Boss.start()
 				end
 				Fx.sound("legendary", 0.9)
 				Notify.banner("The Megalodon is down", { color = T.gold, priority = 3, time = 5,
-					sub = ("Everyone with %d+ harpoon hits gets a Legendary"):format(Config.Boss.minHits) })
+					sub = ("%d+ hits = a Legendary!"):format(Config.Boss.minHits) })
 			end
 		elseif kind == "bossGone" then
 			if data.world == myWorld() then
@@ -211,7 +211,7 @@ function Boss.start()
 	end)
 	Remotes.get("Notify").OnClientEvent:Connect(function(kind)
 		if kind == "bossReward" then
-			Notify.toast("Your Legendary from the Megalodon", T.gold)
+			Notify.toast("Boss Legendary!", T.gold)
 		end
 	end)
 end

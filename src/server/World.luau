@@ -1041,7 +1041,7 @@ end
 local function buildPortal()
 	local other = Config.Worlds[WORLD == 1 and 2 or 1]
 	local m = Build.model("Portal", map)
-	local base = CFrame.new(Layout.Portal)
+	local base = CFrame.new(Layout.Portal) * CFrame.Angles(0, Layout.PORTAL_YAW, 0)
 	local col, trim = other.color, other.color:Lerp(C(255, 255, 255), 0.5)
 	studAll(Build.part(m, Vector3.new(18, 1, 8), base * CFrame.new(0, 0.5, 0), C(70, 74, 100), { Name = "Base" }))
 	for _, sx in { -1, 1 } do

@@ -100,7 +100,7 @@ local function chum(s: Game.Session, targetId: any)
 		return
 	end
 	if not veteran(s, cfg.minPlaytime) then
-		Game.notify(s.player, "announce", { text = "Chum unlocks after 5 minutes of play" })
+		Game.notify(s.player, "announce", { text = "Chum unlocks after 5 minutes" })
 		return
 	end
 	if (a.Position - b.Position).Magnitude > cfg.range or not veteran(t, cfg.minPlaytime) or not atSea(t) then
@@ -119,7 +119,7 @@ local function chum(s: Game.Session, targetId: any)
 	end
 	local ok = Game.sharkAggro and Game.sharkAggro(t, cfg.grudge, "chum", s.player.DisplayName)
 	if not ok then
-		Game.notify(s.player, "announce", { text = "No shark would come right now" })
+		Game.notify(s.player, "announce", { text = "No shark came" })
 		return
 	end
 	chumAt[s.player] = now
@@ -201,7 +201,7 @@ local function startRaid(s: Game.Session, plotIndex: any)
 		return no("That tank is locked")
 	end
 	if home(v) then
-		return no("They're home: tanks can only be raided while the owner is out at sea")
+		return no("They're home: tank is safe")
 	end
 	if #v.profile.creatures < 2 then
 		return no("Nothing worth taking")
