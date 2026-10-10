@@ -458,7 +458,9 @@ end
 
 
 ----------------------------------------------------------------- safe rings during attacks
+local safeGlow = false
 function Water.setSafeGlow(on: boolean)
+	safeGlow = on
 	for _, island in CollectionService:GetTagged("Island") do
 		local ring = island:FindFirstChild("SafeRing", true)
 		if ring and ring:IsA("BasePart") then
@@ -473,6 +475,7 @@ local RING_GREEN = Color3.fromRGB(80, 255, 140)
 local RING_YELLOW = Color3.fromRGB(255, 220, 60)
 local RING_RED = Color3.fromRGB(255, 50, 60)
 local ringByIsland: { [number]: BasePart } = {}
+local lockedRing: { [number]: boolean } = {} -- islands in water too deep for you: never shelter
 local ringScanAt = -1e9
 
 local function islandRing(i: number): BasePart?
@@ -509,7 +512,7 @@ function Water.setIslandShelter(i: number, frac: number?)
 		return
 	end
 	if frac == nil then
-		ring.Color = RING_GREEN
+		ring.Color = lockedRing[i] and RING_RED or RING_GREEN
 	elseif frac > 0.5 then
 		ring.Color = RING_YELLOW:Lerp(RING_GREEN, (frac - 0.5) * 2)
 	elseif frac > 0 then
@@ -518,6 +521,24 @@ function Water.setIslandShelter(i: number, frac: number?)
 		local pulse = 0.5 + 0.5 * math.sin(os.clock() * 12)
 		ring.Color = RING_RED:Lerp(Color3.fromRGB(90, 0, 10), pulse)
 		ring.Transparency = 0.1
+	end
+end
+
+-- an island in a biome you can't fish yet: its ring is red, and while you
+-- stand on it (`standing`) it shows and flashes like a sunk one
+function Water.setIslandLocked(i: number, locked: boolean, standing: boolean?)
+	lockedRing[i] = locked or nil
+	local ring = islandRing(i)
+	if not ring then
+		return
+	end
+	if locked and standing then
+		local pulse = 0.5 + 0.5 * math.sin(os.clock() * 12)
+		ring.Color = RING_RED:Lerp(Color3.fromRGB(90, 0, 10), pulse)
+		ring.Transparency = 0.1
+	else
+		ring.Color = locked and RING_RED or RING_GREEN
+		ring.Transparency = safeGlow and 0.25 or 1
 	end
 end
 

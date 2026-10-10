@@ -557,6 +557,11 @@ end
 
 -- Game.huntable asks this for a player standing on an island
 local function islandExposed(s: Game.Session, island: Layout.Island): boolean
+	-- an island in a biome you can't fish yet never shelters you
+	local zone = Config.zoneById(island.zone)
+	if zone and (zone.gate > s.profile.speed or (zone.evolve or 0) > s.profile.rebirths) then
+		return true
+	end
 	if phase ~= "hunt" then
 		return false
 	end

@@ -901,7 +901,48 @@ local function shelterReset()
 	end
 end
 
+-- islands in a biome you're too slow (or not evolved enough) for give no
+-- shelter at all (the server agrees): red rings, and a warning on them
+local lockedIsl: { [number]: boolean } = {}
+local lockedScanAt, lockedOn = 0, nil :: number?
+local function islandLocked(island: Layout.Island): boolean
+	local d = State.data
+	local zone = Config.zoneById(island.zone)
+	return d ~= nil and zone ~= nil and (zone.gate > d.speed or (zone.evolve or 0) > (d.rebirths or 0))
+end
+
+local function updateLocked()
+	local now = os.clock()
+	if now - lockedScanAt > 0.5 then
+		lockedScanAt = now
+		for i, island in Layout.Islands do
+			local locked = islandLocked(island)
+			if (lockedIsl[i] or false) ~= locked then
+				lockedIsl[i] = locked or nil
+				Water.setIslandLocked(i, locked)
+			end
+		end
+	end
+	local hrp = myRoot()
+	local island = hrp and Layout.inWater(hrp.Position) and Layout.islandAt(hrp.Position, 0.5)
+	local i = island and table.find(Layout.Islands, island)
+	local on = i and lockedIsl[i] and i or nil
+	if lockedOn and lockedOn ~= on then
+		Water.setIslandLocked(lockedOn, lockedIsl[lockedOn] == true)
+		Notify.clear("islandLocked")
+	end
+	lockedOn = on
+	if on then
+		Water.setIslandLocked(on, true, true)
+		local zone = Config.zoneById((island :: Layout.Island).zone)
+		local need = zone and (zone.evolve or 0) > ((State.data and State.data.rebirths) or 0)
+		Notify.banner("No shelter here!", { key = "islandLocked", priority = 6, time = 0.6, color = UI.C.red,
+			sub = need and "Not evolved enough. Islands won't save you!" or "Too deep for you. Islands won't save you!" })
+	end
+end
+
 updateShelter = function(dt: number)
+	updateLocked()
 	local i = shelter.i
 	if not i then
 		return
