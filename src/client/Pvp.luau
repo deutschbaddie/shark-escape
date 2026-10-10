@@ -256,6 +256,7 @@ handlers.raided = function(d)
 	defendEnds = os.clock() + (d.seconds or Config.Raid.time)
 	defendBy = tostring(d.by)
 	Notify.takeover("Raid", ("%s is robbing your tank. Rush home!"):format(defendBy), RED, 1.6)
+	Notify.chat(("%s is robbing your tank!"):format(defendBy), nil, "RAID", true)
 	Fx.sound("sharkAlarm", 1)
 	Guide.set("raid", Vector3.new(d.x, d.y + 2, d.z), "Your tank")
 end
@@ -268,12 +269,14 @@ end
 handlers.raidWon = function(d)
 	clearRaid()
 	Notify.takeover("Stolen", ("%s from %s. Get it home!"):format(tostring(d.name), tostring(d.from)), C.gold, 1.8)
+	Notify.chat(("You stole a %s from %s!"):format(tostring(d.name), tostring(d.from)), nil, "RAID", true)
 	Fx.sound("legendary", 0.8)
 end
 
 handlers.raidLost = function(d)
 	clearRaid()
 	Notify.takeover("Robbed", ("%s stole your %s"):format(tostring(d.by), tostring(d.name)), RED, 2)
+	Notify.chat(("%s stole your %s"):format(tostring(d.by), tostring(d.name)), nil, "RAID", true)
 end
 
 handlers.raidDefended = function(d)
@@ -284,6 +287,7 @@ handlers.raidDefended = function(d)
 		Notify.toast(("%s gave up the raid"):format(tostring(d.by)), C.green)
 	else
 		Notify.takeover("Defended", ("%s got thrown off!"):format(tostring(d.by)), C.green, 1.6)
+		Notify.chat(("You stopped %s's raid!"):format(tostring(d.by)), nil, "RAID", true)
 		Fx.sound("dodge", 0.9)
 	end
 end

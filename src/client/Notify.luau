@@ -339,14 +339,42 @@ function Notify.toast(text: string, color: Color3?)
 	pumpToasts()
 end
 
--- other players' news: a line in the chat log, not on your screen
+-- The chat log keeps a record of the big moments, styled as a colored tag
+-- and a line:  [NEW ZONE] You reached the Coral Reef!
+-- It never floods: the same line twice within 30 s is dropped, and other
+-- players' news (mine = false) shares a small budget (3 lines, one more
+-- every 10 s); your own milestones always get through.
 local TextChatService = game:GetService("TextChatService")
-function Notify.chat(text: string, color: Color3?)
+local CHAT_TAGS: { [string]: Color3 } = {
+	["BIG CATCH"] = Color3.fromRGB(255, 200, 60), MYTHIC = Color3.fromRGB(255, 60, 110), ["NEW ZONE"] = Color3.fromRGB(110, 230, 140),
+	EVOLVED = Color3.fromRGB(110, 230, 140), ["NEW RIDE"] = Color3.fromRGB(255, 200, 60), EVENT = Color3.fromRGB(110, 210, 255),
+	RAID = Color3.fromRGB(255, 120, 90), TREASURE = Color3.fromRGB(255, 200, 60), NEWS = Color3.fromRGB(200, 210, 230),
+}
+local chatSeen: { [string]: number } = {}
+local chatBudget, chatBudgetAt = 3, os.clock()
+function Notify.chat(text: string, color: Color3?, tag: string?, mine: boolean?)
+	local now = os.clock()
+	if now - (chatSeen[text] or -1e9) < 30 then
+		return
+	end
+	if not mine then
+		chatBudget = math.min(3, chatBudget + (now - chatBudgetAt) / 10)
+		chatBudgetAt = now
+		if chatBudget < 1 then
+			return
+		end
+		chatBudget -= 1
+	end
+	chatSeen[text] = now
+	local label = tag or "NEWS"
+	local tagColor = CHAT_TAGS[label] or color or C.gold
+	local body = (color or Color3.fromRGB(235, 242, 255)):Lerp(Color3.new(1, 1, 1), 0.35)
 	pcall(function()
 		local channels = TextChatService:FindFirstChild("TextChannels")
 		local system = channels and channels:FindFirstChild("RBXSystem") :: TextChannel?
 		if system then
-			system:DisplaySystemMessage(("<font color=\"#%s\"><b>%s</b></font>"):format((color or C.gold):ToHex(), text))
+			system:DisplaySystemMessage(('<font color="#%s"><b>[%s]</b></font> <font color="#%s">%s</font>'):format(
+				tagColor:ToHex(), label, body:ToHex(), text))
 		end
 	end)
 end

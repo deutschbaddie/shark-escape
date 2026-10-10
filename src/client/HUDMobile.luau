@@ -954,6 +954,7 @@ handlers.ride = function(d)
 	end
 	Fx.sound("buy", 0.8)
 	Fx.sound("rideNew", 0.8)
+	Notify.chat(("You got the %s!"):format(ride and ride.name or "new ride"), nil, "NEW RIDE", true)
 	Notify.takeover("New ride", ("%s · +%s speed/s"):format(ride and ride.name or "", UI.short(d.gain)), C.gold, 1.6, "Rides")
 	UI.pop(speedPill, 1.15)
 end
@@ -1009,6 +1010,7 @@ end
 handlers.unlock = function(d)
 	local zone = Config.zoneById(d.zone)
 	if zone then
+		Notify.chat(("You reached %s!"):format(zone.name), nil, "NEW ZONE", true)
 		Notify.takeover(zone.name, "Rarer creatures, bigger sharks!", C.gold, 1.8, zone.id)
 		Fx.sound("zoneUnlock", 0.8)
 		local pos = myPos()
@@ -1078,6 +1080,7 @@ end
 handlers.rebirth = function(d)
 	Fx.flash(Color3.new(1, 1, 1), 0.8, 0)
 	Fx.sound("rebirth", 0.8)
+	Notify.chat(d.biome and ("You evolved! %s is open"):format(d.biome) or "You evolved!", nil, "EVOLVED", true)
 	Notify.takeover("You evolved", d.biome and ("%s is open"):format(d.biome) or ("x%s speed for good"):format(tostring(Config.Rebirth.mult ^ d.rebirths)), C.green, 2, "Rebirth")
 	-- a party where you stand, and the newly opened biome's line lights up
 	local pos = myPos()
@@ -1101,8 +1104,11 @@ end
 
 handlers.announce = function(d)
 	if d.news then
+		if d.by == player.UserId then
+			return -- (your own evolve has its own line)
+		end
 		-- server-wide news goes to the chat log; only a Mythic sighting gets a toast
-		Notify.chat(d.text, d.color or C.gold)
+		Notify.chat(d.text, d.color, d.big and "MYTHIC" or (d.evolved and "EVOLVED" or "NEWS"))
 		if not d.big then
 			return
 		end

@@ -96,6 +96,7 @@ local function miniStart(id: string)
 		return
 	end
 	Notify.banner(def.name, { key = "mini", priority = 3, time = 4, color = def.color, sub = def.desc })
+	Notify.chat(("%s! %s"):format(def.name, def.desc), nil, "EVENT", true)
 	Fx.sound("discover", 0.9)
 	if id == "golden" then
 		-- a warm gold wash that eases off to a gentle tint for the event
@@ -202,6 +203,7 @@ function Countdown.start()
 		end
 		if kind == "event" then
 			Notify.takeover(Config.Event.name, "x3 luck, 2x cash, and a boss!", RED, 2.4, "Shark")
+			Notify.chat(("%s! x3 luck, 2x cash, and a boss"):format(Config.Event.name), nil, "EVENT", true)
 			Fx.sound("sharkAlarm", 0.9)
 			Fx.shake(1)
 		end

@@ -20,7 +20,8 @@ function News.start()
 		end
 		local color = Config.rarity(data.r or "Legendary").color
 		local text = ("%s caught a %s!"):format(tostring(data.by), tostring(data.name))
-		Notify.chat(text, color)
+		local mine = data.userId == player.UserId
+		Notify.chat(mine and ("You caught a %s!"):format(tostring(data.name)) or text, color, data.r == "Mythic" and "MYTHIC" or "BIG CATCH", mine)
 		-- (the catcher gets their own big moment; everyone else just sees the
 		-- chat line, except for a Mythic: rare enough to share the screen)
 		if data.userId ~= player.UserId and data.r == "Mythic" then

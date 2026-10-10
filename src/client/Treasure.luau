@@ -56,6 +56,7 @@ function Treasure.start()
 				sub ..= ("  +%s creature!"):format(tostring(data.creature))
 			end
 			Notify.takeover("Treasure", sub, GOLD, 2)
+			Notify.chat("You opened a treasure chest!", nil, "TREASURE", true)
 		elseif data.kind == "claimed" or data.kind == "gone" then
 			live[data.world] = nil
 			if data.world == myWorld() then
