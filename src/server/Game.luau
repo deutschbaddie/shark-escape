@@ -820,13 +820,14 @@ function Game.bite(s: Session, sharkPos: Vector3): string
 	if not hrp then
 		return "none"
 	end
-	if s.profile.shields > 0 then
+	if s.profile.shields > 0 and s.carrying then -- (only spent when there's a catch to save)
 		s.profile.shields -= 1
 		s.eatenUntil = os.clock() + 2.5
 		Game.notify(s.player, "shield", { from = sharkPos })
 		s.dirty = true
 		return "shield"
 	end
+	s.lastLost, s.lastLostSpill = nil, nil -- (only this bite's loss can be rescued)
 	if s.carrying then
 		Game.notify(s.player, "lost", { r = s.carrying.r, m = s.carrying.m, z = s.carrying.z, s = s.carrying.s, extra = s.bag and #s.bag or 0 })
 		s.lastLost = s.carrying -- the 9 R$ "Save Your Creature" offer can return it
@@ -851,7 +852,8 @@ function Game.bite(s: Session, sharkPos: Vector3): string
 			local x = math.clamp(h.Position.X, ox - Config.LANE_WIDTH / 2 + 10, ox + Config.LANE_WIDTH / 2 - 10)
 			h.Anchored = false
 			h.Parent:PivotTo(CFrame.new(x, 14, Config.SHORE_Z - 4) * CFrame.Angles(0, math.pi, 0))
-			Game.notify(s.player, "spat", {})
+			local lost = s.lastLost
+			Game.notify(s.player, "spat", { lost = lost and Config.fullName(lost.z, lost.r, lost.m, lost.s) or nil })
 		end
 	end)
 	return "eaten"

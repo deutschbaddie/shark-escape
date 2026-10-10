@@ -60,7 +60,8 @@ local function pick(s: Game.Session, hrp: BasePart, reach: number, sea: boolean)
 	local best, bestRoot, bestScore = nil, nil, -math.huge
 	for _, t in Game.sessions do
 		local troot = t ~= s and (lootCarrier(t) or (sea and atSea(t)))
-		if troot and (brawler(t) or t.raidLoot ~= nil) and os.clock() >= t.eatenUntil and os.clock() - (bonkedAt[t.player] or -1e9) >= Config.Bonk.immune
+		-- (only riders with something to knock loose: no bonking empty-handed kids around)
+		if troot and (Game.carryCount(t) > 0 or t.raidLoot ~= nil) and (brawler(t) or t.raidLoot ~= nil) and os.clock() >= t.eatenUntil and os.clock() - (bonkedAt[t.player] or -1e9) >= Config.Bonk.immune
 			and Config.worldAt(troot.Position) == Config.worldAt(hrp.Position) then
 			local rel = (troot.Position - hrp.Position) * Vector3.new(1, 0, 1)
 			local d = rel.Magnitude
@@ -145,7 +146,15 @@ local function swing(s: Game.Session)
 	end
 	bonkedAt[t.player] = now
 	local at = troot.Position
-	if t.profile.shields > 0 and Game.carryCount(t) > 0 then -- (only spent when there's loot to save)
+	-- a shield is only spent saving a haul worth it (Epic or better), so a
+	-- pack of bonkers can't burn through someone's shields
+	local precious = false
+	for _, c in { t.carrying, table.unpack(t.bag or {}) } do
+		if c and Config.rarity(c.r).index >= Config.rarity("Epic").index then
+			precious = true
+		end
+	end
+	if t.profile.shields > 0 and precious then
 		t.profile.shields -= 1
 		t.dirty = true
 		Game.notifyAll("bonkHit", { x = at.X, y = at.Y, z = at.Z, by = s.player.UserId, target = t.player.UserId, shield = true })

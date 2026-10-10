@@ -376,7 +376,9 @@ end
 
 function SharkView.myHunter(): any
 	for id, sh in sharks do
-		if id > 0 and sh.victim == player.UserId and (sh.state == "stalk" or sh.state == "chase" or sh.state == "overshoot" or sh.state == "lunge") then
+		-- (not the boss: a noodle can't daze the Megalodon)
+		if id > 0 and sh.victim == player.UserId and id ~= Workspace:GetAttribute("BossId1")
+			and (sh.state == "stalk" or sh.state == "chase" or sh.state == "overshoot" or sh.state == "lunge") then
 			return sh
 		end
 	end
@@ -465,6 +467,11 @@ Remotes.get("Sharks").OnClientEvent:Connect(function(list)
 		sh.lastSnap = now
 		local state = STATE_NAMES[st] or "chase"
 		if state == "leave" and sh.state ~= "leave" and not sh.dived then
+			sh.sinkT = 0
+		end
+		-- (the boss carries on after a bite: it comes back up from its leap)
+		if sh.dived and not sh.extra and state ~= "leave" and state ~= "bite" then
+			sh.dived = false
 			sh.sinkT = 0
 		end
 		sh.state = state

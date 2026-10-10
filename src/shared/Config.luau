@@ -843,6 +843,7 @@ Config.Codes = {
 -- in open water gets hunted until dawn; night catches are luckier (frenzy).
 -- Dawn sends every shark home: a clean slate.
 Config.Shark = {
+	escapeMinOut = 60, -- the escape reward only for a chase that began this far out from the sand
 	prizeGrudge = 14, -- grab a Legendary or Mythic: its shark hunts you this long
 	stolenMax = 4, -- a catch from too deep: up to this many sharks after you at once
 	stolenStalk = 0.35, -- ...and they circle this much shorter before charging

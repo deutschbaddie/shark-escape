@@ -67,6 +67,7 @@ type Hunter = {
 	lastSpd: number,
 	lastSpdAt: number,
 	accel: number,
+	chaseZ: number?, -- where its target was when it started charging
 	aggroUntil: number?, -- a daytime shark you drew by grabbing: hunts until then
 }
 
@@ -231,6 +232,10 @@ local function madeIt(h: Hunter, hrp: BasePart)
 	if os.clock() - (s.wentOutAt or os.clock()) < cfg.escapeMinSea then
 		return
 	end
+	-- a real chase from out at sea, not a toe dipped off the sand to farm it
+	if (h.chaseZ or Config.SHORE_Z) - Config.SHORE_Z < cfg.escapeMinOut then
+		return
+	end
 	if flat(h.pos - hrp.Position).Magnitude > cfg.escapeRadius or os.clock() - (escapedAt[s.player] or 0) < cfg.closeCallCooldown then
 		return
 	end
@@ -344,6 +349,7 @@ local function update(dt: number)
 				h.pos = clampLane(h.pos + move)
 				pushOutOfIslands(h)
 				if h.timer >= h.stalkTime then
+					h.chaseZ = (hrp :: BasePart).Position.Z -- (how far out the chase began: the escape reward)
 					h.state, h.timer = "charge", 0
 					h.lastSpd, h.lastSpdAt, h.accel = flat((hrp :: BasePart).AssemblyLinearVelocity).Magnitude, os.clock(), 0
 					EventRemote:FireAllClients("charge", { id = h.id, victim = (s :: Game.Session).player.UserId })
@@ -391,7 +397,8 @@ local function update(dt: number)
 				if alive then
 					landedAt[(s :: Game.Session).player] = os.clock()
 				end
-				if alive and Game.huntable(s :: Game.Session) then
+				-- (dawn while it was in the air: it splashes down harmlessly)
+				if alive and hunting(h) and Game.huntable(s :: Game.Session) then
 					local p = (hrp :: BasePart).Position
 					local d = Vector2.new(p.X - h.to.X, p.Z - h.to.Z).Magnitude
 					local wet = Layout.inWater(p) and not Layout.islandAt(p, 0)
@@ -892,6 +899,11 @@ function Sharks.harpoon(s: Game.Session)
 	end
 	local b = bossIn(Config.worldAt(hrp.Position))
 	if not b or b.state == "leave" or flat(hrp.Position - b.pos).Magnitude > cfg.range then
+		return
+	end
+	-- out on the water with it (not from the safety of an island)
+	if not Layout.inWater(hrp.Position) or Layout.islandAt(hrp.Position, 0) then
+		Game.notify(s.player, "announce", { text = "Get in the water to harpoon it" })
 		return
 	end
 	thrownAt[s.player] = os.clock()

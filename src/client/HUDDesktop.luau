@@ -495,7 +495,7 @@ local function sharkLine(pos: Vector3)
 			if phase == "calm" then
 				text, sub, color = "A shark is after you", "You took from its waters: get to sand or an island", C.red
 			else
-				text, sub, color = "NIGHT: SHARKS HUNT EVERYONE", "Night catches are luckier... if you dare", C.gold
+				text, sub, color = "Night: sharks hunt everyone", "Night catches are luckier... if you dare", C.gold
 			end
 		end
 	end
@@ -752,7 +752,8 @@ handlers.lost = function()
 	-- the bite cutscene shows this (your creature gets eaten on screen)
 end
 
-handlers.spat = function()
+local shieldOffered = false
+handlers.spat = function(d)
 	quietTitlesUntil = os.clock() + 3
 	local pos = myPos()
 	if pos then
@@ -767,10 +768,17 @@ handlers.spat = function()
 	-- the jaws snap shut over the screen, then spit you out (in the biting shark's color)
 	Fx.jaws(nil, Config.biteColor(player:GetAttribute("BitBy") :: string?))
 	Fx.sound("spat", 0.8)
-	local d = State.data
-	if d and d.playtime >= Config.SHOP_UNLOCK_SECONDS and Config.Products.Shield.id ~= 0 then
-		local b = UI.button(gui, "Shield next time  R$" .. Config.Products.Shield.price, C.sky, function()
-			MarketplaceService:PromptProductPurchase(player, Config.Products.Shield.id)
+	-- one offer, only when it helps: get back what the shark just took, or
+	-- (once a session) a shield for next time
+	local data = State.data
+	local lost = typeof(d) == "table" and d.lost or nil
+	local rescue = lost ~= nil and Config.Products.Rescue.id ~= 0
+	local offer = rescue and Config.Products.Rescue or Config.Products.Shield
+	if data and data.playtime >= Config.SHOP_UNLOCK_SECONDS and offer.id ~= 0 and (rescue or not shieldOffered) then
+		shieldOffered = shieldOffered or not rescue
+		local label = rescue and ("Save your %s  R$%d"):format(lost, offer.price) or ("Shield next time  R$" .. offer.price)
+		local b = UI.button(gui, label, C.sky, function()
+			MarketplaceService:PromptProductPurchase(player, offer.id)
 		end, { Size = UDim2.fromOffset(260, 44), Position = UDim2.new(0.5, 0, 1, -168), AnchorPoint = Vector2.new(0.5, 1) })
 		task.delay(6, function()
 			b:Destroy()

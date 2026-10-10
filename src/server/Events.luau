@@ -136,7 +136,11 @@ function Events.start()
 				if on then
 					Game.notifyAll("event", { name = Config.Event.name })
 					lastBoss = os.clock()
-					task.delay(20, Events.spawnBosses) -- a moment to get in the water
+					task.delay(20, function() -- a moment to get in the water
+						if Events.active() then
+							Events.spawnBosses()
+						end
+					end)
 				end
 			elseif on and os.clock() - lastBoss > Config.Boss.every then
 				Events.spawnBosses()
