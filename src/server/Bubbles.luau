@@ -2,7 +2,6 @@
 -- Rarity and mutation are rolled on the server; luck can bump a grab up a tier.
 
 local Workspace = game:GetService("Workspace")
-local Players = game:GetService("Players")
 local CollectionService = game:GetService("CollectionService")
 
 local Shared = game.ReplicatedStorage.Shared
@@ -16,21 +15,15 @@ local Game = require(script.Parent.Game)
 local Bubbles = {}
 
 type Bubble = { model: Model, pos: Vector3, r: string, m: string?, s: number, zone: Config.Zone, taken: boolean?,
-	reservedBy: Player?, reservedUntil: number?, spilled: boolean?,
+	spilled: boolean?,
 	extra: boolean?, -- on top of the zone's quota (spills, Bubble Rain): never respawned
 	z: string } -- the creature's own zone (a spilled one keeps where it was caught)
 
 local live: { Bubble } = {}
 local byId: { [number]: Bubble } = {}
 local nextBubbleId = 0
-local tryGrab: (Player, Bubble, boolean?, boolean?) -> boolean
+local tryGrab: (Player, Bubble) -> boolean
 
--- Legendary reel: grabbing a Legendary starts a timing minigame on the
--- client (Reel.luau) while its zone's shark charges you. Land it and it's
--- yours; fumble (or take too long) and it slips back into the water.
-local REEL_TIME = 7 -- seconds the client gets
-local REEL_MIN = 1.2 -- faster than this isn't a real reel
-local reels: { [Player]: { b: Bubble, started: number } } = {}
 local folder: Folder
 local rng = Random.new()
 
@@ -274,6 +267,10 @@ local function grab(s: Game.Session, b: Bubble)
 	if Game.sharkOnGrab then
 		Game.sharkOnGrab(s, r) -- the shark may notice
 	end
+	-- a Legendary or a Mythic: its zone's shark wants it, so run it home
+	if Config.rarity(r).index >= 5 and s.profile.tut >= 5 and Game.sharkAggro then
+		Game.sharkAggro(s, Config.Shark.prizeGrudge, "prize")
+	end
 	-- the whole server hears about the big ones
 	local idx = Config.rarity(r).index
 	if idx >= 5 or (b.s or 1) >= 2 or (b.m and idx >= 4) then
@@ -285,40 +282,14 @@ local function grab(s: Game.Session, b: Bubble)
 end
 
 -- hold the prompt to grab (server checks you're really there)
--- swept = the caller already checked your path passed through it (unused now:
--- every grab is a hold on the prompt);
--- reeled = you just won the Legendary reel for it
 -- (true = it's in your hands now)
-tryGrab = function(player: Player, b: Bubble, swept: boolean?, reeled: boolean?): boolean
+tryGrab = function(player: Player, b: Bubble): boolean
 	local s = Game.sessions[player]
 	if not s or b.taken or Game.handsFull(s) or os.clock() < s.eatenUntil then
 		return false
 	end
 	local hrp = Game.root(player)
-	local reach = reeled and 40 or 16 -- (you drift a little while reeling)
-	if not hrp or (not swept and Vector2.new(hrp.Position.X - b.pos.X, hrp.Position.Z - b.pos.Z).Magnitude > reach) then
-		return false
-	end
-	if b.reservedBy and b.reservedBy ~= player and os.clock() < (b.reservedUntil or 0) then
-		return false -- someone's reeling this one in
-	end
-	if not reeled and Config.rarity(b.r).index >= 5 and s.profile.tut >= 5 then
-		local old = reels[player]
-		if old and os.clock() - old.started <= REEL_TIME + 2 then
-			return false
-		elseif old then
-			-- a reel the client never answered: let it go
-			reels[player] = nil
-			if old.b.reservedBy == player then
-				old.b.reservedBy, old.b.reservedUntil = nil, nil
-			end
-		end
-		b.reservedBy, b.reservedUntil = player, os.clock() + REEL_TIME + 2
-		reels[player] = { b = b, started = os.clock() }
-		Game.notify(player, "reel", { time = REEL_TIME, name = Config.fullName(b.z, b.r, b.m, b.s) })
-		if Game.sharkAggro then
-			Game.sharkAggro(s, REEL_TIME + 6, "reel")
-		end
+	if not hrp or Vector2.new(hrp.Position.X - b.pos.X, hrp.Position.Z - b.pos.Z).Magnitude > 16 then
 		return false
 	end
 	local i = table.find(live, b)
@@ -351,25 +322,6 @@ function Bubbles.give(s: Game.Session, r: string, zoneId: string?, size: number?
 	end
 end
 
--- the reel's result from the client
-Game.action("reel", function(s, ok)
-	local r = reels[s.player]
-	if not r then
-		return
-	end
-	reels[s.player] = nil
-	local b = r.b
-	local took = os.clock() - r.started
-	if b.reservedBy == s.player then
-		b.reservedBy, b.reservedUntil = nil, nil
-	end
-	if ok == true and took >= REEL_MIN and took <= REEL_TIME + 2 and not b.taken and tryGrab(s.player, b, false, true) then
-		Game.track(s.player, "reelWon", {})
-	else
-		Game.notify(s.player, "slipped", { name = Config.fullName(b.z, b.r, b.m, b.s) })
-	end
-end)
-
 -- touch screens grab through this action (Prompts.luau runs the hold on
 -- the button itself, which works on every phone); same checks as the prompt
 Game.action("grab", function(s, id)
@@ -389,15 +341,6 @@ function Bubbles.start()
 			spawnBubble(zone)
 		end
 	end
-	Players.PlayerRemoving:Connect(function(p)
-		local r = reels[p]
-		if r then
-			if r.b.reservedBy == p then
-				r.b.reservedBy, r.b.reservedUntil = nil, nil
-			end
-			reels[p] = nil
-		end
-	end)
 end
 
 return Bubbles

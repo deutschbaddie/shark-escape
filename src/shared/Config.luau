@@ -839,6 +839,7 @@ Config.Codes = {
 -- in open water gets hunted until dawn; night catches are luckier (frenzy).
 -- Dawn sends every shark home: a clean slate.
 Config.Shark = {
+	prizeGrudge = 14, -- grab a Legendary or Mythic: its shark hunts you this long
 	cycle = 130, -- average day (HUD fallback; real days are random)
 	firstAttack = 150, -- the first night falls this long after the server starts
 	warning = 6, -- dusk: time to get to sand
