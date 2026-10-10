@@ -710,6 +710,8 @@ Config.Raid = {
 	maxTime = 60, -- an owner too far out to make it back in this long can't be raided
 	evolveGap = 2, -- raider and owner within this many evolves of each other
 	pairCooldown = 900, -- the same raider can't hit the same player again for this long
+	-- the spin's odds per creature by rarity (a Mythic is ~70x rarer to take than a Common)
+	lootWeight = { Common = 40, Uncommon = 25, Rare = 12, Epic = 5, Legendary = 2, Mythic = 0.6 },
 	defendRadius = 28, -- the owner this close to their own tank stops it
 	stayRadius = 16, -- the raider has to stay this close to the tank
 	victimCooldown = 240, -- a raided player is safe from raids this long

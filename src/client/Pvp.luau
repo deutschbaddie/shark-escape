@@ -22,6 +22,7 @@ local Notify = require(script.Parent.Notify)
 local Guide = require(script.Parent.Guide)
 local State = require(script.Parent.State)
 local Prompts = require(script.Parent.Prompts)
+local RaidSpin = require(script.Parent.RaidSpin)
 
 local Pvp = {}
 local player = Players.LocalPlayer
@@ -275,8 +276,23 @@ handlers.raidStart = function(d)
 	Notify.toast(("Raiding %s's tank!"):format(tostring(d.name)), ORANGE)
 end
 
+-- the spin plays first (both players watch it), then the result
+local function afterSpin(d: any, title: string, sub: string, fn: () -> ())
+	if typeof(d.spin) == "table" and #d.spin > 0 then
+		RaidSpin.play(d.spin, d.win or 1, title, sub, fn)
+	else
+		fn()
+	end
+end
+
 handlers.raidWon = function(d)
 	clearRaid()
+	afterSpin(d, ("Raiding %s's tank"):format(tostring(d.from)), "Rarer ones are harder to get!", function()
+		handlers.raidWonResult(d)
+	end)
+end
+
+handlers.raidWonResult = function(d)
 	Notify.takeover("Stolen", ("%s from %s. It's in your tank!"):format(tostring(d.name), tostring(d.from)), C.gold, 1.8)
 	Notify.chat(("You stole a %s from %s!"):format(tostring(d.name), tostring(d.from)), nil, "RAID", true)
 	Fx.sound("legendary", 0.8)
@@ -284,6 +300,12 @@ end
 
 handlers.raidLost = function(d)
 	clearRaid()
+	afterSpin(d, ("%s is taking one of yours"):format(tostring(d.by)), "Rarer ones are safer!", function()
+		handlers.raidLostResult(d)
+	end)
+end
+
+handlers.raidLostResult = function(d)
 	Notify.takeover("Raided", ("%s took your %s. Your tank is safe for %d min"):format(tostring(d.by), tostring(d.name),
 		math.floor((d.safe or Config.Raid.victimCooldown) / 60)), ORANGE, 2)
 	Notify.chat(("%s stole your %s"):format(tostring(d.by), tostring(d.name)), nil, "RAID", true)

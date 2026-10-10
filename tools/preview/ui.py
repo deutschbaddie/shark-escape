@@ -62,7 +62,7 @@ task = {{
 """
     for m in ("Config", "Build", "Layout"):
         s += module(m, "shared", "mod:")
-    for m in ("UI", "Sounds", "Fx", "Notify", "Guide", "Travel", "Prompts", "HUDMobile", "HUDDesktop", "HUD", "Rewards", "Shop", "Index", "Tank", "Sell", "Hub", "PlayGifts", "Countdown"):
+    for m in ("UI", "Sounds", "Fx", "Notify", "Guide", "Travel", "Prompts", "HUDMobile", "HUDDesktop", "HUD", "Rewards", "Shop", "Index", "Tank", "Sell", "Hub", "PlayGifts", "RaidSpin", "Countdown"):
         s += module(m, "client", "cmod:")
     s += """
 local sig = function() return { Connect = function() end } end
@@ -465,6 +465,9 @@ MENU_SCENES = {
     "rebirth": 'require("cmod:Shop").start()\nrequire("cmod:Hub").confirmRebirth()',
     "event": 'require("cmod:Countdown").preview()',
     "daily": 'local R = require("cmod:Rewards")\nR.start()\nR.openDaily()',
+    "raidspin": 'local S = require("cmod:RaidSpin")\nS.settled = true\nS.play({ { r = "Rare", z = "Reef", p = 0.18 }, { r = "Common", z = "Kelp", p = 0.42 }, '
+        '{ r = "Mythic", z = "Deep", p = 0.008 }, { r = "Legendary", z = "Lagoon", p = 0.03 }, { r = "Uncommon", z = "Reef", p = 0.25 }, '
+        '{ r = "Epic", z = "Shipwreck", p = 0.07 } }, 1, "Raiding Sam\'s tank", "Rarer ones are harder to get!")',
 }
 
 if len(sys.argv) > 2 and sys.argv[2] == "menus":

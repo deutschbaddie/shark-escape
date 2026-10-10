@@ -8,9 +8,9 @@
 --          takes Config.Raid.time seconds; they're alerted at once and stop
 --          it by getting back to their dock. The further out they are, the
 --          longer the raid takes, so the race home is always winnable (too
---          far out to make it back = can't be raided). Too slow, and one of
---          their lesser creatures goes into your tank (never their best,
---          never a Mythic). After a raid the tank is safe for a while, and
+--          far out to make it back = can't be raided). Too slow, and a spin
+--          picks one of their creatures for your tank (rarer = less likely:
+--          a Mythic is a long shot). After a raid the tank is safe a while, and
 --          you can't keep picking on the same player.
 -- Chum: players who've played a while. Raids: after your first evolve
 -- (raider and owner both), between players within a couple of evolves.
@@ -237,38 +237,54 @@ local function startRaid(s: Game.Session, plotIndex: any)
 	Game.track(s.player, "raid", { stage = "start" })
 end
 
--- one of their lesser creatures (Active or not, so unequipping everything
--- from the Tank window can't dodge a raid): never their best, never a
--- Mythic, and from the cheaper half of the rest, so a raid stings but
--- never wrecks a tank
-local function pickLoot(v: Game.Session): Data.Creature?
-	local pool = {}
+-- the prize: any creature in their tank (Active or not, so unequipping
+-- everything from the Tank window can't dodge a raid), weighted by rarity
+-- (Config.Raid.lootWeight): a Mythic can go, but it's a long shot. Also the
+-- spin both players watch: up to SPIN_SHOWN of their creatures, each with
+-- its real chance, and which one won.
+local SPIN_SHOWN = 12
+local function pickLoot(v: Game.Session): (Data.Creature?, { any }, number)
+	local weights = Config.Raid.lootWeight
+	local all, total = {}, 0
 	for _, c in v.profile.creatures do
-		if c.r ~= "Mythic" then
-			table.insert(pool, { c = c, v = Config.creatureValue(c.r, c.z, c.m, c.s) })
+		local w = weights[c.r] or 1
+		table.insert(all, { c = c, w = w })
+		total += w
+	end
+	if total <= 0 then
+		return nil, {}, 0
+	end
+	local roll = rng:NextNumber(0, total)
+	local win = all[#all]
+	for _, e in all do
+		roll -= e.w
+		if roll <= 0 then
+			win = e
+			break
 		end
 	end
-	table.sort(pool, function(a, b)
-		return a.v < b.v
-	end)
-	-- the best one overall is never taken
-	local bestV = -1
-	for _, c in v.profile.creatures do
-		bestV = math.max(bestV, Config.creatureValue(c.r, c.z, c.m, c.s))
+	-- what the spin shows: the winner plus others (all of them if few)
+	local shown = { win }
+	local rest = {}
+	for _, e in all do
+		if e ~= win then
+			table.insert(rest, e)
+		end
 	end
-	if #pool > 0 and pool[#pool].v >= bestV then
-		table.remove(pool)
+	while #shown < SPIN_SHOWN and #rest > 0 do
+		table.insert(shown, table.remove(rest, rng:NextInteger(1, #rest)))
 	end
-	if #pool == 0 then
-		return nil
+	local items = {}
+	for _, e in shown do
+		table.insert(items, { r = e.c.r, z = e.c.z, m = e.c.m, s = e.c.s, p = e.w / total })
 	end
-	return pool[rng:NextInteger(1, math.max(1, #pool // 2))].c
+	return win.c, items, 1
 end
 
 local function finish(r: Raid)
 	local v, s = r.victim, r.raider
 	endRaid(v.player)
-	local c = pickLoot(v)
+	local c, spin, winAt = pickLoot(v)
 	if not c then
 		Game.notify(s.player, "raidFail", { why = "empty" })
 		return
@@ -283,8 +299,8 @@ local function finish(r: Raid)
 	Game.addCreature(s, { r = c.r, z = c.z, m = c.m, s = c.s })
 	s.dirty = true
 	local name = Config.fullName(c.z, c.r, c.m, c.s)
-	Game.notify(s.player, "raidWon", { name = name, from = v.player.DisplayName })
-	Game.notify(v.player, "raidLost", { name = name, by = s.player.DisplayName, safe = Config.Raid.victimCooldown })
+	Game.notify(s.player, "raidWon", { name = name, from = v.player.DisplayName, spin = spin, win = winAt })
+	Game.notify(v.player, "raidLost", { name = name, by = s.player.DisplayName, safe = Config.Raid.victimCooldown, spin = spin, win = winAt })
 	Game.track(s.player, "raid", { stage = "won" })
 end
 
