@@ -31,7 +31,7 @@ RIDES = [(0, 1), (30, 2), (300, 3), (2500, 4), (10000, 5), (40000, 7), (160000, 
          (2400000, 16), (9000000, 22), (70000000, 30), (200000000, 40),
          (900000000, 55), (4000000000, 75), (18000000000, 100)
          ] + CANDY_RIDES
-CANDY_NAMES = ["Cotton Candy Cloud", "Gummy Shark", "Lollipop Jet", "Candy Cane Board", "Sugar Rocket"]
+CANDY_NAMES = ["Cotton Candy Cloud", "Gummy Shark Float", "Lollipop Jet", "Candy Cane Board", "Sugar Rocket"]
 RIDE_NAMES = ["Pool Noodle", "Rubber Duck", "Inner Tube", "Boogie Board", "Surfboard", "Bathtub",
               "Banana Boat", "Jet Ski", "Speedboat", "Dolphin", "Giant Donut", "Rocket Surfboard",
               "Hover Board", "Lava Jet", "Golden Comet"] + CANDY_NAMES

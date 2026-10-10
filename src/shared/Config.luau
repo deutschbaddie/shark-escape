@@ -259,7 +259,7 @@ Config.Rides = {
 	{ id = "Comet", name = "Golden Comet", icon = "", price = 18000000000, gain = 100 },
 	-- the candy sea (about one every 35 min from hour 3: tools/balance/audit.py)
 	{ id = "Cloud", name = "Cotton Candy Cloud", icon = "", price = 100e9, gain = 120 },
-	{ id = "GummyShark", name = "Gummy Shark", icon = "", price = 600e9, gain = 145 },
+	{ id = "GummyShark", name = "Gummy Shark Float", icon = "", price = 600e9, gain = 145 },
 	{ id = "LollyJet", name = "Lollipop Jet", icon = "", price = 4e12, gain = 175 },
 	{ id = "CaneBoard", name = "Candy Cane Board", icon = "", price = 25e12, gain = 210 },
 	{ id = "SugarRocket", name = "Sugar Rocket", icon = "", price = 150e12, gain = 250 },
