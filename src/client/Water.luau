@@ -366,7 +366,49 @@ local function animateTagged(dt: number)
 			m:PivotTo((base :: CFrame) * CFrame.new(0, y, 0) * CFrame.Angles(0, t * 0.8 + seed, 0))
 		end
 	end
+	-- dock showcases: a slow turn and a gentle float
+	for _, m in CollectionService:GetTagged("Showcase") do
+		if m:IsA("Model") and m.PrimaryPart then
+			local base = m:GetAttribute("BaseCF") :: CFrame?
+			if not base then
+				base = m:GetPivot()
+				m:SetAttribute("BaseCF", base)
+			end
+			m:PivotTo((base :: CFrame) * CFrame.new(0, math.sin(t * 1.3) * 0.8, 0) * CFrame.Angles(0, t * 0.5, 0))
+		end
+	end
 end
+
+-- a new best creature on a dock pops in (grows from small, overshoots a
+-- touch, settles) with a sparkle, if you're close enough to see it
+CollectionService:GetInstanceAddedSignal("Showcase"):Connect(function(m)
+	if not m:IsA("Model") then
+		return
+	end
+	local cam = Workspace.CurrentCamera
+	local at = m:GetPivot().Position
+	if not cam or (cam.CFrame.Position - at).Magnitude > 260 then
+		return
+	end
+	local t0 = os.clock()
+	local conn
+	conn = RunService.RenderStepped:Connect(function()
+		local k = math.clamp((os.clock() - t0) / 0.6, 0, 1)
+		if not m.Parent then
+			conn:Disconnect()
+			return
+		end
+		-- ease out back: 0.2 -> 1.08 -> 1
+		local c1, c3 = 1.70158, 2.70158
+		local e = 1 + c3 * (k - 1) ^ 3 + c1 * (k - 1) ^ 2
+		pcall(m.ScaleTo, m, math.max(0.05, 0.2 + 0.8 * e))
+		if k >= 1 then
+			conn:Disconnect()
+			pcall(m.ScaleTo, m, 1)
+		end
+	end)
+	Fx.sparkle(at, Color3.fromRGB(255, 230, 120), 30)
+end)
 
 local rainbowParts: { BasePart } = {}
 local function scanRainbow()

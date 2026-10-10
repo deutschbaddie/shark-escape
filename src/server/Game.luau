@@ -2,6 +2,7 @@
 -- rebirth, gates, the shark's bite consequences, and state sync.
 
 local Players = game:GetService("Players")
+local CollectionService = game:GetService("CollectionService")
 
 local Shared = game.ReplicatedStorage.Shared
 local Config = require(Shared.Config)
@@ -553,11 +554,63 @@ local function findCreature(s: Session, id: any): Data.Creature?
 end
 
 -- the swimming showcase: Active creatures with their $/s (clients make them swim)
+-- THE SHOWCASE: your best creature floats huge above your dock, spinning
+-- slowly over a glowing ring, with your name; bigger as you rebirth (clients
+-- spin + bob it: tag "Showcase", Water.luau). Rebuilt only when it changes.
+local SHOWCASE_Y = 27
+function Game.updateShowcase(s: Session)
+	local plot = s.plot
+	if not plot then
+		return
+	end
+	local best, bestV = nil, -1
+	for _, c in s.profile.creatures do
+		local v = Config.creatureValue(c.r, c.z, c.m, c.s)
+		if v > bestV then
+			best, bestV = c, v
+		end
+	end
+	local old = plot.model:FindFirstChild("Showcase")
+	local key = best and ("%s|%s|%s|%s|%d"):format(best.r, best.z, tostring(best.m), tostring(best.s), math.min(s.profile.rebirths, 8)) or ""
+	if old and old:GetAttribute("Key") == key then
+		return
+	end
+	if old then
+		old:Destroy()
+	end
+	if not best then
+		return
+	end
+	local at = Layout.tankPos(plot.cf) + Vector3.new(0, SHOWCASE_Y, 0)
+	local m = Instance.new("Model")
+	m.Name = "Showcase"
+	m:SetAttribute("Key", key)
+	local scale = 3 + 0.3 * math.min(s.profile.rebirths, 8)
+	local creature = Creatures.build(best.r, best.m, scale * math.min(Config.sizeScale(best.s), 1.3), best.z)
+	creature:PivotTo(CFrame.new(at) * plot.cf.Rotation)
+	creature.Parent = m
+	local color = Config.rarity(best.r).color
+	local ring = Build.cyl(m, 0.4, 7 + scale * 1.6, CFrame.new(at - Vector3.new(0, scale * 1.2 + 1.5, 0)), color, {
+		Name = "Ring", Material = Enum.Material.Neon, Transparency = 0.35, CanCollide = false, CanQuery = false, CastShadow = false })
+	local light = Instance.new("PointLight")
+	light.Color = color
+	light.Range = 16
+	light.Brightness = 1.5
+	light.Parent = ring
+	NameTag.attach(ring, best, nil, { height = -2.2, maxDist = 220, width = 9 })
+	m.PrimaryPart = creature.PrimaryPart
+	m:SetAttribute("Owner", s.player.DisplayName)
+	Build.ghost(m)
+	CollectionService:AddTag(m, "Showcase")
+	m.Parent = plot.model
+end
+
 function Game.refreshTank(s: Session)
 	local plot = s.plot
 	if not plot then
 		return
 	end
+	Game.updateShowcase(s)
 	plot.slots:ClearAllChildren()
 	local mult = Game.coinMult(s)
 	local base = CFrame.new(Layout.tankPos(plot.cf))
@@ -1080,6 +1133,10 @@ local function dressPlot(s: Session)
 end
 
 local function emptyPlot(plot: World.Plot)
+	local show = plot.model:FindFirstChild("Showcase")
+	if show then
+		show:Destroy()
+	end
 	plot.signLabel.Text = "Empty Dock"
 	plot.viewPrompt.ObjectText = "Empty Dock"
 	plot.padLabel.Text = "$0"
