@@ -42,6 +42,12 @@ local function atSea(s: Game.Session): BasePart?
 	return nil
 end
 
+-- someone walking raid loot home on the sand: fair game for anyone
+local function lootCarrier(t: Game.Session): BasePart?
+	local hrp = t.raidLoot and Game.root(t.player)
+	return hrp and not hrp.Anchored and hrp or nil
+end
+
 -- can this player take part in rider bonks yet?
 local function brawler(s: Game.Session): boolean
 	return s.profile.tut >= 5 and s.profile.playtime >= Config.Bonk.protect
@@ -49,12 +55,12 @@ end
 
 -- the rider this swing lands on: in reach, in front of you (or right next to
 -- you), at sea, fair game; loaded riders first
-local function pick(s: Game.Session, hrp: BasePart, reach: number): (Game.Session?, BasePart?)
+local function pick(s: Game.Session, hrp: BasePart, reach: number, sea: boolean): (Game.Session?, BasePart?)
 	local look = hrp.CFrame.LookVector * Vector3.new(1, 0, 1)
 	local best, bestRoot, bestScore = nil, nil, -math.huge
 	for _, t in Game.sessions do
-		local troot = t ~= s and atSea(t)
-		if troot and brawler(t) and os.clock() >= t.eatenUntil and os.clock() - (bonkedAt[t.player] or -1e9) >= Config.Bonk.immune
+		local troot = t ~= s and (lootCarrier(t) or (sea and atSea(t)))
+		if troot and (brawler(t) or t.raidLoot ~= nil) and os.clock() >= t.eatenUntil and os.clock() - (bonkedAt[t.player] or -1e9) >= Config.Bonk.immune
 			and Config.worldAt(troot.Position) == Config.worldAt(hrp.Position) then
 			local rel = (troot.Position - hrp.Position) * Vector3.new(1, 0, 1)
 			local d = rel.Magnitude
@@ -97,9 +103,23 @@ local function swing(s: Game.Session)
 	if s.profile.tut < 5 or now - (swungAt[s.player] or -1e9) < noodle.cooldown - 0.2 then
 		return
 	end
-	local hrp = atSea(s)
+	-- at sea, or on the sand near someone carrying raid loot
+	local seaRoot = atSea(s)
+	local hrp = seaRoot or Game.root(s.player)
 	if not hrp or now < s.eatenUntil then
 		return
+	end
+	if not seaRoot then
+		local near = false
+		for _, t in Game.sessions do
+			local lr = t ~= s and lootCarrier(t)
+			if lr and (lr.Position - hrp.Position).Magnitude <= noodle.reach + 6 then
+				near = true
+			end
+		end
+		if not near then
+			return
+		end
 	end
 	swungAt[s.player] = now
 	local char = s.player.Character
@@ -109,17 +129,17 @@ local function swing(s: Game.Session)
 	end
 
 	-- 1) a shark coming at you: dazed
-	if now - (sharkAt[s.player] or -1e9) >= cfg.sharkCooldown and Sharks.bonk(s, hrp.Position, noodle.reach + 2) then
+	if seaRoot and now - (sharkAt[s.player] or -1e9) >= cfg.sharkCooldown and Sharks.bonk(s, hrp.Position, noodle.reach + 2) then
 		sharkAt[s.player] = now
 		Game.notify(s.player, "bonkShark", { cooldown = cfg.sharkCooldown })
 		return
 	end
 
 	-- 2) a rider
-	if not brawler(s) then
+	if not brawler(s) and seaRoot then
 		return
 	end
-	local t, troot = pick(s, hrp, noodle.reach)
+	local t, troot = pick(s, hrp, noodle.reach, seaRoot ~= nil)
 	if not (t and troot) then
 		return
 	end

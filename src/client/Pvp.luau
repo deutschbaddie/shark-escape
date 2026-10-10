@@ -127,7 +127,50 @@ function safeSign(m: Model, owner: any)
 	end
 end
 
+-- a gold label over anyone walking raid loot home (everyone can bonk it),
+-- and a reminder for the one carrying it
+local lootLabels: { [Model]: BillboardGui } = {}
+local function lootTick()
+	for _, p in Players:GetPlayers() do
+		local char = p.Character
+		local on = char ~= nil and char:GetAttribute("RaidLoot") == true
+		local label = char and lootLabels[char]
+		if on and not label and p ~= player then
+			local head = (char :: Model):FindFirstChild("Head") :: BasePart?
+			if head then
+				local bb = Instance.new("BillboardGui")
+				bb.Size = UDim2.fromScale(8, 1.4)
+				bb.StudsOffsetWorldSpace = Vector3.new(0, 5.6, 0)
+				bb.AlwaysOnTop = true
+				bb.LightInfluence = 0
+				bb.MaxDistance = 160
+				bb.Adornee = head
+				bb.Parent = player:WaitForChild("PlayerGui")
+				UI.outlined(bb, "Stolen loot: bonk it loose!", { Size = UDim2.fromScale(1, 1), TextColor3 = C.gold })
+				lootLabels[char :: Model] = bb
+			end
+		elseif not on and label then
+			label:Destroy()
+			lootLabels[char :: Model] = nil
+		end
+	end
+	for char, bb in lootLabels do
+		if not char.Parent then
+			bb:Destroy()
+			lootLabels[char] = nil
+		end
+	end
+	local mine = player.Character and player.Character:GetAttribute("RaidLoot") == true
+	if mine then
+		Notify.banner("Walk it home!", { key = "loot", sticky = true, priority = 4, compact = true, color = C.gold,
+			sub = "Anyone can bonk it loose" })
+	else
+		Notify.clear("loot")
+	end
+end
+
 local function raidTick()
+	lootTick()
 	local now = Workspace:GetServerTimeNow()
 	for _, m in plotModels() do
 		local owner = m:GetAttribute("Owner")
@@ -226,7 +269,7 @@ handlers.raidWon = function(d)
 end
 
 handlers.raidWonResult = function(d)
-	Notify.takeover("Stolen", ("%s from %s. It's in your tank!"):format(tostring(d.name), tostring(d.from)), C.gold, 1.8)
+	Notify.takeover("Stolen", ("%s from %s. Walk it home!"):format(tostring(d.name), tostring(d.from)), C.gold, 1.8)
 	Notify.chat(("You stole a %s from %s!"):format(tostring(d.name), tostring(d.from)), nil, "RAID", true)
 	Fx.sound("legendary", 0.8)
 end
@@ -239,8 +282,7 @@ handlers.raidLost = function(d)
 end
 
 handlers.raidLostResult = function(d)
-	Notify.takeover("Raided", ("%s took your %s. Your tank is safe for %d min"):format(tostring(d.by), tostring(d.name),
-		math.floor((d.safe or Config.Raid.victimCooldown) / 60)), ORANGE, 2)
+	Notify.takeover("Raided", ("%s is carrying your %s home. Bonk it loose!"):format(tostring(d.by), tostring(d.name)), ORANGE, 2.2)
 	Notify.chat(("%s stole your %s"):format(tostring(d.by), tostring(d.name)), nil, "RAID", true)
 end
 

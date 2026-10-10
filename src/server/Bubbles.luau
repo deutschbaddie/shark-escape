@@ -153,15 +153,14 @@ end
 
 -- a bitten player's haul floats free around where it happened
 function Bubbles.spill(pos: Vector3, list: { any }, by: Player?, why: string?): { any }
-	local zone = Config.zoneAtPos(pos)
+	-- (on the sand, e.g. raid loot bonked loose: it bobs on the beach)
+	local onLand = not Layout.inWater(pos)
+	local zone = Config.zoneAtPos(pos) or Config.Zones[1]
 	local made = {}
-	if not zone then
-		return made
-	end
 	for i, c in list do
 		local a = (i / #list) * math.pi * 2 + rng:NextNumber(0, 0.6)
 		local r = rng:NextNumber(7, 11)
-		local at = Vector3.new(pos.X + math.cos(a) * r, 3, pos.Z + math.sin(a) * r)
+		local at = Vector3.new(pos.X + math.cos(a) * r, onLand and Config.BEACH_TOP + 2.2 or 3, pos.Z + math.sin(a) * r)
 		table.insert(made, spawnBubble(zone, { r = c.r, z = c.z, m = c.m, s = c.s, pos = at }))
 	end
 	Game.notifyAll("spill", { x = pos.X, z = pos.Z, n = #list, time = Config.SPILL_TIME, why = why,

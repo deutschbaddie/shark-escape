@@ -221,6 +221,22 @@ local function atSea(): boolean
 	return hrp ~= nil and Layout.inWater(hrp.Position) and not Layout.islandAt(hrp.Position, 0) and not hrp.Anchored
 end
 
+-- someone carrying raid loot within a swing of me (on the sand too)
+local function lootNear(reach: number): boolean
+	local me = myRoot()
+	if not me then
+		return false
+	end
+	for _, p in Players:GetPlayers() do
+		local char = p ~= player and p.Character
+		local hrp = char and char:GetAttribute("RaidLoot") and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if hrp and (hrp.Position - me.Position).Magnitude <= reach + 6 then
+			return true
+		end
+	end
+	return false
+end
+
 local function myNoodle(): any
 	local d = State.data
 	for _, n in Config.Noodles do
@@ -233,7 +249,7 @@ end
 
 local function press()
 	local d = State.data
-	if not (d and d.tut >= 5 and atSea()) or os.clock() < readyAt then
+	if not (d and d.tut >= 5 and (atSea() or lootNear(myNoodle().reach))) or os.clock() < readyAt then
 		return
 	end
 	readyAt = os.clock() + myNoodle().cooldown
@@ -272,7 +288,8 @@ end
 
 local function tick()
 	local d = State.data
-	local show = d ~= nil and d.tut >= 5 and atSea()
+	local loot = d ~= nil and lootNear(myNoodle().reach)
+	local show = d ~= nil and d.tut >= 5 and (atSea() or loot)
 	button.Visible = show
 	if not show then
 		if stopPulse then
@@ -285,7 +302,7 @@ local function tick()
 	local left = math.max(0, readyAt - os.clock())
 	cover.Size = UDim2.fromScale(1, math.clamp(left / cd, 0, 1))
 	-- a shark charging and in reach: the button glows (that's the lesson)
-	local glow = left <= 0 and os.clock() >= sharkReadyAt and sharkInReach()
+	local glow = left <= 0 and ((os.clock() >= sharkReadyAt and sharkInReach()) or loot)
 	button.BackgroundColor3 = glow and T.gold or T.pink
 	if glow and not stopPulse then
 		stopPulse = UI.pulse(button)

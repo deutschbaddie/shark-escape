@@ -7,8 +7,9 @@
 --          it by getting back to their dock. The further out they are, the
 --          longer the raid takes, so the race home is always winnable (too
 --          far out to make it back = can't be raided). Too slow, and a spin
---          picks one of their creatures for your tank (rarer = less likely:
---          a Mythic is a long shot). After a raid the tank is safe a while, and
+--          picks one of their creatures (rarer = less likely: a Mythic is a
+--          long shot), and you walk it home in forced slow mode while anyone,
+--          the owner too, can bonk it loose. After a raid the tank is safe a while, and
 --          you can't keep picking on the same player.
 -- Raids: after your first evolve
 -- (raider and owner both), between players within a couple of evolves.
@@ -247,8 +248,16 @@ local function finish(r: Raid)
 	end
 	Game.refreshTank(v)
 	v.dirty = true
-	-- straight into the raider's tank (they're already home on the beach)
-	Game.addCreature(s, { r = c.r, z = c.z, m = c.m, s = c.s }, true)
+	-- now get it home: in your hands, in forced slow mode, and anyone can
+	-- bonk it loose (the owner too: their way to win it back)
+	local loot = { r = c.r, z = c.z, m = c.m, s = c.s }
+	if Game.handsFull(s) or s.carrying then
+		Game.addCreature(s, loot, true) -- (hands busy: it goes straight in)
+	else
+		Game.setCarry(s, loot)
+		s.carryUntil = nil -- (no wriggling free: the danger is other players)
+		Game.setRaidLoot(s, loot)
+	end
 	s.dirty = true
 	local name = Config.fullName(c.z, c.r, c.m, c.s)
 	Game.notify(s.player, "raidWon", { name = name, from = v.player.DisplayName, spin = spin, win = winAt })

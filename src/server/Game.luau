@@ -51,6 +51,7 @@ export type Session = {
 	gifts: number?, -- playtime gifts claimed this session
 	bag: { Data.Creature }?, -- extra catches in your net (s.carrying is the one in your hands)
 	stolen: boolean?, -- carrying a catch from water too deep for you: every shark you pass wants it
+	raidLoot: Data.Creature?, -- a creature you won in a raid, carried home in forced slow mode (anyone can bonk it loose)
 }
 
 Game.sessions = {} :: { [Player]: Session }
@@ -181,7 +182,20 @@ end
 -- WalkSpeed from speed, capped while Slow Mode is on
 function Game.walkSpeed(s: Session): number
 	local v = Config.realSpeed(s.profile.speed)
-	return s.slow and math.min(v, Config.SLOW_SPEED) or v
+	return (s.slow or s.raidLoot) and math.min(v, Config.SLOW_SPEED) or v
+end
+
+-- raid loot: you walk it home slowly, and it's marked so everyone can bonk it
+function Game.setRaidLoot(s: Session, c: Data.Creature?)
+	s.raidLoot = c
+	local char = s.player.Character
+	if char then
+		char:SetAttribute("RaidLoot", c ~= nil or nil)
+	end
+	local hum = humanoid(s.player)
+	if hum then
+		hum.WalkSpeed = Game.walkSpeed(s)
+	end
 end
 
 -- friends in this server boost your coins (social = more players)
@@ -1489,6 +1503,11 @@ local function fastTick()
 					end
 				end
 			end
+		end
+		-- raid loot: done once it's out of your hands and net
+		local loot = s.raidLoot
+		if loot and s.carrying ~= loot and not (s.bag and table.find(s.bag, loot)) then
+			Game.setRaidLoot(s, nil)
 		end
 		-- a carried creature doesn't wait forever: bring it home in time
 		local c = s.carrying
