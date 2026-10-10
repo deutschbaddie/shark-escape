@@ -22,6 +22,7 @@ local Fx = require(script.Parent.Fx)
 local Notify = require(script.Parent.Notify)
 local Guide = require(script.Parent.Guide)
 local State = require(script.Parent.State)
+local SharkView = require(script.Parent.SharkView)
 
 local Haul = {}
 local player = Players.LocalPlayer
@@ -37,43 +38,30 @@ local function myRoot(): BasePart?
 end
 
 ----------------------------------------------------------------- fins
--- a dark dorsal fin cutting the water, with a ripple of foam at its base
-type Fin = { fin: BasePart, foam: BasePart }
+-- real (small) sharks of the zone you're in, circling you. Only for show:
+-- client-local (SharkView.spawnLocal), they never hunt or bite and don't
+-- count as "a shark is after you"; the charge comes from the server
+type Fin = { sh: any }
 local finsOf: { [Player]: { Fin } } = {}
-local finFolder = Instance.new("Folder")
-finFolder.Name = "HaulFins"
-finFolder.Parent = Workspace
 
-local function newFin(): Fin
-	local fin = Instance.new("WedgePart")
-	fin.Anchored, fin.CanCollide, fin.CanQuery, fin.CanTouch, fin.CastShadow = true, false, false, false, false
-	fin.Color = Color3.fromRGB(70, 80, 96)
-	fin.Size = Vector3.new(0.45, 2.4, 2.6)
-	fin.Parent = finFolder
-	local foam = Instance.new("Part")
-	foam.Anchored, foam.CanCollide, foam.CanQuery, foam.CanTouch, foam.CastShadow = true, false, false, false, false
-	foam.Shape = Enum.PartType.Cylinder
-	foam.Material = Enum.Material.SmoothPlastic
-	foam.Color = Color3.new(1, 1, 1)
-	foam.Transparency = 0.45
-	foam.Size = Vector3.new(0.15, 3.4, 3.4)
-	foam.Parent = finFolder
-	return { fin = fin, foam = foam }
+local function newFin(at: Vector3): Fin
+	local zone = Config.zoneAtPos(at) or Config.Zones[1]
+	local L = math.clamp(zone.sharkLength * 0.6, 6, 14)
+	local sh = SharkView.spawnLocal(zone.shark, L, Vector3.new(at.X, 0, at.Z + 30), 0, function() end)
+	sh.state = "circle"
+	return { sh = sh }
 end
 
-local function setFins(p: Player, n: number)
+local function setFins(p: Player, n: number, at: Vector3?)
 	local list = finsOf[p] or {}
 	finsOf[p] = list
-	while #list < n do
-		local f = newFin()
-		table.insert(list, f)
-		local at = f.fin.Position
-		Fx.splash(Vector3.new(at.X, 0.5, at.Z), 0.6)
+	while #list < n and at do
+		table.insert(list, newFin(at))
 	end
 	while #list > n do
 		local f = table.remove(list) :: Fin
-		f.fin:Destroy()
-		f.foam:Destroy()
+		f.sh.state = "leave" -- (it dives away)
+		task.delay(1.5, SharkView.removeLocal, f.sh)
 	end
 	if n == 0 then
 		finsOf[p] = nil
@@ -87,7 +75,7 @@ local function finsUpdate()
 		local hrp = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
 		local n = p:GetAttribute("Fins")
 		n = typeof(n) == "number" and hrp ~= nil and n or 0
-		setFins(p, n)
+		setFins(p, n, hrp and hrp.Position)
 		local list = finsOf[p]
 		if list and hrp then
 			local close = p:GetAttribute("FinsClose") == true
@@ -96,12 +84,14 @@ local function finsUpdate()
 			local speed = close and 1.6 or 0.55
 			for i, f in list do
 				local a = t * speed + i / #list * math.pi * 2 + p.UserId % 10
-				local pos = Vector3.new(center.X + math.cos(a) * r, 0.9 + math.sin(t * 2 + i) * 0.2, center.Z + math.sin(a) * r)
+				local goal = Vector3.new(center.X + math.cos(a) * r, 0, center.Z + math.sin(a) * r)
+				-- swim toward its spot on the circle (smoothly, so it glides in)
+				local sh = f.sh
+				sh.pos = sh.pos:Lerp(goal, math.min(1, 0.08 + (close and 0.06 or 0)))
 				-- travelling round the circle: face along it
 				local ahead = Vector3.new(-math.sin(a), 0, math.cos(a))
-				f.fin.CFrame = CFrame.lookAt(pos, pos + ahead)
-				f.foam.CFrame = CFrame.new(pos.X, 0.15, pos.Z) * CFrame.Angles(0, 0, math.pi / 2)
-				f.fin.Color = close and Color3.fromRGB(110, 70, 80) or Color3.fromRGB(70, 80, 96)
+				sh.yaw = math.atan2(-ahead.X, -ahead.Z)
+				sh.state = "circle"
 			end
 		end
 	end
@@ -115,12 +105,12 @@ local function finsUpdate()
 	local mine = player:GetAttribute("Fins")
 	if not taught and typeof(mine) == "number" and mine > 0 and d and (d.playtime or 0) < 3600 then
 		taught = true
-		Notify.toast("Fins follow your haul. Carry a lot and one charges!", ORANGE)
+		Notify.toast("Sharks follow your haul. Carry a lot and one charges!", ORANGE)
 	end
 	local close = player:GetAttribute("FinsClose") == true
 	if close and not warned then
 		warned = true
-		Notify.banner("The fins are closing in", { key = "fins", priority = 4, time = 3, color = RED, sub = "Get your haul to the sand!" })
+		Notify.banner("The sharks are closing in", { key = "fins", priority = 4, time = 3, color = RED, sub = "Get your haul to the sand!" })
 		Fx.sound("sharkAlarm", 0.6, 1.15)
 	elseif not close then
 		warned = false
