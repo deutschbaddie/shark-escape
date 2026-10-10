@@ -52,6 +52,7 @@ end
 local function buildPill()
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "NextEvent"
+	UI.hideInCutscenes(gui)
 	gui.ResetOnSpawn = false
 	gui.Parent = players.LocalPlayer:WaitForChild("PlayerGui")
 	UI.autoScale(gui)

@@ -53,6 +53,7 @@ end
 local function buildChum()
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "Chum"
+	UI.hideInCutscenes(gui)
 	gui.ResetOnSpawn = false
 	gui.Parent = player:WaitForChild("PlayerGui")
 	UI.autoScale(gui)

@@ -102,6 +102,18 @@ end
 UI.BASE = Vector2.new(1280, 720)
 local UserInputService = game:GetService("UserInputService")
 UI.TOUCH = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+-- HUD-like screens step aside for the bite cutscene and the tank view (the
+-- screen belongs to those)
+function UI.hideInCutscenes(gui: ScreenGui)
+	local player = game:GetService("Players").LocalPlayer
+	local function refresh()
+		gui.Enabled = player:GetAttribute("Cinematic") ~= true and player:GetAttribute("ViewingTank") ~= true
+	end
+	player:GetAttributeChangedSignal("Cinematic"):Connect(refresh)
+	player:GetAttributeChangedSignal("ViewingTank"):Connect(refresh)
+	refresh()
+end
+
 -- `fit` (design units) = the biggest window this gui shows: the scale is
 -- capped so it always fits on screen (phones get the boost only if it fits)
 function UI.autoScale(gui: ScreenGui, fit: Vector2?): UIScale

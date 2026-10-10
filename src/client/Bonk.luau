@@ -248,6 +248,7 @@ end
 local function buildButton()
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "Bonk"
+	UI.hideInCutscenes(gui)
 	gui.ResetOnSpawn = false
 	gui.Parent = player:WaitForChild("PlayerGui")
 	UI.autoScale(gui)

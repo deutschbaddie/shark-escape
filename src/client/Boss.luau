@@ -162,6 +162,7 @@ end
 function Boss.start()
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "Harpoon"
+	UI.hideInCutscenes(gui)
 	gui.ResetOnSpawn = false
 	gui.Parent = player:WaitForChild("PlayerGui")
 	UI.autoScale(gui)

@@ -84,6 +84,7 @@ end
 function Settings.start()
 	gui = Instance.new("ScreenGui")
 	gui.Name = "Settings"
+	UI.hideInCutscenes(gui)
 	gui.ResetOnSpawn = false
 	gui.DisplayOrder = 8
 	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
